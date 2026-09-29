@@ -66,8 +66,37 @@ class DashboardController extends Controller
             ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
             ->orderBy('cmp_id')->get();
 
+        $memberOptions = UserMaster::query()
+            ->with([
+                'userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
+                'companies' => fn ($query) => $query
+                    ->with(['details:cmpd_id,cmpd_cmp_id,cmpd_name,cmpd_status', 'categories:bcm_id,name'])
+                    ->whereHas('details', fn ($details) => $details->where('cmpd_status', 1)),
+            ])
+            ->where('um_status', 2)
+            ->where('um_id', '!=', $member->um_id)
+            ->whereHas('companies.details', fn ($query) => $query->where('cmpd_status', 1))
+            ->get()
+            ->flatMap(function (UserMaster $recipient) {
+                $memberName = trim(($recipient->userDetail?->ud_first_name ?? '').' '.($recipient->userDetail?->ud_last_name ?? ''))
+                    ?: ($recipient->um_user_name ?: 'Member');
+
+                return $recipient->companies->map(function (CompaniesMaster $business) use ($recipient, $memberName) {
+                    $businessName = $business->details?->cmpd_name ?: 'Business #'.$business->cmp_id;
+                    $categoryName = $business->categories->first()?->name ?: 'Unclassified';
+
+                    return (object) [
+                        'member_id' => $recipient->um_id,
+                        'company_id' => $business->cmp_id,
+                        'label' => "{$memberName} - {$businessName} ({$categoryName})",
+                    ];
+                });
+            })
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
         return view('Member.Dashboard.index', compact(
-            'member', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions'
+            'member', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions'
         ));
     }
 
@@ -139,6 +168,6 @@ class DashboardController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Reference shared with the selected business.');
+        return back()->with('success', 'Reference shared with the selected member.');
     }
 }
