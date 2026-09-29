@@ -24,10 +24,11 @@ class KeylineSmsServiceTest extends TestCase
         $result = (new KeylineSmsService())->to('9330109091')->line('Your OTP is 1234')->send();
 
         $this->assertSame('success', $result['status']);
-        Http::assertSent(fn ($request) =>
-            str_contains($request->url(), 'apikey=secret-key')
-            && str_contains($request->url(), 'senderid=NETWORK')
-            && str_contains($request->url(), 'number=9330109091')
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && $request['apikey'] === 'secret-key'
+            && $request['senderid'] === 'NETWORK'
+            && $request['number'] === '9330109091'
+            && $request['format'] === 'json'
         );
     }
 }

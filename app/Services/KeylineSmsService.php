@@ -78,7 +78,8 @@ class KeylineSmsService
                 'format' => 'json',
             ];
 
-            $response = Http::withOptions(['verify' => false])->get($this->baseUrl, $postData);
+            // Match the working admin sender: submit gateway fields as form data.
+            $response = Http::asForm()->withOptions(['verify' => false])->post($this->baseUrl, $postData);
 
 
 
@@ -101,7 +102,7 @@ class KeylineSmsService
             return [
                 'status' => 'error',
                 'message' => 'Request failed with status: ' . $response->status(),
-                'data' => null,
+                'data' => $response->body(),
             ];
         } catch (RequestException $ex) {
 
