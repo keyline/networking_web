@@ -276,6 +276,13 @@ if ($pageSegment == 'orders') {
                 </div>
                 <!-- End memberships -->
                 <div class="nav-item">
+                    <a class="nav-link <?= $pageSegment == 'chapters' ? 'active' : '' ?>"
+                        href="<?= url('admin/chapters') ?>" data-placement="left">
+                        <i class="fa fa-people-group nav-icon"></i>
+                        <span class="nav-link-title">Chapters</span>
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'events' ? 'active' : '' ?>"
                         href="<?= url('admin/events') ?>" data-placement="left">
                         <i class="fa fa-calendar nav-icon"></i>

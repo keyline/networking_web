@@ -7,7 +7,9 @@ use App\Services\LoginOTPService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Notifications\LoginSMSNotification;
 
 
 
@@ -51,6 +53,58 @@ class MemberLoginService
         return $user->fresh();
     }
 
+    public function sendMobileOtp(Request $request): UserMaster
+    {
+        $data = $request->validate(['mobile' => ['required', 'string', 'max:30']]);
+        $mobile = preg_replace('/\D+/', '', $data['mobile']);
+        if (strlen($mobile) < 10) {
+            throw ValidationException::withMessages(['mobile' => ['Enter a valid registered mobile number.']]);
+        }
+
+        $lookup = substr($mobile, -10);
+        $key = $this->throttleKey($lookup, $request->ip(), 'send-mobile');
+        $this->ensureIsNotRateLimited($key, 3, 'mobile');
+        $user = $this->activeUsers()->whereRaw(
+            "RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(um_mobile_no, '+', ''), ' ', ''), '-', ''), '(', ''), ')', ''), 10) = ?",
+            [$lookup]
+        )->first();
+
+        if (!$user) {
+            RateLimiter::hit($key, $this->decaySeconds);
+            throw ValidationException::withMessages(['mobile' => ['No active account was found for this mobile number.']]);
+        }
+
+        $this->otpService->generateOTP($user->um_id);
+        if (app()->environment('testing')) {
+            $request->session()->put('testing_member_mobile_otp', $user->fresh()->um_otp);
+        } else {
+            $user->notify(new LoginSMSNotification());
+        }
+        RateLimiter::hit($key, $this->decaySeconds);
+        return $user->fresh();
+    }
+
+    public function loginWithPassword(Request $request): UserMaster
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+        $email = strtolower(trim($data['email']));
+        $key = $this->throttleKey($email, $request->ip(), 'password');
+        $this->ensureIsNotRateLimited($key, $this->maxAttempts);
+        $user = $this->activeUsers()->whereRaw('LOWER(um_email_id) = ?', [$email])->first();
+
+        if (!$user || !$user->um_password || !Hash::check($data['password'], $user->um_password)) {
+            RateLimiter::hit($key, $this->decaySeconds);
+            throw ValidationException::withMessages(['email' => ['The email address or password is incorrect.']]);
+        }
+
+        RateLimiter::clear($key);
+        $this->authenticate($request, $user);
+        return $user;
+    }
+
     public function verifyOtp(Request $request): UserMaster
     {
         $data = $request->validate([
@@ -80,17 +134,49 @@ class MemberLoginService
         return $user;
     }
 
+    public function verifyMobileOtp(Request $request): UserMaster
+    {
+        $data = $request->validate([
+            'user_id' => ['required', 'integer'],
+            'otp' => ['required', 'digits:4'],
+        ]);
+        $key = $this->throttleKey((string) $data['user_id'], $request->ip(), 'verify-mobile');
+        $this->ensureIsNotRateLimited($key, $this->maxAttempts, 'otp');
+        $user = $this->activeUsers()->where('um_id', $data['user_id'])->first();
+
+        if (!$user || !$this->otpService->verifyOTP($user->um_id, $data['otp'])) {
+            RateLimiter::hit($key, $this->decaySeconds);
+            throw ValidationException::withMessages(['otp' => ['The OTP is invalid or has expired.']]);
+        }
+
+        RateLimiter::clear($key);
+        $request->session()->forget('testing_member_mobile_otp');
+        $this->authenticate($request, $user);
+        return $user;
+    }
+
+    public function authenticate(Request $request, UserMaster $user): void
+    {
+        Auth::guard('member')->login($user);
+        $request->session()->regenerate();
+    }
+
     /**
      * Ensure the login attempt is not rate limited.
      */
-    protected function ensureIsNotRateLimited(string $key, int $maxAttempts): void
+    protected function ensureIsNotRateLimited(string $key, int $maxAttempts, string $field = 'email'): void
     {
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
-                'email' => ["Too many attempts. Please try again in {$seconds} seconds."],
+                $field => ["Too many attempts. Please try again in {$seconds} seconds."],
             ]);
         }
+    }
+
+    private function activeUsers()
+    {
+        return UserMaster::query()->where('um_status', 2);
     }
 
 

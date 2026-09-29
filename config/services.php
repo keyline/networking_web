@@ -31,6 +31,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+    ],
+
     'sms_providers' => [
             'keylines' => [
                 'base_url'  => 'https://sms.digitalsms.net/api/v3/sendsms',//'http://sms.keylines.net/V2/http-api.php',

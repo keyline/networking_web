@@ -10,6 +10,7 @@ use App\Http\Controllers\Member\User\MemberController;
 use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\MembershipAccountsController;
 use App\Http\Controllers\Admin\MembershipSettingController;
+use App\Http\Controllers\Admin\ChapterController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\BulkImportController;
@@ -61,8 +62,13 @@ Route::prefix('events')->name('events.')->group(function () {
 Route::middleware('member.guest')->group(function () {
     Route::get('member', [MemberController::class, 'index'])->name('member.index');
     Route::post('member/send-otp', [MemberController::class, 'sendOtp'])->name('member.send-otp');
+    Route::post('member/send-mobile-otp', [MemberController::class, 'sendMobileOtp'])->name('member.send-mobile-otp');
     Route::post('member/verify-otp', [MemberController::class, 'verifyOtp'])->name('member.verify-otp');
+    Route::post('member/verify-mobile-otp', [MemberController::class, 'verifyMobileOtp'])->name('member.verify-mobile-otp');
+    Route::post('member/login-password', [MemberController::class, 'loginWithPassword'])->name('member.login-password');
     Route::post('member/resend-otp', [MemberController::class, 'resendOtp'])->name('member.resend-otp');
+    Route::get('member/google', [MemberController::class, 'googleRedirect'])->name('member.google.redirect');
+    Route::get('member/google/callback', [MemberController::class, 'googleCallback'])->name('member.google.callback');
 });
 
 Route::middleware(['auth:member'])->prefix('member')->group(function () {
@@ -117,6 +123,10 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         Route::get('settings', 'UserController@settings');
         Route::post('membership-settings', [MembershipSettingController::class, 'update'])->name('admin.membership-settings.update');
         Route::get('memberships', [MembershipController::class, 'index'])->name('admin.memberships.index');
+        Route::resource('chapters', ChapterController::class)->names('admin.chapters');
+        Route::post('chapters/{chapter}/members', [ChapterController::class, 'addMember'])->name('admin.chapters.members.store');
+        Route::put('chapters/{chapter}/members/{member}', [ChapterController::class, 'updateMember'])->name('admin.chapters.members.update');
+        Route::delete('chapters/{chapter}/members/{member}', [ChapterController::class, 'removeMember'])->name('admin.chapters.members.destroy');
         Route::get('analytics', [AnalyticsController::class, 'index'])->name('admin.analytics.index');
         Route::get('events', [EventController::class, 'index'])->name('admin.events.index');
         Route::match(['get', 'post'], 'events/create', [EventController::class, 'create'])->name('admin.events.create');

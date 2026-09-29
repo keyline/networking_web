@@ -6,6 +6,7 @@ use App\Models\BaseModel;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\Enquiries\EnquiryMaster;
 use App\Models\MemberMembership;
+use App\Models\ChapterMember;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -74,5 +75,21 @@ class UserMaster extends Authenticatable
     public function membership()
     {
         return $this->hasOne(MemberMembership::class, 'user_id', 'um_id');
+    }
+
+    public function chapterMemberships()
+    {
+        return $this->hasMany(ChapterMember::class, 'user_id', 'um_id');
+    }
+
+    public function getUmNameAttribute(): string
+    {
+        return trim(($this->userDetail?->ud_first_name ?? '').' '.($this->userDetail?->ud_last_name ?? ''))
+            ?: ($this->um_user_name ?? 'Member');
+    }
+
+    public function getUmMobileAttribute(): ?string
+    {
+        return $this->um_mobile_no;
     }
 }

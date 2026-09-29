@@ -1,64 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Member Login | Net-Works</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f3f6fb; color: #17233c; font-family: Inter, Arial, sans-serif; }
-        .card { width: 100%; max-width: 420px; background: #fff; border: 1px solid #e5eaf2; border-radius: 14px; padding: 30px; box-shadow: 0 14px 35px rgba(23, 35, 60, .09); }
-        .brand { color: #397ef6; font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-        h1 { margin: 8px 0 6px; font-size: 25px; }
-        .subtitle { margin: 0 0 24px; color: #6c7890; font-size: 14px; line-height: 1.55; }
-        label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 700; }
-        input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid #dce3ee; border-radius: 8px; font-size: 15px; outline: none; }
-        input:focus { border-color: #397ef6; box-shadow: 0 0 0 3px rgba(57, 126, 246, .12); }
-        .otp { text-align: center; letter-spacing: .5em; font-size: 22px; font-weight: 700; }
-        button { width: 100%; height: 46px; margin-top: 18px; border: 0; border-radius: 8px; background: #397ef6; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
-        .secondary { margin-top: 10px; border: 1px solid #dce3ee; background: #fff; color: #397ef6; }
-        .message { margin-bottom: 18px; padding: 11px 13px; border-radius: 8px; font-size: 13px; }
-        .success { background: #eaf8f1; color: #17734a; }
-        .error { background: #fff0f0; color: #b42318; }
-        .error ul { margin: 0; padding-left: 18px; }
-        .email { margin-bottom: 18px; padding: 10px 12px; background: #f6f8fc; border-radius: 7px; color: #4f5d75; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <main class="card">
-        <div class="brand">Net-Works</div>
-        <h1>{{ session('member_otp_email') ? 'Verify your email' : 'Member login' }}</h1>
-        <p class="subtitle">{{ session('member_otp_email') ? 'Enter the one-time password sent to your registered email.' : 'Buyer, seller and guest members can sign in securely without a password.' }}</p>
-
-        @if (session('success'))
-            <div class="message success">{{ session('success') }}</div>
-        @endif
-        @if ($errors->any())
-            <div class="message error"><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-        @endif
-
-        @if (session('member_otp_email'))
-            <div class="email">OTP sent to <strong>{{ session('member_otp_email') }}</strong></div>
-            <form action="{{ route('member.verify-otp') }}" method="POST">
-                @csrf
-                <input type="hidden" name="email" value="{{ session('member_otp_email') }}">
-                <label for="otp">4-digit OTP</label>
-                <input id="otp" class="otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required autofocus>
-                <button type="submit">Verify and sign in</button>
-            </form>
-            <form action="{{ route('member.resend-otp') }}" method="POST">
-                @csrf
-                <input type="hidden" name="email" value="{{ session('member_otp_email') }}">
-                <button type="submit" class="secondary">Resend OTP</button>
-            </form>
-        @else
-            <form action="{{ route('member.send-otp') }}" method="POST">
-                @csrf
-                <label for="email">Registered email address</label>
-                <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="email" placeholder="name@example.com" required autofocus>
-                <button type="submit">Send email OTP</button>
-            </form>
-        @endif
-    </main>
-</body>
-</html>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in | Net-Works</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#17233c;font-family:Inter,Arial}.shell{display:grid;grid-template-columns:minmax(320px,480px) 1fr;min-height:100vh}.panel{display:flex;align-items:center;padding:42px;background:#fff}.card{width:100%;max-width:410px;margin:auto}.brand{display:inline-flex;margin-bottom:30px;color:#397ef6;font-size:15px;font-weight:800;letter-spacing:.08em;text-decoration:none;text-transform:uppercase}h1{margin:0 0 8px;font-size:30px}.sub{margin:0 0 24px;color:#68778e;font-size:14px;line-height:1.55}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:20px;padding:4px;border-radius:10px;background:#f1f4f9}.tab{padding:9px 5px;border:0;border-radius:7px;background:transparent;color:#66758c;font:600 12px Inter;cursor:pointer}.tab.active{background:#fff;color:#286bdd;box-shadow:0 2px 8px #1e325017}.method{display:none}.method.active{display:block}label{display:block;margin:13px 0 7px;font-size:12px;font-weight:700}input{width:100%;height:46px;padding:0 13px;border:1px solid #dce3ee;border-radius:8px;font:14px Inter;outline:none}input:focus{border-color:#397ef6;box-shadow:0 0 0 3px #397ef61f}button,.google{display:flex;align-items:center;justify-content:center;width:100%;height:46px;margin-top:17px;border:0;border-radius:8px;background:#397ef6;color:#fff;font:700 14px Inter;text-decoration:none;cursor:pointer}.google{gap:10px;border:1px solid #dce3ee;background:#fff;color:#273750}.google svg{width:18px}.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:#9aa5b5;font-size:11px}.divider:before,.divider:after{content:"";height:1px;flex:1;background:#e5eaf1}.message{margin-bottom:17px;padding:11px 13px;border-radius:8px;font-size:12px}.success{background:#e9f8f0;color:#147349}.error{background:#fff0f0;color:#b42318}.error ul{margin:0;padding-left:17px}.otp{text-align:center;letter-spacing:.45em;font-size:21px;font-weight:700}.sent{margin-bottom:16px;padding:11px 13px;border-radius:8px;background:#f4f7fb;color:#56667e;font-size:13px}.links{display:flex;justify-content:space-between;margin-top:17px}.links a{color:#397ef6;font-size:12px;text-decoration:none}.aside{position:relative;display:flex;align-items:center;padding:8vw;background:linear-gradient(145deg,#18345f,#397ef6);color:#fff;overflow:hidden}.aside:after{position:absolute;right:-180px;bottom:-180px;width:520px;height:520px;border:80px solid #ffffff14;border-radius:50%;content:""}.aside div{z-index:1;max-width:600px}.aside h2{margin:0 0 18px;font-size:45px;line-height:1.12}.aside p{color:#dce8ff;font-size:17px;line-height:1.7}@media(max-width:850px){.shell{display:block}.panel{min-height:100vh}.aside{display:none}}
+</style></head><body><main class="shell"><section class="panel"><div class="card"><a class="brand" href="{{url('/')}}">Net-Works</a>@php($otpMode=session('member_otp_email')?'email':(session('member_otp_user_id')?'mobile':null))<h1>{{$otpMode?'Verify your OTP':'Welcome back'}}</h1><p class="sub">{{$otpMode?'Enter the four-digit code sent to your registered contact.':'Sign in to manage your business, chapter, enquiries and referrals.'}}</p>
+@if(session('success'))<div class="message success">{{session('success')}}</div>@endif @if($errors->any())<div class="message error"><ul>@foreach($errors->all() as $error)<li>{{$error}}</li>@endforeach</ul></div>@endif
+@if($otpMode)<div class="sent">OTP sent to <strong>{{$otpMode==='email'?session('member_otp_email'):session('member_otp_mobile')}}</strong></div><form method="post" action="{{$otpMode==='email'?route('member.verify-otp'):route('member.verify-mobile-otp')}}">@csrf @if($otpMode==='email')<input type="hidden" name="email" value="{{session('member_otp_email')}}">@else<input type="hidden" name="user_id" value="{{session('member_otp_user_id')}}">@endif<label>4-digit OTP</label><input class="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required autofocus><button>Verify and sign in</button></form><div class="links"><a href="{{route('member.index')}}?reset=1">Use another method</a></div>
+@else<div class="tabs"><button class="tab active" type="button" data-tab="email">Email OTP</button><button class="tab" type="button" data-tab="mobile">Mobile OTP</button><button class="tab" type="button" data-tab="password">Password</button></div>
+<form class="method active" data-method="email" method="post" action="{{route('member.send-otp')}}">@csrf<label>Email address</label><input name="email" type="email" value="{{old('email')}}" autocomplete="email" required><button>Send email OTP</button></form>
+<form class="method" data-method="mobile" method="post" action="{{route('member.send-mobile-otp')}}">@csrf<label>Mobile number</label><input name="mobile" type="tel" value="{{old('mobile')}}" autocomplete="tel" placeholder="9330109091" required><button>Send SMS OTP</button></form>
+<form class="method" data-method="password" method="post" action="{{route('member.login-password')}}">@csrf<label>Email address</label><input name="email" type="email" autocomplete="email" required><label>Password</label><input name="password" type="password" autocomplete="current-password" required><button>Sign in securely</button></form>
+<div class="divider">OR</div><a class="google" href="{{route('member.google.redirect')}}"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.6 4.6 0 0 1-2 3v2.8h3.5c2-1.9 3.2-4.6 3.2-7.9z"/><path fill="#34A853" d="M12 22c2.9 0 5.3-1 7-2.5l-3.5-2.8c-1 .7-2.2 1-3.5 1a6.1 6.1 0 0 1-5.7-4.2H2.7v2.9A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.3 13.5a6 6 0 0 1 0-3.9V6.8H2.7a10 10 0 0 0 0 9.1l3.6-2.4z"/><path fill="#EA4335" d="M12 5.9c1.6 0 3 .5 4.1 1.6l3.1-3.1A10 10 0 0 0 2.7 6.8l3.6 2.8A6.1 6.1 0 0 1 12 5.9z"/></svg>Continue with Google</a><div class="links"><a href="{{route('join.create')}}">Create an account</a><a href="{{url('/')}}">Back to website</a></div>@endif</div></section><aside class="aside"><div><h2>Your network and opportunities in one place.</h2><p>Connect with trusted businesses, exchange referrals, manage enquiries and participate in your local chapter.</p></div></aside></main><script>document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.method').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelector('[data-method="'+t.dataset.tab+'"]').classList.add('active')})</script></body></html>

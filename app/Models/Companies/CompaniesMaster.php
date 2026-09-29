@@ -67,4 +67,9 @@ class CompaniesMaster extends BaseModel
     {
         return $this->belongsToMany(BusinessCategoryMaster::class, 'categories_to_companies', 'ctc_cmp_id', 'ctc_bcm_id'); // Adjust as necessary
     }
+
+    public function getCmpNameAttribute(): string
+    {
+        return $this->details?->cmpd_name ?? 'Business';
+    }
 }
