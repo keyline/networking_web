@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('admins', function (Blueprint $table) {
-            $table->string('login_id', 150)->nullable()->unique()->after('user_master_id');
-        });
+        if (!Schema::hasColumn('admins', 'login_id')) {
+            Schema::table('admins', function (Blueprint $table) {
+                $table->string('login_id', 150)->nullable()->unique()->after('user_master_id');
+            });
+        }
 
         DB::table('admins')->whereNull('login_id')->orderBy('id')->each(function ($admin) {
             DB::table('admins')->where('id', $admin->id)->update(['login_id' => $admin->email]);
@@ -20,7 +22,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('admins', fn (Blueprint $table) => $table->dropUnique(['login_id']));
-        Schema::table('admins', fn (Blueprint $table) => $table->dropColumn('login_id'));
+        if (Schema::hasColumn('admins', 'login_id')) {
+            Schema::table('admins', function (Blueprint $table) {
+                $table->dropUnique(['login_id']);
+                $table->dropColumn('login_id');
+            });
+        }
     }
 };

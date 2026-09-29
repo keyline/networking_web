@@ -15,6 +15,8 @@ use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\BulkImportController;
 use App\Http\Controllers\Admin\AdminAccessController;
 use App\Http\Controllers\EventPortalController;
+use App\Http\Controllers\PublicRegistrationController;
+use App\Http\Controllers\PublicBusinessController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +37,10 @@ use Illuminate\Support\Facades\Route;
 Route::match(['get', 'post'], '/', 'App\Http\Controllers\FrontController@home');
 Route::match(['get', 'post'], 'page/{id}', 'App\Http\Controllers\FrontController@page');
 Route::match(['get', 'post'], '/contact-us', 'App\Http\Controllers\FrontController@contactUs');
+Route::get('/join', [PublicRegistrationController::class, 'create'])->name('join.create');
+Route::post('/join', [PublicRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('join.store');
+Route::get('/business/{slug}', [PublicBusinessController::class, 'show'])->name('business.show');
+Route::post('/business/{slug}/lead', [PublicBusinessController::class, 'lead'])->middleware('throttle:6,1')->name('business.lead');
 Route::match(['get', 'post'], 'cron-for-attendance-notification', 'App\Http\Controllers\FrontController@cron_for_attendance_notification');
 
 

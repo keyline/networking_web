@@ -50,6 +50,7 @@ use Session;
 use Helper;
 use Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PHPUnit\TextUI\Help;
 use App\Notifications\AdminLoginOtpNotification;
@@ -72,7 +73,11 @@ class UserController extends Controller
                     'password' => ['required', 'string', 'max:255'],
                 ]);
                 $admin = Admin::where('status', 1)->where(function ($query) use ($credentials) {
-                    $query->where('login_id', $credentials['identifier'])->orWhere('email', $credentials['identifier']);
+                    if (Schema::hasColumn('admins', 'login_id')) {
+                        $query->where('login_id', $credentials['identifier'])->orWhere('email', $credentials['identifier']);
+                    } else {
+                        $query->where('email', $credentials['identifier']);
+                    }
                 })->first();
 
                 if (!$admin || !Hash::check($credentials['password'], $admin->password)) {
@@ -81,10 +86,16 @@ class UserController extends Controller
 
                 Auth::guard('admin')->login($admin);
                 $request->session()->regenerate();
-                $admin->update(['last_login_at' => now()]);
+                if (Schema::hasColumn('admins', 'last_login_at')) {
+                    $admin->update(['last_login_at' => now()]);
+                }
                 $this->establishAdminSession($request, $admin);
                 $this->recordAdminLoginActivity($request, $admin, 'User ID and password');
                 return redirect('admin/dashboard');
+            }
+
+            if (!$this->adminOtpSchemaIsReady()) {
+                return back()->withInput()->with('error_message', 'OTP login is being configured. Please use email and password for now.');
             }
 
             if ($method === 'email_otp') {
@@ -114,6 +125,10 @@ class UserController extends Controller
 
     public function verifyLoginOtp(Request $request)
     {
+        if (!$this->adminOtpSchemaIsReady()) {
+            return redirect('/admin?reset=1')->with('error_message', 'OTP login is being configured. Please use email and password for now.');
+        }
+
         $data = $request->validate([
             'admin_id' => ['required', 'integer'],
             'otp' => ['required', 'digits:6'],
@@ -151,6 +166,10 @@ class UserController extends Controller
 
     public function resendLoginOtp(Request $request)
     {
+        if (!$this->adminOtpSchemaIsReady()) {
+            return redirect('/admin?reset=1')->with('error_message', 'OTP login is being configured. Please use email and password for now.');
+        }
+
         $admin = Admin::where('id', $request->session()->get('admin_otp_admin_id'))->where('status', 1)->first();
         if (!$admin) {
             return redirect('/admin?reset=1')->with('error_message', 'Request a new sign-in code.');
@@ -184,6 +203,16 @@ class UserController extends Controller
                 throw ValidationException::withMessages(['mobile' => 'The SMS gateway could not send the code. Please use email OTP.']);
             }
         }
+    }
+
+    private function adminOtpSchemaIsReady(): bool
+    {
+        return Schema::hasColumns('admins', [
+            'login_otp_hash',
+            'login_otp_expires_at',
+            'login_otp_attempts',
+            'last_login_at',
+        ]);
     }
 
     private function establishAdminSession(Request $request, Admin $admin): void

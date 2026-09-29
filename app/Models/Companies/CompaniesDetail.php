@@ -9,6 +9,7 @@ use App\Models\Review\ReviewMaster;
 use App\Models\State;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class CompaniesDetail extends Model
 {
@@ -22,6 +23,23 @@ class CompaniesDetail extends Model
     public const UPDATED_AT = 'cmpd_updated_at';
 
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        static::creating(function (CompaniesDetail $business) {
+            if ($business->public_slug) {
+                return;
+            }
+
+            $base = Str::slug($business->cmpd_name) ?: 'business';
+            $slug = $base;
+            $suffix = 2;
+            while (static::where('public_slug', $slug)->exists()) {
+                $slug = $base . '-' . $suffix++;
+            }
+            $business->public_slug = $slug;
+        });
+    }
 
 
     public function companies()

@@ -51,7 +51,7 @@
                             <div class="results">
                                 @forelse($directory as $business)
                                     @php($company = $business->details)
-                                    <article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business' }}</h3><p>{{ $company?->cmpd_description ?: ($company?->cmpd_email ?? 'Net-Works business') }}</p></div><button class="link btn btn-outline choose-business" type="button" data-id="{{ $business->cmp_id }}" data-name="{{ $company?->cmpd_name }}">Enquire</button></article>
+                                    <article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business' }}</h3><p>{{ $company?->cmpd_description ?: ($company?->cmpd_email ?? 'Net-Works business') }}</p></div>@if($company?->public_slug)<a class="link" href="{{route('business.show',$company->public_slug)}}" target="_blank">View</a>@endif<button class="link btn btn-outline choose-business" type="button" data-id="{{ $business->cmp_id }}" data-name="{{ $company?->cmpd_name }}">Enquire</button></article>
                                 @empty<div class="empty">No matching connections found. Try a broader search.</div>@endforelse
                             </div>
                         @endif
@@ -73,7 +73,7 @@
                     <div class="card-head"><div><h2>{{ $isBusinessOwner ? 'My business' : 'My profile' }}</h2><p>Your identity across the network.</p></div></div>
                     <div class="card-body">
                         @if($isBusinessOwner)
-                            <div class="business-list">@foreach($member->companies as $business) @php($company=$business->details)<article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business profile' }}</h3><p>{{ $company?->cmpd_email ?? $member->um_email_id }}</p></div></article>@endforeach</div>
+                            <div class="business-list">@foreach($member->companies as $business) @php($company=$business->details)<article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business profile' }}</h3><p>{{ $company?->cmpd_email ?? $member->um_email_id }}</p></div>@if($company?->cmpd_status==1 && $company?->public_slug)<a class="link" href="{{route('business.show',$company->public_slug)}}" target="_blank">Open & share</a>@else<span class="pill">Pending approval</span>@endif</article>@endforeach</div>
                         @else
                             <div class="profile"><div class="profile-row"><span>Name</span><strong>{{ $displayName }}</strong></div><div class="profile-row"><span>Email</span><strong>{{ $member->um_email_id }}</strong></div><div class="profile-row"><span>Mobile</span><strong>{{ $member->um_mobile_no ?: 'Not added' }}</strong></div></div>
                         @endif
@@ -89,7 +89,7 @@
 
                 <section class="card section-gap">
                     <div class="card-head"><div><h2>Businesses to explore</h2><p>Recently added to the directory.</p></div></div>
-                    <div class="card-body business-list">@forelse($recentBusinesses as $business) @php($company=$business->details)<article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business' }}</h3><p>{{ $company?->cmpd_description ?? 'Net-Works member' }}</p></div></article>@empty<div class="empty">No businesses available.</div>@endforelse</div>
+                    <div class="card-body business-list">@forelse($recentBusinesses as $business) @php($company=$business->details)<article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business' }}</h3><p>{{ $company?->cmpd_description ?? 'Net-Works member' }}</p></div>@if($company?->public_slug)<a class="link" href="{{route('business.show',$company->public_slug)}}" target="_blank">View profile</a>@endif</article>@empty<div class="empty">No businesses available.</div>@endforelse</div>
                 </section>
             </aside>
         </div>
