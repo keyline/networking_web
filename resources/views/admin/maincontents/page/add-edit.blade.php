@@ -1,0 +1,48 @@
+<?php
+use App\Helpers\Helper;
+$controllerRoute = $module['controller_route'];
+$isEdit = !empty($row);
+$value = fn ($field, $default = '') => old($field, $isEdit ? ($row->{$field} ?? $default) : $default);
+?>
+
+<style>
+  .cms-editor{--cms-blue:#397ef6;--cms-border:#e4e9f1;--cms-text:#263650;max-width:1480px;margin:0 auto}.cms-editor .editor-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.cms-editor .breadcrumb{margin:0 0 4px;font-size:11px}.cms-editor h1{margin:0;color:#17233c;font-size:22px;font-weight:750}.cms-editor .editor-grid{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px}.cms-editor .panel{border:1px solid var(--cms-border);border-radius:8px;background:#fff;box-shadow:0 4px 14px rgba(23,35,60,.04)}.cms-editor .panel-head{padding:11px 14px;border-bottom:1px solid #edf1f6;color:var(--cms-text);font-size:12px;font-weight:750}.cms-editor .panel-body{padding:14px}.cms-editor .field{margin-bottom:14px}.cms-editor .field:last-child{margin-bottom:0}.cms-editor label{display:block;margin-bottom:5px;color:#465874;font-size:10.5px;font-weight:750;text-transform:uppercase;letter-spacing:.035em}.cms-editor .form-control,.cms-editor .form-select{min-height:38px;border-color:#dce3ed;border-radius:6px;color:#34455f;font-size:12px}.cms-editor textarea.form-control{min-height:84px}.cms-editor .slug-wrap{display:flex;align-items:center;border:1px solid #dce3ed;border-radius:6px;background:#fafbfd}.cms-editor .slug-prefix{padding-left:11px;color:#8995a7;font-size:11px;white-space:nowrap}.cms-editor .slug-wrap input{border:0;background:transparent;box-shadow:none}.cms-editor .help{display:block;margin-top:5px;color:#8b97a8;font-size:10px}.cms-editor .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cms-editor .ck-editor__editable{min-height:420px}.cms-editor .stack{display:grid;gap:14px}.cms-editor .publish-actions{display:flex;gap:7px}.cms-editor .btn-cms{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:35px;padding:7px 12px;border-radius:6px;font-size:11.5px;font-weight:750}.cms-editor .btn-publish{flex:1;color:#fff;border:1px solid var(--cms-blue);background:var(--cms-blue)}.cms-editor .btn-draft{color:#53647c;border:1px solid #d7deea;background:#fff}.cms-editor .preview-link{color:#397ef6;font-size:11px;font-weight:700}.cms-editor .status-line{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #edf1f6;font-size:11px}.cms-editor .status-pill{padding:4px 8px;border-radius:12px;background:<?= $value('status', 0) ? '#e8f8f0;color:#168454' : '#fff3e5;color:#a9661b' ?>;font-size:9px;font-weight:800;text-transform:uppercase}.cms-editor .seo-count{float:right;color:#909bad;font-weight:500;text-transform:none}.cms-editor .validation-errors{margin-bottom:12px;padding:10px 13px;border:1px solid #f3c8cd;border-radius:7px;background:#fff5f6;color:#a33b46;font-size:11px}.cms-editor .validation-errors ul{margin:0;padding-left:18px}@media(max-width:1050px){.cms-editor .editor-grid{grid-template-columns:1fr}.cms-editor .stack{grid-template-columns:1fr 1fr}}@media(max-width:700px){.cms-editor .editor-head{align-items:flex-start;flex-direction:column;gap:8px}.cms-editor .two-col,.cms-editor .stack{grid-template-columns:1fr}}
+</style>
+
+<div class="cms-editor">
+  <div class="editor-head">
+    <div><nav><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= url('admin/dashboard') ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= url('admin/'.$controllerRoute.'/list') ?>">Pages</a></li><li class="breadcrumb-item active"><?= $isEdit ? 'Edit' : 'New' ?></li></ol></nav><h1><?= $isEdit ? 'Edit page' : 'Create page' ?></h1></div>
+    <a href="<?= url('admin/'.$controllerRoute.'/list') ?>" class="btn btn-sm btn-light"><i class="fa fa-arrow-left me-1"></i>Back to pages</a>
+  </div>
+  @if($errors->any())<div class="validation-errors"><strong>Please correct the following:</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+  <form action="" method="post">@csrf
+    <div class="editor-grid">
+      <main class="panel"><div class="panel-head">Page content</div><div class="panel-body">
+        <div class="field"><label for="page_name">Page title</label><input type="text" name="page_name" id="page_name" class="form-control" value="{{ $value('page_name') }}" placeholder="Enter page title" required></div>
+        <div class="field"><label for="page_slug">Permalink</label><div class="slug-wrap"><span class="slug-prefix"><?= url('page') ?>/</span><input type="text" name="page_slug" id="page_slug" class="form-control" value="{{ $value('page_slug') }}" placeholder="page-url"></div><small class="help">Use a short, readable URL. It must be unique.</small></div>
+        <div class="field"><label for="ckeditor1">Content</label><textarea name="page_content" class="form-control" id="ckeditor1" required>{{ $value('page_content') }}</textarea></div>
+      </div></main>
+      <aside class="stack">
+        <section class="panel"><div class="panel-head">Publish</div><div class="panel-body">
+          <div class="status-line"><span>Current status</span><span class="status-pill"><?= $value('status', 0) ? 'Published' : 'Draft' ?></span></div>
+          <div class="field"><label for="published_at">Publish date</label><input type="datetime-local" name="published_at" id="published_at" class="form-control" value="{{ old('published_at', $isEdit && $row->published_at ? $row->published_at->format('Y-m-d\TH:i') : '') }}"><small class="help">Leave empty to publish immediately.</small></div>
+          @if($isEdit && $row->status == 1)<div class="mb-3"><a class="preview-link" href="<?= url('page/'.$row->page_slug) ?>" target="_blank"><i class="fa fa-external-link-alt me-1"></i>View live page</a></div>@endif
+          <div class="publish-actions"><button type="submit" name="save_action" value="draft" class="btn-cms btn-draft">Save draft</button><button type="submit" name="save_action" value="publish" class="btn-cms btn-publish"><i class="fa fa-check"></i><?= $isEdit ? 'Update' : 'Publish' ?></button></div>
+        </div></section>
+        <section class="panel"><div class="panel-head">Navigation</div><div class="panel-body">
+          <div class="field"><label for="nav_label">Menu label</label><input type="text" name="nav_label" id="nav_label" class="form-control" value="{{ $value('nav_label') }}" placeholder="Defaults to page title"></div>
+          <div class="field"><label for="parent_id">Parent page</label><select name="parent_id" id="parent_id" class="form-select"><option value="">No parent (top level)</option>@foreach($parentPages as $parent)<option value="{{ $parent->id }}" @selected((string)$value('parent_id') === (string)$parent->id)>{{ $parent->page_name }}</option>@endforeach</select></div>
+          <div class="two-col"><div class="field"><label for="nav_location">Display in</label><select name="nav_location" id="nav_location" class="form-select"><option value="none" @selected($value('nav_location','none')==='none')>Not in menu</option><option value="header" @selected($value('nav_location')==='header')>Header</option><option value="footer" @selected($value('nav_location')==='footer')>Footer</option><option value="both" @selected($value('nav_location')==='both')>Header & footer</option></select></div><div class="field"><label for="nav_order">Order</label><input type="number" min="0" max="9999" name="nav_order" id="nav_order" class="form-control" value="{{ $value('nav_order',0) }}"></div></div>
+        </div></section>
+        <section class="panel"><div class="panel-head">Page attributes</div><div class="panel-body"><div class="field"><label for="template">Template</label><select name="template" id="template" class="form-select"><option value="default" @selected($value('template','default')==='default')>Default</option><option value="full-width" @selected($value('template')==='full-width')>Full width</option><option value="landing" @selected($value('template')==='landing')>Landing page</option></select></div></div></section>
+        <section class="panel"><div class="panel-head">Search engine preview</div><div class="panel-body">
+          <div class="field"><label for="meta_title">SEO title <span class="seo-count" id="title_count">0/70</span></label><input type="text" maxlength="70" name="meta_title" id="meta_title" class="form-control" value="{{ $value('meta_title') }}" placeholder="Defaults to page title"></div>
+          <div class="field"><label for="meta_description">Meta description <span class="seo-count" id="description_count">0/170</span></label><textarea maxlength="170" name="meta_description" id="meta_description" class="form-control" placeholder="Describe this page for search results">{{ $value('meta_description') }}</textarea></div>
+        </div></section>
+      </aside>
+    </div>
+  </form>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){const title=document.getElementById('page_name'),slug=document.getElementById('page_slug');let slugEdited=slug.value.trim()!=='';slug.addEventListener('input',()=>{slugEdited=slug.value.trim()!==''});title.addEventListener('input',()=>{if(!slugEdited)slug.value=title.value.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')});[['meta_title','title_count',70],['meta_description','description_count',170]].forEach(([inputId,countId,max])=>{const input=document.getElementById(inputId),counter=document.getElementById(countId),update=()=>counter.textContent=`${input.value.length}/${max}`;input.addEventListener('input',update);update()})});
+</script>
