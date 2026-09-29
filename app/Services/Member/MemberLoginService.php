@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Notifications\LoginSMSNotification;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -78,7 +79,18 @@ class MemberLoginService
         if (app()->environment('testing')) {
             $request->session()->put('testing_member_mobile_otp', $user->fresh()->um_otp);
         } else {
-            $user->notify(new LoginSMSNotification());
+            try {
+                $user->notify(new LoginSMSNotification());
+            } catch (\Throwable $exception) {
+                Log::error('Member login SMS could not be sent', [
+                    'user_id' => $user->um_id,
+                    'message' => $exception->getMessage(),
+                ]);
+                $user->update(['um_otp' => null, 'um_otp_secret' => null, 'um_otp_expires_at' => null]);
+                throw ValidationException::withMessages([
+                    'mobile' => ['We could not send an SMS right now. Please use email OTP or password, or try again later.'],
+                ]);
+            }
         }
         RateLimiter::hit($key, $this->decaySeconds);
         return $user->fresh();

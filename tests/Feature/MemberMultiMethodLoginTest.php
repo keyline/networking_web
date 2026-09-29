@@ -91,4 +91,20 @@ class MemberMultiMethodLoginTest extends TestCase
         $this->assertStringContainsString(urlencode(route('member.google.callback')), $location);
         $this->assertNotEmpty(session('member_google_state'));
     }
+
+    public function test_member_can_leave_otp_screen_and_correct_their_identifier(): void
+    {
+        $this->withSession([
+            'member_otp_email' => 'wrong@example.test',
+            'member_otp_user_id' => 99,
+            'member_otp_mobile' => '••••1234',
+            'member_otp_mobile_value' => '9999991234',
+        ])->get(route('member.index', ['reset' => 1]))
+            ->assertOk()
+            ->assertSessionMissing('member_otp_email')
+            ->assertSessionMissing('member_otp_user_id')
+            ->assertSessionMissing('member_otp_mobile_value')
+            ->assertSee('Email OTP')
+            ->assertSee('Back to website');
+    }
 }

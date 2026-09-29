@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\GeneralSetting;
 use Exception;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Client\RequestException;
@@ -27,11 +28,12 @@ class KeylineSmsService
     {
         $this->lines = collect();
 
-        // Pull in config from the config/services.php file.
+        // Use the same centrally managed gateway settings as admin SMS.
+        $settings = GeneralSetting::find(1);
         $this->from = ''; //config('services.sms_providers.keylines.from');
-        $this->baseUrl = config('services.sms_providers.keylines.base_url');
-        $this->senderid = config('services.sms_providers.keylines.senderid');
-        $this->password = config('services.sms_providers.keylines.authkey');
+        $this->baseUrl = (string) ($settings?->sms_base_url ?: config('services.sms_providers.keylines.base_url', ''));
+        $this->senderid = (string) ($settings?->sms_sender_id ?: config('services.sms_providers.keylines.senderid', ''));
+        $this->password = (string) ($settings?->sms_authentication_key ?: config('services.sms_providers.keylines.authkey', ''));
     }
 
     public function line($line = ''): self
@@ -59,30 +61,24 @@ class KeylineSmsService
     {
         try {
 
+            if (!$this->baseUrl) {
+                throw new \Exception('The SMS gateway URL is not configured.');
+            }
+            if (!$this->senderid || !$this->password) {
+                throw new \Exception('The SMS sender ID or authentication key is not configured.');
+            }
             if (!$this->to || !count($this->lines)) {
-                throw new \Exception('SMS not correct.');
+                throw new \Exception('The SMS recipient or message is missing.');
             }
             $postData = [
-                //'apikey' => $this->password,
-                'entity_id' => '1201159375531154788',
-                "sender_id" => "KEYLNS",
-                'type'      => 'transactional',
-                'recipient' => $this->to,
+                'apikey' => $this->password,
+                'number' => $this->to,
                 'message'   => $this->lines->join("\n", ""),
-                // 'sender_id' => $this->senderid,
-                'dlt_template_id' => '1307162333099680070'
+                'senderid' => $this->senderid,
+                'format' => 'json',
             ];
 
-
-            $response = Http::withToken('198|td0aaBizzgjMwRgKcQfn8VTYguWUXCs2fo6hSsYIabc9f13f')
-                ->withOptions([
-                    'verify' => false, // Disable SSL verification
-                ])
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
-                ->post($this->baseUrl, $postData);
+            $response = Http::withOptions(['verify' => false])->get($this->baseUrl, $postData);
 
 
 
@@ -93,7 +89,11 @@ class KeylineSmsService
                     'data' => $response->json(),
                 ]);
 
-                return $response->json();
+                $data = $response->json();
+                if (is_array($data) && in_array(strtolower((string) ($data['status'] ?? 'success')), ['error', 'failed', 'failure'], true)) {
+                    return ['status' => 'error', 'message' => (string) ($data['message'] ?? 'The SMS gateway rejected the message.'), 'data' => $data];
+                }
+                return ['status' => 'success', 'data' => $data ?: $response->body()];
             }
 
 

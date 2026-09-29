@@ -35,7 +35,7 @@ class MemberController extends Controller
     public function index(Request $request)
     {
         if ($request->boolean('reset')) {
-            $request->session()->forget(['member_otp_email', 'member_otp_user_id', 'member_otp_mobile', 'testing_member_mobile_otp']);
+            $request->session()->forget(['member_otp_email', 'member_otp_user_id', 'member_otp_mobile', 'member_otp_mobile_value', 'testing_member_mobile_otp']);
         }
         return view(self::VIEW_PATH . 'login', [
             'title' => 'Login',
@@ -71,6 +71,7 @@ class MemberController extends Controller
         $request->session()->put([
             'member_otp_user_id' => $user->um_id,
             'member_otp_mobile' => $this->maskMobile($user->um_mobile_no),
+            'member_otp_mobile_value' => $user->um_mobile_no,
         ]);
         return redirect()->route('member.index')->with('success', 'A 4-digit OTP has been sent to your mobile number.');
     }
@@ -78,7 +79,7 @@ class MemberController extends Controller
     public function verifyMobileOtp(Request $request)
     {
         $this->loginService->verifyMobileOtp($request);
-        $request->session()->forget(['member_otp_user_id', 'member_otp_mobile']);
+        $request->session()->forget(['member_otp_user_id', 'member_otp_mobile', 'member_otp_mobile_value']);
         return redirect()->route('dashboard.index');
     }
 

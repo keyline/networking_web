@@ -21,7 +21,10 @@ class SMSChannel
         // Now we hopefully have a instance of a SmsMessage.
         // That we are ready to send to our user.
         // Let's do it :-)
-        $message->send();
+        $result = $message->send();
+        if (is_array($result) && ($result['status'] ?? null) === 'error') {
+            throw new \RuntimeException((string) ($result['message'] ?? 'The SMS gateway rejected the message.'));
+        }
 
         // Or use dryRun() for testing to send it, without sending it for real.
         //$message->dryRun()->send();
