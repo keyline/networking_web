@@ -13,11 +13,11 @@ class Admin extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
     protected $guard = 'admin';
     
-    protected $fillable = [
-        'hotel_id',
-        'name',
-        'email',
-        'password',
+    protected $guarded = [];
+
+    protected $casts = [
+        'login_otp_expires_at' => 'datetime',
+        'last_login_at' => 'datetime',
     ];
 
     protected $hidden = [

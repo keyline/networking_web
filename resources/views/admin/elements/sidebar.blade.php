@@ -318,6 +318,15 @@ if ($pageSegment == 'orders') {
                     </a>
                 </div>
                 <!-- End login logs -->
+                <?php if (($admin->type ?? null) === 'ma') { ?>
+                <div class="nav-item">
+                    <a class="nav-link <?= $pageSegment == 'admin-access' ? 'active' : '' ?>"
+                        href="<?= url('admin/admin-access') ?>" data-placement="left">
+                        <i class="fa fa-user-shield nav-icon"></i>
+                        <span class="nav-link-title">Admin Access</span>
+                    </a>
+                </div>
+                <?php } ?>
                 <!-- settings -->
                 <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'settings' ? 'active' : '' ?>"

@@ -652,10 +652,8 @@ class AuthController extends Controller
 
     public function signinWithMobile(Request $request)
     {
-
         $requestData        = $request->all();
         $requiredFields     = ['phone'];
-        $headerData         = $request->header();
         $apiResponse = [];
 
         if (!$this->validateArray($requiredFields, $requestData)) {
@@ -664,8 +662,11 @@ class AuthController extends Controller
         }
 
 
-        if ($headerData['key'][0] == env('PROJECT_KEY')) {
-            $phone                      = $requestData['phone'];
+        if (hash_equals((string) env('PROJECT_KEY'), (string) $request->header('key'))) {
+            $phone = preg_replace('/\D+/', '', (string) $requestData['phone']);
+            if (strlen($phone) === 12 && str_starts_with($phone, '91')) {
+                $phone = substr($phone, 2);
+            }
             $checkUser                  = UserMaster::where('um_mobile_no', '=', $phone)->where('um_status', '=', 2)->first();
             if ($checkUser) {
                 $otp = $this->loginOtpService->generateOTP($checkUser->um_id);
@@ -711,7 +712,15 @@ class AuthController extends Controller
 
 
                 /* send sms */
-                $apiResponse                        = $mailData;
+                // Never expose the OTP in an API response. The client only needs
+                // the member identifier and masked delivery destinations.
+                $apiResponse = [
+                    'id' => $checkUser->um_id,
+                    'email' => $this->maskEmail($checkUser->um_email_id),
+                    // Kept unmasked for backward compatibility: the current
+                    // mobile client sends this value back during verification.
+                    'phone' => $checkUser->um_mobile_no,
+                ];
                 $apiStatus                          = true;
                 $apiMessage                         = 'OTP Sent To Email & Phone Validation !!!';
             } else {
@@ -723,6 +732,16 @@ class AuthController extends Controller
             $apiMessage         = 'Unauthenticate Request !!!';
         }
         $this->response_to_json($apiStatus, $apiMessage, $apiResponse);
+    }
+
+    private function maskEmail(?string $email): ?string
+    {
+        if (!$email || !str_contains($email, '@')) {
+            return $email;
+        }
+
+        [$name, $domain] = explode('@', $email, 2);
+        return substr($name, 0, 1) . str_repeat('*', max(strlen($name) - 1, 2)) . '@' . $domain;
     }
 
     public function signinValidateMobile(Request $request)
@@ -743,8 +762,11 @@ class AuthController extends Controller
                 $apiMessage         = 'All Data Are Not Present !!!';
             }
 
-            if ($headerData['key'][0] == env('PROJECT_KEY')) {
-                $phone                      = $requestData['phone'];
+            if (hash_equals((string) env('PROJECT_KEY'), (string) $request->header('key'))) {
+                $phone = preg_replace('/\D+/', '', (string) $requestData['phone']);
+                if (strlen($phone) === 12 && str_starts_with($phone, '91')) {
+                    $phone = substr($phone, 2);
+                }
                 $otp                        = $requestData['otp'];
                 $device_type                = $headerData['source'][0];
                 $device_token               = $requestData['device_token'];
@@ -774,7 +796,7 @@ class AuthController extends Controller
                             'user_id'               => $user_id,
                             'name'                  => $checkUser->um_name,
                             'email'                 => $checkUser->um_email_id,
-                            'phone'                 => $checkUser->um_mobile_phone,
+                            'phone'                 => $checkUser->um_mobile_no,
                             'user_type_name'        => $userType->utm_name,
                             'user_type_id'          => $checkUser->um_utm_id,
                             'device_type'           => $device_type,

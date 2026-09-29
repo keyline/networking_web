@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\MembershipSettingController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\BulkImportController;
+use App\Http\Controllers\Admin\AdminAccessController;
 use App\Http\Controllers\EventPortalController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +61,8 @@ Route::middleware('member.guest')->group(function () {
 
 Route::middleware(['auth:member'])->prefix('member')->group(function () {
     Route::resource('dashboard', DashboardController::class);
+    Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');
+    Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');
     Route::get('logout', [MemberController::class, 'destroy'])->name('member.logout');
 });
 
@@ -69,11 +72,16 @@ Route::middleware(['auth:member'])->prefix('member')->group(function () {
 /* Admin Panel */
 Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function () {
     Route::match(['get', 'post'], '/', 'UserController@login');
+    Route::post('/verify-login-otp', 'UserController@verifyLoginOtp')->middleware('throttle:8,1')->name('admin.login.verify-otp');
+    Route::post('/resend-login-otp', 'UserController@resendLoginOtp')->middleware('throttle:4,1')->name('admin.login.resend-otp');
     Route::match(['get', 'post'], '/forgot-password', 'UserController@forgotPassword');
     Route::match(['get', 'post'], '/validateOtp/{id}', 'UserController@validateOtp');
     Route::match(['get', 'post'], '/resendOtp/{id}', 'UserController@resendOtp');
     Route::match(['get', 'post'], '/changePassword/{id}', 'UserController@changePassword');
     Route::group(['middleware' => ['admin']], function () {
+
+        Route::get('admin-access', [AdminAccessController::class, 'index'])->middleware('super.admin')->name('admin.access.index');
+        Route::post('admin-access/{user}/toggle', [AdminAccessController::class, 'toggle'])->middleware('super.admin')->name('admin.access.toggle');
 
         // ======================================= CODE START =======================================
         /*  USER-TYPE MASTER */
