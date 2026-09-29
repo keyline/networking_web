@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AppSettingsController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BusinessAnalyticsController;
 use App\Http\Controllers\Api\V1\DeleteProfileController;
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });*/
 
 Route::prefix('v1')->group(function () {
+    // App branding (logo) managed from the admin Settings page
+    Route::get('app/settings', [AppSettingsController::class, 'settings']);
     // Authentication routes
     Route::post('auth/otp/resend', [AuthController::class, 'resendOtp']);
     Route::post('auth/otp/verify', [AuthController::class, 'validateOtp']);
