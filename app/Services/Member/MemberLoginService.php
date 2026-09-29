@@ -48,7 +48,18 @@ class MemberLoginService
         }
 
         $this->otpService->generateOTP($user->um_id);
-        $this->otpService->sendEmailOTP($user->um_id);
+        try {
+            $this->otpService->sendEmailOTP($user->um_id);
+        } catch (\Throwable $exception) {
+            Log::error('Member login email OTP could not be sent', [
+                'user_id' => $user->um_id,
+                'message' => $exception->getMessage(),
+            ]);
+            $this->clearOtp($user);
+            throw ValidationException::withMessages([
+                'email' => ['We could not send an email OTP right now. Please check the mail settings, use mobile OTP or password, or try again later.'],
+            ]);
+        }
         RateLimiter::hit($key, $this->decaySeconds);
 
         return $user->fresh();
@@ -80,13 +91,13 @@ class MemberLoginService
             $request->session()->put('testing_member_mobile_otp', $user->fresh()->um_otp);
         } else {
             try {
-                $user->notify(new LoginSMSNotification());
+                $user->notifyNow(new LoginSMSNotification());
             } catch (\Throwable $exception) {
                 Log::error('Member login SMS could not be sent', [
                     'user_id' => $user->um_id,
                     'message' => $exception->getMessage(),
                 ]);
-                $user->update(['um_otp' => null, 'um_otp_secret' => null, 'um_otp_expires_at' => null]);
+                $this->clearOtp($user);
                 throw ValidationException::withMessages([
                     'mobile' => ['We could not send an SMS right now. Please use email OTP or password, or try again later.'],
                 ]);
@@ -189,6 +200,11 @@ class MemberLoginService
     private function activeUsers()
     {
         return UserMaster::query()->where('um_status', 2);
+    }
+
+    private function clearOtp(UserMaster $user): void
+    {
+        $user->update(['um_otp' => null, 'um_otp_secret' => null, 'um_otp_expires_at' => null]);
     }
 
 

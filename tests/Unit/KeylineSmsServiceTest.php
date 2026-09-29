@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\Services\KeylineSmsService;
 use App\Models\GeneralSetting;
+use App\Models\User\UserMaster;
+use App\Notifications\LoginSMSNotification;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -33,5 +35,22 @@ class KeylineSmsServiceTest extends TestCase
         $this->assertSame('NETWORK', $service->payload['senderid']);
         $this->assertSame('9330109091', $service->payload['number']);
         $this->assertSame('json', $service->payload['format']);
+    }
+
+    public function test_login_sms_can_be_built_without_a_user_details_record(): void
+    {
+        $user = UserMaster::create([
+            'um_utm_id' => 3,
+            'um_user_name' => 'Test Member',
+            'um_mobile_no' => '9330109091',
+            'um_email_id' => uniqid('sms-').'@example.test',
+            'um_status' => 2,
+            'um_profile_type' => 'O',
+            'um_otp' => '1234',
+        ]);
+
+        $message = (new LoginSMSNotification())->toSms($user);
+
+        $this->assertInstanceOf(KeylineSmsService::class, $message);
     }
 }

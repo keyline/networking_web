@@ -4,11 +4,10 @@ namespace App\Notifications;
 
 use App\Services\KeylineSmsService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 
-class LoginSMSNotification extends Notification implements ShouldQueue
+class LoginSMSNotification extends Notification
 {
     use Queueable;
 
@@ -52,14 +51,12 @@ class LoginSMSNotification extends Notification implements ShouldQueue
                         ->first();
 
 
-        if (!$userDetails) {
-            throw new \Exception('User details not found.');
-        }
+        $recipientName = trim((string) ($userDetails?->ud_first_name ?: $notifiable->um_user_name ?: 'Member'));
 
         return (new KeylineSmsService())
                 //->from('ObiWan')
                 ->to($notifiable->um_mobile_no)
-                ->line("Dear {$userDetails->ud_first_name}, {$notifiable->um_otp} is you verification OTP for registration at KEYLINE");
+                ->line("Dear {$recipientName}, {$notifiable->um_otp} is your Net-Works login OTP. It expires in 10 minutes. Do not share it with anyone.");
         //->line("Do not share this OTP with anyone for security reasons.");
 
 

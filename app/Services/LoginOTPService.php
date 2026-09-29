@@ -76,7 +76,9 @@ class LoginOTPService
             }
         }
 
-        $user->notify(new UserOtpEmailNotify());
+        // Authentication codes must be delivered during this request and must
+        // never depend on a background queue worker being available.
+        $user->notifyNow(new UserOtpEmailNotify());
     }
 
     public function sendOTP(int $userId): void
