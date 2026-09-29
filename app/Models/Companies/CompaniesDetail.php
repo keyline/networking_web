@@ -41,6 +41,25 @@ class CompaniesDetail extends Model
         });
     }
 
+    public function ensurePublicSlug(): string
+    {
+        if ($this->public_slug) {
+            return $this->public_slug;
+        }
+
+        $base = Str::slug($this->cmpd_name) ?: 'business';
+        $slug = $base;
+        $suffix = 2;
+        while (static::where('public_slug', $slug)->where($this->getKeyName(), '!=', $this->getKey())->exists()) {
+            $slug = $base.'-'.$suffix++;
+        }
+
+        $this->public_slug = $slug;
+        $this->saveQuietly();
+
+        return $slug;
+    }
+
 
     public function companies()
     {

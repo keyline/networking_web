@@ -41,6 +41,8 @@ class DashboardController extends Controller
                 })
                 ->limit(8)
                 ->get();
+
+            $directory->each(fn (CompaniesMaster $business) => $business->details?->ensurePublicSlug());
         }
 
         $myEnquiryIds = DB::table('enquiry_to_user')
@@ -48,8 +50,35 @@ class DashboardController extends Controller
             ->pluck('etu_enm_id');
 
         $myEnquiries = EnquiryMaster::query()
+            ->with([
+                'companies.details:cmpd_id,cmpd_cmp_id,cmpd_name',
+                'companies.categories:bcm_id,name',
+                'companies.users' => fn ($query) => $query
+                    ->where('um_status', 2)
+                    ->with('userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name'),
+            ])
             ->whereIn('enm_id', $myEnquiryIds)
-            ->latest('enm_created_at')->limit(5)->get();
+            ->latest('enm_created_at')->limit(5)->get()
+            ->each(function (EnquiryMaster $enquiry) {
+                if ((int) $enquiry->enm_type === 2) {
+                    $enquiry->recipient_label = 'All members';
+                    return;
+                }
+
+                $business = $enquiry->companies->first();
+                if (!$business) {
+                    $enquiry->recipient_label = 'Selected business';
+                    return;
+                }
+
+                $recipient = $business->users->first();
+                $memberName = trim(($recipient?->userDetail?->ud_first_name ?? '').' '.($recipient?->userDetail?->ud_last_name ?? ''))
+                    ?: ($recipient?->um_user_name ?: 'Member');
+                $businessName = $business->details?->cmpd_name ?: 'Business #'.$business->cmp_id;
+                $categoryName = $business->categories->first()?->name;
+
+                $enquiry->recipient_label = $memberName.' - '.$businessName.($categoryName ? " ({$categoryName})" : '');
+            });
 
         $communityEnquiries = EnquiryMaster::query()
             ->where('enm_type', 2)->where('enm_status', 1)
@@ -60,6 +89,8 @@ class DashboardController extends Controller
             ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
             ->whereDoesntHave('users', fn ($query) => $query->where('user_master.um_id', $member->um_id))
             ->orderByDesc('cmp_id')->limit(4)->get();
+
+        $recentBusinesses->each(fn (CompaniesMaster $business) => $business->details?->ensurePublicSlug());
 
         $businessOptions = CompaniesMaster::query()
             ->with('details:cmpd_id,cmpd_cmp_id,cmpd_name')
