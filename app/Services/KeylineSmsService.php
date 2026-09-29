@@ -4,10 +4,7 @@ namespace App\Services;
 
 use App\Models\GeneralSetting;
 use Exception;
-use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class KeylineSmsService
@@ -78,40 +75,16 @@ class KeylineSmsService
                 'format' => 'json',
             ];
 
-            // Match the working admin sender: submit gateway fields as form data.
-            $response = Http::asForm()->withOptions(['verify' => false])->post($this->baseUrl, $postData);
-
-
-
-            if ($response->successful()) {
-
-                Log::info('API Response:', [
-                    'status' => $response->status(),
-                    'data' => $response->json(),
-                ]);
-
-                $data = $response->json();
-                if (is_array($data) && in_array(strtolower((string) ($data['status'] ?? 'success')), ['error', 'failed', 'failure'], true)) {
-                    return ['status' => 'error', 'message' => (string) ($data['message'] ?? 'The SMS gateway rejected the message.'), 'data' => $data];
-                }
-                return ['status' => 'success', 'data' => $data ?: $response->body()];
+            $response = $this->dispatch($postData);
+            $data = json_decode($response['body'], true);
+            Log::info('SMS gateway response', ['http_status' => $response['http_status'], 'data' => $data ?: $response['body']]);
+            if ($response['http_status'] >= 400) {
+                return ['status' => 'error', 'message' => 'Request failed with status: '.$response['http_status'], 'data' => $response['body']];
             }
-
-
-            // Handle unsuccessful responses
-            return [
-                'status' => 'error',
-                'message' => 'Request failed with status: ' . $response->status(),
-                'data' => $response->body(),
-            ];
-        } catch (RequestException $ex) {
-
-            // Handle request-specific exceptions such as connection errors
-            return [
-                'status' => 'error',
-                'message' => 'Request failed: ' . $ex->getMessage(),
-                'data' => null,
-            ];
+            if (is_array($data) && in_array(strtolower((string) ($data['status'] ?? 'success')), ['error', 'failed', 'failure'], true)) {
+                return ['status' => 'error', 'message' => (string) ($data['message'] ?? 'The SMS gateway rejected the message.'), 'data' => $data];
+            }
+            return ['status' => 'success', 'data' => $data ?: $response['body']];
         } catch (Exception $ex) {
 
             // Handle any other exceptions
@@ -121,6 +94,31 @@ class KeylineSmsService
                 'data' => null,
             ];
         }
+    }
+
+    /** Use the identical multipart cURL request used by the working admin sender. */
+    protected function dispatch(array $postData): array
+    {
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $this->baseUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => false,
+            CURLOPT_POSTFIELDS => $postData,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 20,
+        ]);
+        $body = curl_exec($curl);
+        if ($body === false) {
+            $message = curl_error($curl);
+            curl_close($curl);
+            throw new Exception('SMS connection failed: '.$message);
+        }
+        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+        return ['http_status' => $status, 'body' => (string) $body];
     }
 
     public function dryrun($dry = 'yes'): self
