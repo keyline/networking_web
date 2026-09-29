@@ -44,4 +44,13 @@ return [
             ]
     ],
 
+    // Matches the DLT-approved OTP request used by the mobile application.
+    'digital_sms' => [
+        'url' => env('DIGITAL_SMS_URL', 'https://sms.digitalsms.net/api/v3/sendsms'),
+        'token' => env('DIGITAL_SMS_TOKEN', '198|td0aaBizzgjMwRgKcQfn8VTYguWUXCs2fo6hSsYIabc9f13f'),
+        'entity_id' => env('DIGITAL_SMS_ENTITY_ID', '1201159375531154788'),
+        'sender_id' => env('DIGITAL_SMS_SENDER_ID', 'KEYLNS'),
+        'template_id' => env('DIGITAL_SMS_TEMPLATE_ID', '1307162333099680070'),
+    ],
+
 ];

@@ -4,12 +4,12 @@ namespace App\Services\Member;
 
 use App\Models\User\UserMaster;
 use App\Services\LoginOTPService;
+use App\Services\DigitalSmsOtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use App\Notifications\LoginSMSNotification;
 use Illuminate\Support\Facades\Log;
 
 
@@ -21,7 +21,7 @@ class MemberLoginService
     // How many seconds to wait before another attempt is allowed.
     protected $decaySeconds = 60;
 
-    public function __construct(private LoginOTPService $otpService)
+    public function __construct(private LoginOTPService $otpService, private DigitalSmsOtpService $digitalSms)
     {
     }
 
@@ -91,7 +91,7 @@ class MemberLoginService
             $request->session()->put('testing_member_mobile_otp', $user->fresh()->um_otp);
         } else {
             try {
-                $user->notifyNow(new LoginSMSNotification());
+                $this->digitalSms->send($user->um_mobile_no, (string) $user->fresh()->um_otp);
             } catch (\Throwable $exception) {
                 Log::error('Member login SMS could not be sent', [
                     'user_id' => $user->um_id,

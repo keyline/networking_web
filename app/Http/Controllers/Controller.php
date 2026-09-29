@@ -25,6 +25,7 @@ use Google\Client;
 use Google\Service\FirebaseCloudMessaging;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\DigitalSmsOtpService;
 
 date_default_timezone_set("Asia/Kolkata");
 class Controller extends BaseController
@@ -34,60 +35,16 @@ class Controller extends BaseController
 
     protected function sendSmsNew($recipient, $otp)
     {
-        // Log::info("Function Executed: " . __METHOD__, ['request_time' => now()]);
-        $message = "Dear user, {$otp} is you verification OTP for registration at KEYLINE";
-
-        $url = 'https://sms.digitalsms.net/api/v3/sendsms';
-        // Bearer token
-        $apiToken = "198|td0aaBizzgjMwRgKcQfn8VTYguWUXCs2fo6hSsYIabc9f13f";
-        // payload
-        $payload = [
-            'recipient' => $recipient,
-            "entity_id" => "1201159375531154788",
-            "sender_id" => "KEYLNS",
-            "type" => "transactional",
-            'message' => $message,
-            "dlt_template_id" => "1307162333099680070"
-        ];
-
-        // Initialize cURL
-        $ch = curl_init();
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true); // This is a POST request
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'Authorization: Bearer ' . $apiToken,
-        ]);
-
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-
-        //Ignore SSL certificate verification
-        // curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-
-          // Execute cURL request
-        //   Log::info("Sending cURL request to: {$url}", ['payload' => $payload]);
-
-          $response = curl_exec($ch);
-
-        //   Log::info("Received cURL response: ", ['response' => $response]);
-
-        if ($response === false) {
-            return "cURL Error: " . curl_error($ch);
+        try {
+            (new DigitalSmsOtpService())->send((string) $recipient, (string) $otp);
+            return true;
+        } catch (\Throwable $exception) {
+            Log::error('DigitalSMS OTP delivery failed', [
+                'recipient' => substr((string) $recipient, -4),
+                'message' => $exception->getMessage(),
+            ]);
+            return false;
         }
-
-        // Close cURL session
-        curl_close($ch);
-        // Decode and return response
-        $result =  json_decode($response, true);
-
-
-
-        return ($result['status'] === 'success');
     }
 
 
