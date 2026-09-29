@@ -78,8 +78,11 @@ class KeylineSmsService
             $response = $this->dispatch($postData);
             $data = json_decode($response['body'], true);
             Log::info('SMS gateway response', ['http_status' => $response['http_status'], 'data' => $data ?: $response['body']]);
-            if ($response['http_status'] >= 400) {
+            if ($response['http_status'] < 200 || $response['http_status'] >= 300) {
                 return ['status' => 'error', 'message' => 'Request failed with status: '.$response['http_status'], 'data' => $response['body']];
+            }
+            if (trim($response['body']) === '' || str_contains(strtolower($response['body']), '<html')) {
+                return ['status' => 'error', 'message' => 'The SMS gateway returned an invalid response.', 'data' => $response['body']];
             }
             if (is_array($data) && in_array(strtolower((string) ($data['status'] ?? 'success')), ['error', 'failed', 'failure'], true)) {
                 return ['status' => 'error', 'message' => (string) ($data['message'] ?? 'The SMS gateway rejected the message.'), 'data' => $data];
@@ -105,6 +108,10 @@ class KeylineSmsService
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => false,
             CURLOPT_POSTFIELDS => $postData,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_SSL_VERIFYHOST => 0,
             CURLOPT_SSL_VERIFYPEER => 0,
             CURLOPT_CONNECTTIMEOUT => 10,
