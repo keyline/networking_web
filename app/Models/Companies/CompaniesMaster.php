@@ -10,6 +10,7 @@ use App\Models\User\UserMaster;
 use App\Models\BusinessPortfolio;
 use App\Models\BusinessPortfolioItem;
 use App\Models\BusinessPortfolioMedia;
+use App\Services\PortfolioRouteToken;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class CompaniesMaster extends BaseModel
@@ -89,5 +90,10 @@ class CompaniesMaster extends BaseModel
     public function getCmpNameAttribute(): string
     {
         return $this->details?->cmpd_name ?? 'Business';
+    }
+
+    public function portfolioRouteToken(): string
+    {
+        return app(PortfolioRouteToken::class)->encode((int) $this->cmp_id);
     }
 }

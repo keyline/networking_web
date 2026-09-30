@@ -7,18 +7,23 @@ use App\Models\BusinessPortfolio;
 use App\Models\BusinessPortfolioItem;
 use App\Models\BusinessPortfolioMedia;
 use App\Models\Companies\CompaniesMaster;
+use App\Models\Business\BusinessCategoryMaster;
 use App\Models\Enquiries\EnquiryMaster;
 use App\Services\PortfolioImageService;
+use App\Services\PortfolioRouteToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class BusinessPortfolioController extends Controller
 {
-    public function edit(Request $request, CompaniesMaster $company): View
+    public function edit(Request $request, string $companyToken, PortfolioRouteToken $tokens): View
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         $company->load(['details', 'categories', 'portfolio.items', 'portfolio.media']);
         $portfolio = $company->portfolio ?: BusinessPortfolio::create([
@@ -32,13 +37,30 @@ class BusinessPortfolioController extends Controller
         $leadIds = DB::table('enquiry_to_user')->where('etu_cmp_id', $company->cmp_id)->pluck('etu_enm_id');
         $leads = EnquiryMaster::whereIn('enm_id', $leadIds)->latest('enm_created_at')->limit(10)->get();
 
-        return view('Member.BusinessPortfolio.edit', compact('company', 'portfolio', 'leads'));
+        $categories = BusinessCategoryMaster::where('status', 1)->orderBy('name')->get();
+        return view('Member.BusinessPortfolio.edit', compact('company', 'portfolio', 'leads', 'categories', 'companyToken'));
     }
 
-    public function update(Request $request, CompaniesMaster $company, PortfolioImageService $images): RedirectResponse
+    public function update(Request $request, string $companyToken, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         $data = $request->validate([
+            'business_name' => ['required', 'string', 'max:255'],
+            'category_ids' => ['required', 'array', 'min:1', 'max:5'],
+            'category_ids.*' => ['integer', 'distinct', 'exists:business_category_master,bcm_id'],
+            'business_email' => ['nullable', 'email', 'max:255'],
+            'business_phone' => ['nullable', 'string', 'max:15'],
+            'business_whatsapp' => ['nullable', 'string', 'max:15'],
+            'company_registration' => ['nullable', 'string', 'max:50'],
+            'gst_number' => ['nullable', 'string', 'max:30'],
+            'pan_number' => ['nullable', 'string', 'max:20'],
+            'established_year' => ['nullable', 'digits:4', 'integer', 'min:1800', 'max:'.now()->year],
+            'address1' => ['nullable', 'string', 'max:255'],
+            'address2' => ['nullable', 'string', 'max:255'],
+            'address3' => ['nullable', 'string', 'max:255'],
+            'pincode' => ['nullable', 'string', 'max:10'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'tagline' => ['nullable', 'string', 'max:180'],
             'about' => ['nullable', 'string', 'max:4000'],
             'website' => ['nullable', 'url:http,https', 'max:255'],
@@ -50,6 +72,30 @@ class BusinessPortfolioController extends Controller
         ]);
 
         $portfolio = BusinessPortfolio::firstOrCreate(['company_id' => $company->cmp_id]);
+        $details = $company->details;
+        abort_unless($details, 404);
+        $detailData = [
+            'cmpd_name' => $data['business_name'],
+            'cmpd_email' => $data['business_email'] ?? null,
+            'cmpd_phone' => $data['business_phone'] ?? null,
+            'cmpd_whatsapp_no' => $data['business_whatsapp'] ?? null,
+            'cmpd_company_regn_no' => $data['company_registration'] ?? null,
+            'cmpd_gst_no' => $data['gst_number'] ?? null,
+            'cmpd_pan_no' => $data['pan_number'] ?? null,
+            'cmpd_estd_year' => $data['established_year'] ?? null,
+            'cmpd_address1' => $data['address1'] ?? null,
+            'cmpd_address2' => $data['address2'] ?? null,
+            'cmpd_address3' => $data['address3'] ?? null,
+            'cmpd_pincode' => $data['pincode'] ?? null,
+            'cmpd_description' => $data['about'] ?? $details->cmpd_description,
+        ];
+        if ($request->hasFile('logo')) {
+            File::ensureDirectoryExists(public_path('uploads/company'));
+            $logo = $request->file('logo');
+            $logoName = Str::uuid().'.'.$logo->extension();
+            $logo->move(public_path('uploads/company'), $logoName);
+            $detailData['cmpd_logo'] = $logoName;
+        }
         if ($request->hasFile('hero_image')) {
             $newPath = $images->store($request->file('hero_image'), $company->cmp_id, 'hero');
             $images->delete($portfolio->hero_image);
@@ -57,13 +103,21 @@ class BusinessPortfolioController extends Controller
         }
         $data['whatsapp_enabled'] = $request->boolean('whatsapp_enabled');
         $data['contact_form_enabled'] = $request->boolean('contact_form_enabled');
-        $portfolio->update($data);
+        DB::transaction(function () use ($details, $detailData, $company, $data, $portfolio) {
+            $details->update($detailData);
+            $company->categories()->sync($data['category_ids']);
+            $portfolio->update(collect($data)->only(['tagline', 'about', 'website', 'notification_email', 'notification_mobile', 'whatsapp_number', 'whatsapp_message', 'hero_image'])->merge([
+                'whatsapp_enabled' => request()->boolean('whatsapp_enabled'),
+                'contact_form_enabled' => request()->boolean('contact_form_enabled'),
+            ])->all());
+        });
 
         return back()->with('success', 'Changes saved as draft.');
     }
 
-    public function storeItem(Request $request, CompaniesMaster $company, PortfolioImageService $images): RedirectResponse
+    public function storeItem(Request $request, string $companyToken, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         abort_if(BusinessPortfolioItem::where('company_id', $company->cmp_id)->count() >= 30, 422, 'A maximum of 30 products and services is allowed.');
         $data = $request->validate([
@@ -85,8 +139,9 @@ class BusinessPortfolioController extends Controller
         return back()->with('success', 'Offering added. Publish when you are ready.');
     }
 
-    public function destroyItem(Request $request, CompaniesMaster $company, BusinessPortfolioItem $item, PortfolioImageService $images): RedirectResponse
+    public function destroyItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         abort_unless((int) $item->company_id === (int) $company->cmp_id, 404);
         $images->delete($item->image);
@@ -94,8 +149,9 @@ class BusinessPortfolioController extends Controller
         return back()->with('success', 'Offering removed.');
     }
 
-    public function storeImage(Request $request, CompaniesMaster $company, PortfolioImageService $images): RedirectResponse
+    public function storeImage(Request $request, string $companyToken, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         abort_if(BusinessPortfolioMedia::where('company_id', $company->cmp_id)->where('type', 'image')->count() >= 24, 422, 'A maximum of 24 gallery images is allowed.');
         $data = $request->validate([
@@ -113,8 +169,9 @@ class BusinessPortfolioController extends Controller
         return back()->with('success', 'Photo compressed and added.');
     }
 
-    public function storeVideo(Request $request, CompaniesMaster $company): RedirectResponse
+    public function storeVideo(Request $request, string $companyToken, PortfolioRouteToken $tokens): RedirectResponse
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         abort_if(BusinessPortfolioMedia::where('company_id', $company->cmp_id)->where('type', 'youtube')->count() >= 10, 422, 'A maximum of 10 videos is allowed.');
         $data = $request->validate(['youtube_url' => ['required', 'url', 'max:255'], 'title' => ['nullable', 'string', 'max:150']]);
@@ -130,8 +187,9 @@ class BusinessPortfolioController extends Controller
         return back()->with('success', 'YouTube video added.');
     }
 
-    public function destroyMedia(Request $request, CompaniesMaster $company, BusinessPortfolioMedia $medium, PortfolioImageService $images): RedirectResponse
+    public function destroyMedia(Request $request, string $companyToken, BusinessPortfolioMedia $medium, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         abort_unless((int) $medium->company_id === (int) $company->cmp_id, 404);
         $images->delete($medium->path);
@@ -139,8 +197,9 @@ class BusinessPortfolioController extends Controller
         return back()->with('success', 'Media removed.');
     }
 
-    public function publish(Request $request, CompaniesMaster $company): RedirectResponse
+    public function publish(Request $request, string $companyToken, PortfolioRouteToken $tokens): RedirectResponse
     {
+        $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         $portfolio = BusinessPortfolio::with(['items', 'media'])->firstOrCreate(['company_id' => $company->cmp_id]);
         $snapshot = $portfolio->only(['tagline', 'about', 'hero_image', 'website', 'whatsapp_number', 'whatsapp_message', 'whatsapp_enabled', 'contact_form_enabled']);
@@ -154,6 +213,11 @@ class BusinessPortfolioController extends Controller
     private function authorizeOwner(Request $request, CompaniesMaster $company): void
     {
         abort_unless($request->user('member')->companies()->where('companies_master.cmp_id', $company->cmp_id)->exists(), 403);
+    }
+
+    private function companyFromToken(string $token, PortfolioRouteToken $tokens): CompaniesMaster
+    {
+        return CompaniesMaster::findOrFail($tokens->decode($token));
     }
 
     private function youtubeId(string $url): ?string

@@ -135,17 +135,28 @@ $controllerRoute = $module['controller_route'];
                                                     <i class="fa fa-trash"></i>
                                                 </a> --}}
 
-                                                @if ($row['um_status'])
-                                                    <a href="{{ url('admin/' . $controllerRoute . '/' . $slug . '/change-status/' . Helper::encoded($row['um_id'])) }}"
-                                                        class="btn btn-outline-success btn-sm"
-                                                        title="Activate {{ ucfirst($slug) }}">
-                                                        <i class="fa fa-check"></i>
-                                                    </a>
-                                                @else
+                                                {{-- Only status 2 can log in; 0/1 show the Activate button --}}
+                                                @if ((int) $row['um_status'] === 2)
                                                     <a href="{{ url('admin/' . $controllerRoute . '/' . $slug . '/change-status/' . Helper::encoded($row['um_id'])) }}"
                                                         class="btn btn-outline-warning btn-sm"
-                                                        title="Deactivate {{ ucfirst($slug) }}">
-                                                        <i class="fa fa-times"></i>
+                                                        title="Active - click to deactivate {{ ucfirst($slug) }}"
+                                                        onclick="return confirm('Deactivate this {{ $slug }}? They will not be able to log in.');">
+                                                        <i class="fa fa-times"></i> Deactivate
+                                                    </a>
+                                                @elseif ((int) $row['um_status'] === 1 && $client_type && (int) $client_type['utm_id'] === 2)
+                                                    <form method="post" action="{{ route('admin.registrations.approve', $row['um_id']) }}" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-success btn-sm"
+                                                            title="Approve this member and all linked businesses"
+                                                            onclick="return confirm('Approve this member and their linked business? They will be able to log in and edit their business page.');">
+                                                            <i class="fa fa-check-circle"></i> Approve member &amp; business
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <a href="{{ url('admin/' . $controllerRoute . '/' . $slug . '/change-status/' . Helper::encoded($row['um_id'])) }}"
+                                                        class="btn btn-outline-success btn-sm"
+                                                        title="Inactive - click to activate {{ ucfirst($slug) }}">
+                                                        <i class="fa fa-check"></i> Activate
                                                     </a>
                                                 @endif
 

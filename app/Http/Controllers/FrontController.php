@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 use App\Models\Country;
 use App\Models\State;
@@ -23,6 +24,7 @@ use App\Models\Page;
 use App\Models\Testimonial;
 use App\Models\Banner;
 use App\Models\Events\Event;
+use App\Models\HomepageSection;
 use App\Models\Teacher;
 use App\Models\GalleryCategory;
 use App\Models\Gallery;
@@ -53,7 +55,11 @@ class FrontController extends Controller
         $data['banners'] = Banner::where('status', 1)->orderBy('id')->get()->filter(function ($banner) {
             return $banner->banner_image && is_file(public_path('uploads/banners/'.$banner->banner_image));
         })->values();
-        $data['featuredEvents'] = Event::where('status', 'published')->where('ends_at', '>=', now())->orderBy('starts_at')->limit(3)->get();
+        $data['featuredEvents'] = Event::where('status', 'published')->where('ends_at', '>=', now())->orderBy('starts_at')->limit(12)->get();
+        $data['homeSections'] = Schema::hasTable('homepage_sections')
+            ? HomepageSection::with(['items' => fn ($query) => $query->where('is_active', true)])
+                ->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
+            : collect();
         $data['homeStats'] = [
             'members' => DB::table('user_master')->count(),
             'businesses' => DB::table('companies_master')->count(),

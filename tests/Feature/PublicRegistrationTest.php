@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Admin;
 use App\Models\Business\BusinessCategoryMaster;
+use App\Models\User\UserMaster;
+use App\Notifications\UserOtpEmailNotify;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class PublicRegistrationTest extends TestCase
@@ -43,5 +47,74 @@ class PublicRegistrationTest extends TestCase
         $this->assertDatabaseHas('categories_to_companies', [
             'ctc_bcm_id' => $category->bcm_id,
         ]);
+    }
+
+    public function test_admin_approval_unlocks_login_and_owned_business_editor(): void
+    {
+        Notification::fake();
+        $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
+        $email = uniqid('approval-').'@example.test';
+        $mobile = '9'.random_int(100000000, 999999999);
+
+        $this->post(route('join.store'), [
+            'first_name' => 'Approval',
+            'last_name' => 'Flow',
+            'email' => $email,
+            'mobile' => $mobile,
+            'business_name' => 'Approval Flow Business',
+            'business_category' => $category->bcm_id,
+            'address_line_1' => '10 Test Street',
+            'city' => 'Kolkata',
+            'pincode' => '700001',
+            'consent' => '1',
+        ])->assertSessionHas('registration_success');
+
+        $member = UserMaster::where('um_email_id', $email)->firstOrFail();
+        $company = $member->companies()->with('details')->firstOrFail();
+        $this->assertSame(1, (int) $member->um_status);
+        $this->assertSame(0, (int) $company->details->cmpd_status);
+
+        $this->post(route('member.send-otp'), ['email' => $email])
+            ->assertSessionHasErrors('email');
+        Notification::assertNothingSent();
+
+        $admin = Admin::create([
+            'name' => 'Approval administrator',
+            'email' => uniqid('approval-admin-').'@example.test',
+            'password' => bcrypt('test-password'),
+            'type' => 'ma',
+            'status' => 1,
+        ]);
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.registrations.approve', $member))
+            ->assertSessionHas('success_message');
+
+        $this->assertDatabaseHas('user_master', ['um_id' => $member->um_id, 'um_status' => 2]);
+        $this->assertDatabaseHas('companies_details', [
+            'cmpd_cmp_id' => $company->cmp_id,
+            'cmpd_status' => 1,
+            'cmpd_is_document_valid' => '1',
+        ]);
+
+        auth('admin')->logout();
+        $this->post(route('member.send-otp'), ['email' => $email])
+            ->assertRedirect(route('member.index'));
+        Notification::assertSentTo($member, UserOtpEmailNotify::class);
+
+        $otp = $member->fresh()->um_otp;
+        $this->withSession(['member_otp_email' => $email])
+            ->post(route('member.verify-otp'), ['email' => $email, 'otp' => $otp])
+            ->assertRedirect(route('dashboard.index'));
+
+        $this->assertAuthenticatedAs($member, 'member');
+        $this->get(route('member.portfolio.edit', $company->portfolioRouteToken()))
+            ->assertOk()
+            ->assertSeeText('Business identity');
+
+        $member->update(['um_status' => 0]);
+        $this->get(route('dashboard.index'))
+            ->assertRedirect(route('member.index'))
+            ->assertSessionHasErrors('account');
+        $this->assertGuest('member');
     }
 }

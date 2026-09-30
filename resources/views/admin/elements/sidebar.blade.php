@@ -250,6 +250,13 @@ if ($pageSegment == 'orders') {
                 <!-- End contact enquires -->
                 <!-- page -->
                 <div class="nav-item">
+                    <a class="nav-link <?= $pageSegment == 'homepage' ? 'active' : '' ?>"
+                        href="<?= url('admin/homepage') ?>" data-placement="left">
+                        <i class="fa fa-house nav-icon"></i>
+                        <span class="nav-link-title">Homepage CMS</span>
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'page' ? 'active' : '' ?>"
                         href="<?= url('admin/page/list') ?>" data-placement="left">
                         <i class="fa fa-file nav-icon"></i>

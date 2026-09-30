@@ -1090,11 +1090,13 @@ class ApiController extends Controller
                 $query = DB::table('user_companies_map')
                     ->join('user_details', 'user_companies_map.ucm_um_id', '=', 'user_details.ud_um_id')
                     ->join('companies_details', 'user_companies_map.ucm_cmp_id', '=', 'companies_details.cmpd_cmp_id')
-                    ->join('districts', 'districts.id', '=', 'companies_details.cmpd_district')
-                    ->join('states as st', 'st.id', '=', 'companies_details.cmpd_state')
-                    ->join('countries as cu', 'cu.id', '=', 'companies_details.cmpd_country')
-                    ->join('categories_to_companies', 'categories_to_companies.ctc_cmp_id', '=', 'companies_details.cmpd_cmp_id')
-                    ->join('business_category_master', 'business_category_master.bcm_id', '=', 'categories_to_companies.ctc_bcm_id')
+                    // Left joins: an active business with no district/state/
+                    // country/category set must still appear in search
+                    ->leftJoin('districts', 'districts.id', '=', 'companies_details.cmpd_district')
+                    ->leftJoin('states as st', 'st.id', '=', 'companies_details.cmpd_state')
+                    ->leftJoin('countries as cu', 'cu.id', '=', 'companies_details.cmpd_country')
+                    ->leftJoin('categories_to_companies', 'categories_to_companies.ctc_cmp_id', '=', 'companies_details.cmpd_cmp_id')
+                    ->leftJoin('business_category_master', 'business_category_master.bcm_id', '=', 'categories_to_companies.ctc_bcm_id')
                     ->where(function ($subQuery) use ($keyword) {
                         $subQuery->where('companies_details.cmpd_description', 'like', "%{$keyword}%")
                             ->orWhere('companies_details.cmpd_name', 'like', "%{$keyword}%")

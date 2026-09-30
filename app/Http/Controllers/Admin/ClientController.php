@@ -463,15 +463,39 @@ class ClientController extends Controller
 
         $model                          = UserMaster::select('um_status')->find($id);
 
-        $status = (int) $model->um_status ? 0 : 1;
+        // 2 = registered/active (the only status member login accepts),
+        // 0 = deactivated. Activating also completes an unverified (1) signup.
+        $status = ((int) $model->um_status === 2) ? 0 : 2;
 
-        $msg = $status ? 'Activated' : 'Deactivated';
+        $msg = $status === 2 ? 'Activated' : 'Deactivated';
 
         UserMaster::where($this->data['primary_key'], $id)->update(['um_status' => $status]);
 
         return redirect("admin/" . $this->data['controller_route'] . "/" . $slug . "/list")->with('success_message', ucfirst($slug) . ' ' . $msg . ' Successfully !!!');
     }
     /* change status */
+
+    public function approveRegistration(Request $request, UserMaster $user)
+    {
+        abort_unless((int) $user->um_utm_id === 2, 422, 'Only business-member registrations can be approved here.');
+
+        $companyIds = $user->companies()->pluck('companies_master.cmp_id');
+        if ($companyIds->isEmpty()) {
+            return back()->with('error_message', 'This member has no linked business. Add or link a business before approval.');
+        }
+
+        DB::transaction(function () use ($user, $companyIds) {
+            $user->update(['um_status' => 2]);
+            CompaniesDetail::whereIn('cmpd_cmp_id', $companyIds)->update([
+                'cmpd_status' => 1,
+                'cmpd_is_document_valid' => '1',
+                'cmpd_updated_at' => now(),
+            ]);
+        });
+
+        return back()->with('success_message', 'Member and linked business approved. The member can now sign in and manage the business page.');
+    }
+
     // view details
     public function viewDetails($slug, $id)
     {

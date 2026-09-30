@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\MembershipAccountsController;
 use App\Http\Controllers\Admin\MembershipSettingController;
 use App\Http\Controllers\Admin\ChapterController;
+use App\Http\Controllers\Admin\HomepageController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\BulkImportController;
@@ -72,18 +73,18 @@ Route::middleware('member.guest')->group(function () {
     Route::get('member/google/callback', [MemberController::class, 'googleCallback'])->name('member.google.callback');
 });
 
-Route::middleware(['auth:member'])->prefix('member')->group(function () {
+Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(function () {
     Route::resource('dashboard', DashboardController::class);
     Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');
     Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');
-    Route::get('businesses/{company}/portfolio', [BusinessPortfolioController::class, 'edit'])->name('member.portfolio.edit');
-    Route::put('businesses/{company}/portfolio', [BusinessPortfolioController::class, 'update'])->name('member.portfolio.update');
-    Route::post('businesses/{company}/portfolio/publish', [BusinessPortfolioController::class, 'publish'])->name('member.portfolio.publish');
-    Route::post('businesses/{company}/portfolio/items', [BusinessPortfolioController::class, 'storeItem'])->name('member.portfolio.items.store');
-    Route::delete('businesses/{company}/portfolio/items/{item}', [BusinessPortfolioController::class, 'destroyItem'])->name('member.portfolio.items.destroy');
-    Route::post('businesses/{company}/portfolio/images', [BusinessPortfolioController::class, 'storeImage'])->name('member.portfolio.images.store');
-    Route::post('businesses/{company}/portfolio/videos', [BusinessPortfolioController::class, 'storeVideo'])->name('member.portfolio.videos.store');
-    Route::delete('businesses/{company}/portfolio/media/{medium}', [BusinessPortfolioController::class, 'destroyMedia'])->name('member.portfolio.media.destroy');
+    Route::get('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'edit'])->name('member.portfolio.edit');
+    Route::put('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'update'])->name('member.portfolio.update');
+    Route::post('businesses/{companyToken}/portfolio/publish', [BusinessPortfolioController::class, 'publish'])->name('member.portfolio.publish');
+    Route::post('businesses/{companyToken}/portfolio/items', [BusinessPortfolioController::class, 'storeItem'])->name('member.portfolio.items.store');
+    Route::delete('businesses/{companyToken}/portfolio/items/{item}', [BusinessPortfolioController::class, 'destroyItem'])->name('member.portfolio.items.destroy');
+    Route::post('businesses/{companyToken}/portfolio/images', [BusinessPortfolioController::class, 'storeImage'])->name('member.portfolio.images.store');
+    Route::post('businesses/{companyToken}/portfolio/videos', [BusinessPortfolioController::class, 'storeVideo'])->name('member.portfolio.videos.store');
+    Route::delete('businesses/{companyToken}/portfolio/media/{medium}', [BusinessPortfolioController::class, 'destroyMedia'])->name('member.portfolio.media.destroy');
     Route::get('logout', [MemberController::class, 'destroy'])->name('member.logout');
 });
 
@@ -128,6 +129,8 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
 
         /* setting */
         Route::get('settings', 'UserController@settings');
+        Route::post('homepage/{homepage}/move/{direction}', [HomepageController::class, 'move'])->name('admin.homepage.move');
+        Route::resource('homepage', HomepageController::class)->except('show')->names('admin.homepage');
         Route::post('membership-settings', [MembershipSettingController::class, 'update'])->name('admin.membership-settings.update');
         Route::get('memberships', [MembershipController::class, 'index'])->name('admin.memberships.index');
         Route::resource('chapters', ChapterController::class)->names('admin.chapters');
@@ -325,6 +328,8 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
 
 
         Route::get('clients/{slug}/list', 'ClientController@list');
+        Route::post('clients/{user}/approve-registration', 'ClientController@approveRegistration')
+            ->whereNumber('user')->name('admin.registrations.approve');
         Route::match(['get', 'post'], 'clients/{slug}/add', 'ClientController@add');
         Route::match(['get', 'post'], 'clients/{slug}/edit/{id}', 'ClientController@edit');
         Route::match(['get', 'post'], 'clients/{slug}/view_details/{id}', 'ClientController@viewDetails');
