@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AppSettingsController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BusinessAnalyticsController;
+use App\Http\Controllers\Api\V1\BusinessLandingController;
 use App\Http\Controllers\Api\V1\DeleteProfileController;
 use App\Http\Controllers\Api\V1\MembersController;
 use App\Http\Controllers\Api\V1\UtilityController;
@@ -83,6 +84,7 @@ Route::prefix('v1')->group(function () {
     Route::post('business/reviews/list', [ApiController::class, 'businessReviewList']);
 
     Route::post('companies/details', [ApiController::class, 'getBusinessDetailsById']);
+    Route::post('companies/landing', [BusinessLandingController::class, 'show']);
     Route::post('companies/status/update', [ApiController::class, 'updateCompaniesStatus']);
 
     // Business owner analytics

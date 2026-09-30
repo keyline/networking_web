@@ -98,10 +98,15 @@ class BusinessPortfolioController extends Controller
     {
         $this->authorizeOwner($request, $company);
         abort_if(BusinessPortfolioMedia::where('company_id', $company->cmp_id)->where('type', 'image')->count() >= 24, 422, 'A maximum of 24 gallery images is allowed.');
-        $data = $request->validate(['image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'], 'caption' => ['nullable', 'string', 'max:255']]);
+        $data = $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'title' => ['required', 'string', 'max:150'],
+            'caption' => ['nullable', 'string', 'max:255'],
+        ]);
         BusinessPortfolioMedia::create([
             'company_id' => $company->cmp_id, 'type' => 'image',
             'path' => $images->store($request->file('image'), $company->cmp_id),
+            'title' => $data['title'],
             'caption' => $data['caption'] ?? null,
             'sort_order' => (int) BusinessPortfolioMedia::where('company_id', $company->cmp_id)->max('sort_order') + 1,
         ]);

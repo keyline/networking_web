@@ -45,7 +45,7 @@ class MemberBusinessPortfolioTest extends TestCase
     {
         [$owner, $company] = $this->business('compressed-gallery');
         $response = $this->actingAs($owner, 'member')->post(route('member.portfolio.images.store', $company), [
-            'image' => UploadedFile::fake()->image('large.jpg', 2400, 1800), 'caption' => 'Our work',
+            'image' => UploadedFile::fake()->image('large.jpg', 2400, 1800), 'title' => 'Completed project', 'caption' => 'Our work',
         ]);
         $response->assertRedirect();
         $path = DB::table('business_portfolio_media')->where('company_id', $company->cmp_id)->value('path');

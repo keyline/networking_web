@@ -158,14 +158,6 @@ class PublicRegistrationController extends Controller
 
     private function uniqueBusinessSlug(string $name): string
     {
-        $base = Str::slug($name) ?: 'business';
-        $slug = $base;
-        $suffix = 2;
-
-        while (CompaniesDetail::where('public_slug', $slug)->exists()) {
-            $slug = $base . '-' . $suffix++;
-        }
-
-        return $slug;
+        return CompaniesDetail::uniquePublicSlug($name);
     }
 }

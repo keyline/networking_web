@@ -27,18 +27,34 @@ class CompaniesDetail extends Model
     protected static function booted(): void
     {
         static::creating(function (CompaniesDetail $business) {
-            if ($business->public_slug) {
+            if ($business->public_slug && !preg_match('/^business-\d+$/', $business->public_slug)) {
                 return;
             }
 
-            $base = Str::slug($business->cmpd_name) ?: 'business';
-            $slug = $base;
-            $suffix = 2;
-            while (static::where('public_slug', $slug)->exists()) {
-                $slug = $base . '-' . $suffix++;
-            }
-            $business->public_slug = $slug;
+            $business->public_slug = static::uniquePublicSlug($business->cmpd_name);
         });
+
+        static::updating(function (CompaniesDetail $business) {
+            if ($business->isDirty('cmpd_name')) {
+                $business->public_slug = static::uniquePublicSlug($business->cmpd_name, $business->getKey());
+            }
+        });
+    }
+
+    public static function uniquePublicSlug(?string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name ?: '') ?: 'business';
+        $slug = $base;
+        $suffix = 2;
+
+        while (static::query()
+            ->where('public_slug', $slug)
+            ->when($ignoreId, fn ($query) => $query->where('cmpd_id', '!=', $ignoreId))
+            ->exists()) {
+            $slug = $base.'-'.$suffix++;
+        }
+
+        return $slug;
     }
 
     public function ensurePublicSlug(): string
@@ -47,17 +63,10 @@ class CompaniesDetail extends Model
             return $this->public_slug;
         }
 
-        $base = Str::slug($this->cmpd_name) ?: 'business';
-        $slug = $base;
-        $suffix = 2;
-        while (static::where('public_slug', $slug)->where($this->getKeyName(), '!=', $this->getKey())->exists()) {
-            $slug = $base.'-'.$suffix++;
-        }
-
-        $this->public_slug = $slug;
+        $this->public_slug = static::uniquePublicSlug($this->cmpd_name, $this->getKey());
         $this->saveQuietly();
 
-        return $slug;
+        return $this->public_slug;
     }
 
 

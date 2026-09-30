@@ -28,7 +28,27 @@ class PublicBusinessController extends Controller
         $portfolioModel = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->where('is_published', true)->first();
         $portfolio = $portfolioModel?->published_snapshot;
 
-        return view('front.business-profile', compact('business', 'social', 'portfolio'));
+        $activeReviews = $business->reviews()->where('status', 1);
+        $reviewCount = (clone $activeReviews)->count();
+        $reviewAverage = $reviewCount
+            ? round((float) (clone $activeReviews)->avg('rev_rating'), 1)
+            : 0.0;
+        $reviews = $activeReviews
+            ->with('user:ud_um_id,ud_first_name,ud_last_name')
+            ->whereNotNull('rev_comment')
+            ->where('rev_comment', '!=', '')
+            ->latest('rev_id')
+            ->limit(4)
+            ->get();
+
+        return view('front.business-profile', compact(
+            'business',
+            'social',
+            'portfolio',
+            'reviews',
+            'reviewCount',
+            'reviewAverage'
+        ));
     }
 
     public function lead(Request $request, string $slug): RedirectResponse
@@ -43,7 +63,8 @@ class PublicBusinessController extends Controller
             'email' => ['nullable', 'email:rfc', 'max:250', 'required_without:phone'],
             'phone' => ['nullable', 'regex:/^[6-9][0-9]{9}$/', 'required_without:email'],
             'whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
-            'subject' => ['required', 'string', 'max:250'],
+            'subject' => ['nullable', 'string', 'max:250', 'required_without:product_title'],
+            'product_title' => ['nullable', 'string', 'max:150'],
             'message' => ['required', 'string', 'max:3000'],
             'website' => ['nullable', 'max:0'],
         ], [
@@ -67,8 +88,8 @@ class PublicBusinessController extends Controller
                 'enm_email' => $data['email'] ?? null,
                 'enm_phone' => $data['phone'] ?? null,
                 'enm_whatsapp' => $data['whatsapp'] ?? null,
-                'enm_question_for' => $business->cmpd_name,
-                'enm_subject' => $data['subject'],
+                'enm_question_for' => $data['product_title'] ?? $business->cmpd_name,
+                'enm_subject' => !empty($data['product_title']) ? 'Enquiry about '.$data['product_title'] : $data['subject'],
                 'enm_description' => $data['message'],
                 'enm_type' => 1,
                 'enm_is_myself' => 0,
