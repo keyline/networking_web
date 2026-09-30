@@ -54,6 +54,7 @@ $controllerRoute = $module['controller_route'];
                                     <th scope="col">Address</th>
                                     <th scope="col">License Start </th>
                                     <th scope="col">Status</th>
+                                    <th scope="col" title="Featured on the app home screen">Sponsored</th>
                                     <th scope="col">Action</th>
                                 </tr>
                             </thead>
@@ -102,6 +103,9 @@ $controllerRoute = $module['controller_route'];
 
                                             </td>
                                             <td>
+                                                <livewire:admin.component.company-sponsored-toggle :cmpId="$row['cmp_id']" :key="'sponsored-'.$row['cmp_id']" />
+                                            </td>
+                                            <td>
                                                 <a href="{{ url('admin/' . $controllerRoute . '/' . $slug . '/info-edit/' . Helper::encoded($row['cmp_id'])) }}"
                                                     class="btn btn-outline-primary btn-sm" title="Edit Business">
                                                     <i class="fa fa-edit"></i>
@@ -112,7 +116,7 @@ $controllerRoute = $module['controller_route'];
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="9" style="text-align: center; color: red;">No Records Found !!!
+                                        <td colspan="10" style="text-align: center; color: red;">No Records Found !!!
                                         </td>
                                     </tr>
                                 @endif

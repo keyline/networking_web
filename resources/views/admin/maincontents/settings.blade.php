@@ -169,6 +169,9 @@ $user_type = session('type');
             <li class="nav-item">
               <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab11"><i class="fa fa-id-card"></i>Membership</button>
             </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab12"><i class="fa fa-trophy"></i>Top Brands</button>
+            </li>
             <?php }?>
           </ul>
           <div class="tab-content pt-2 settings-content">
@@ -824,6 +827,7 @@ $user_type = session('type');
                 </div>
               </form>
             </div>
+            @include('admin.maincontents.settings.top-brands-tab')
           </div><!-- End Bordered Tabs -->
         </div>
       </div>

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class PublicRegistrationController extends Controller
 {
@@ -30,7 +31,11 @@ class PublicRegistrationController extends Controller
             'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'unique:user_master,um_mobile_no'],
             'whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
             'business_name' => ['required', 'string', 'max:255'],
-            'business_category' => ['required', 'integer', 'exists:business_category_master,bcm_id'],
+            'business_categories' => ['required', 'array', 'min:1'],
+            'business_categories.*' => [
+                'required', 'integer', 'distinct',
+                Rule::exists('business_category_master', 'bcm_id')->where(fn ($query) => $query->where('status', 1)),
+            ],
             'business_email' => ['nullable', 'email:rfc', 'max:255'],
             'business_phone' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
             'business_whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
@@ -86,7 +91,7 @@ class PublicRegistrationController extends Controller
                     'ud_business_name' => $data['business_name'],
                     'ud_business_addr_1' => $data['address_line_1'],
                     'ud_business_addr_2' => trim(($data['address_line_2'] ?? '') . ($data['city'] ? ', ' . $data['city'] : '')),
-                    'ud_business_category' => (string) $data['business_category'],
+                    'ud_business_category' => (string) $data['business_categories'][0],
                     'ud_pincode' => $data['pincode'],
                 ]);
 
@@ -113,11 +118,11 @@ class PublicRegistrationController extends Controller
                     'ucm_cmp_id' => $company->cmp_id,
                     'ucm_um_id' => $user->um_id,
                 ]);
-                DB::table('categories_to_companies')->insert([
-                    'ctc_bcm_id' => $data['business_category'],
+                DB::table('categories_to_companies')->insert(array_map(fn ($categoryId) => [
+                    'ctc_bcm_id' => $categoryId,
                     'ctc_cmp_id' => $company->cmp_id,
                     'ctc_created_at' => now(),
-                ]);
+                ], $data['business_categories']));
 
                 return $registrationNumber;
             });

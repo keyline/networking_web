@@ -60,7 +60,7 @@ $controllerRoute = $module['controller_route'];
             $cmpd_license_ref = '';
             $cmpd_last_renewal_date = $currentDate;
             $logo_image = '';
-            $selectedCategory = '';
+            $selectedCategories = [];
         } else {
             $categoryInfo = $row->companies->categories->first();
 
@@ -89,7 +89,7 @@ $controllerRoute = $module['controller_route'];
             $cmpd_license_ref = $row->cmpd_license_ref ?? '';
             $cmpd_last_renewal_date = $row->cmpd_last_renewal_date ?? '';
             $logo_image = $row->cmpd_logo ?? '';
-            $selectedCategory = $categoryInfo ? $categoryInfo->bcm_id : '';
+            $selectedCategories = $row->companies->categories->pluck('bcm_id')->map(fn($id)=>(int)$id)->all();
         }
         ?>
         <div class="col-xl-12">
@@ -307,17 +307,17 @@ $controllerRoute = $module['controller_route'];
 
 
                                 <div class="row mb-3">
-                                    <label for="category_id" class="col-md-2 col-lg-2 col-form-label">Category</label>
+                                    <label for="category_ids" class="col-md-2 col-lg-2 col-form-label">Categories</label>
                                     <div class="col-md-10 col-lg-10">
-                                        <select name="category_id" class="form-control" id="category_id" required>
-                                            <option value="" selected disabled>Select</option>
+                                        <select name="category_ids[]" class="form-control" id="category_ids" multiple size="7" required>
                                             @if ($category)
                                                 @foreach ($category as $row)
-                                                    <option value="{{ $row->bcm_id }}" @selected($row->bcm_id == $selectedCategory)>
+                                                    <option value="{{ $row->bcm_id }}" @selected(in_array((int)$row->bcm_id,old('category_ids',$selectedCategories)))>
                                                         {{ $row->name }}</option>
                                                 @endforeach
                                             @endif
                                         </select>
+                                        <small class="text-info">Select one or more categories. Hold Ctrl/Command when using a desktop keyboard.</small>
                                     </div>
                                 </div>
 

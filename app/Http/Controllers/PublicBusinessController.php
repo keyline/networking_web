@@ -11,6 +11,7 @@ use App\Models\Page;
 use App\Models\User\UserMaster;
 use App\Notifications\BusinessLeadEmailNotification;
 use App\Notifications\BusinessLeadSmsNotification;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,8 +24,39 @@ class PublicBusinessController extends Controller
     {
         $search = trim((string) $request->query('search'));
         $categoryId = $request->integer('category');
+        $engagementFrom = Carbon::today()->subDays(29);
+
+        // Keep the directory badge aligned with the default 30-day Admin Analytics report.
+        $eventEngagement = DB::table('business_analytics_events')
+            ->where('bae_created_at', '>=', $engagementFrom)
+            ->groupBy('bae_cmp_id')
+            ->selectRaw("bae_cmp_id,
+                SUM(bae_event_type = 'view') as engagement_views,
+                SUM(bae_event_type IN ('call','whatsapp','email','share')) as engagement_contacts");
+
+        $enquiryEngagement = DB::table('enquiry_to_user')
+            ->join('enquiry_master', 'enquiry_master.enm_id', '=', 'enquiry_to_user.etu_enm_id')
+            ->where('enquiry_master.enm_created_at', '>=', $engagementFrom)
+            ->groupBy('enquiry_to_user.etu_cmp_id')
+            ->selectRaw('enquiry_to_user.etu_cmp_id, COUNT(*) as engagement_enquiries');
 
         $businesses = CompaniesDetail::query()
+            ->select('companies_details.*')
+            ->leftJoinSub($eventEngagement, 'directory_events', function ($join) {
+                $join->on('directory_events.bae_cmp_id', '=', 'companies_details.cmpd_cmp_id');
+            })
+            ->leftJoinSub($enquiryEngagement, 'directory_enquiries', function ($join) {
+                $join->on('directory_enquiries.etu_cmp_id', '=', 'companies_details.cmpd_cmp_id');
+            })
+            ->selectRaw("CASE
+                WHEN COALESCE(directory_events.engagement_views, 0) > 0
+                THEN ROUND(
+                    (COALESCE(directory_events.engagement_contacts, 0) + COALESCE(directory_enquiries.engagement_enquiries, 0))
+                    / directory_events.engagement_views * 100,
+                    1
+                )
+                ELSE 0
+            END AS engagement_rate")
             ->with(['companies.categories'])
             ->where('cmpd_status', 1)
             ->whereNotNull('public_slug')
@@ -40,7 +72,7 @@ class PublicBusinessController extends Controller
                 'companies.categories',
                 fn ($categories) => $categories->where('business_category_master.bcm_id', $categoryId)
             ))
-            ->orderBy('cmpd_name')
+            ->orderBy('companies_details.cmpd_name')
             ->paginate(12)
             ->withQueryString();
 

@@ -942,12 +942,13 @@ class ApiController extends Controller
         if ($headerData['key'][0] == env('PROJECT_KEY')) {
             $hundredYearsCompanies  = [];
             $topCompanies           = [];
-            $currentYear            = date('Y');
-            $hundredCompanies       = CompaniesDetail::select('cmpd_id', 'cmpd_cmp_id', 'cmpd_name', 'cmpd_logo', 'cmpd_estd_year')->where('cmpd_status', '=', 1)->where('cmpd_estd_year', '!=', 'null')->orderBy('cmpd_name', 'ASC')->get();
+            // Home "Sponsored" row: businesses the admin switched on in
+            // Users > Business (was: any business established 100+ years ago).
+            // Kept under the old response key so installed apps keep working.
+            $hundredCompanies       = CompaniesDetail::select('cmpd_id', 'cmpd_cmp_id', 'cmpd_name', 'cmpd_logo', 'cmpd_estd_year')->where('cmpd_status', '=', 1)->where('cmpd_is_sponsored', '=', 1)->orderBy('cmpd_name', 'ASC')->get();
             if ($hundredCompanies) {
                 foreach ($hundredCompanies as $hundredCompany) {
-                    $yearDiff = ($currentYear - $hundredCompany->cmpd_estd_year);
-                    if ($yearDiff > 100) {
+                    {
                         $categoryName = null;
                         $ratingData = getBusinessRating($hundredCompany->cmpd_cmp_id);
 
@@ -974,7 +975,7 @@ class ApiController extends Controller
                             "avg_rating"            => (float) $ratingData->avg_rating,
                             "total_reviews"         => (int) $ratingData->total_reviews,
                             "category" => $categoryName,
-
+                            'is_sponsored'          => true,
                         ];
                     }
                 }
@@ -989,16 +990,19 @@ class ApiController extends Controller
                 ->pluck('ccm_cmp_id');
             */
             # USE FOR DEVELOPMENT (5-3-25)
-            $topCompaniesIds =   CompaniesDetail::where('cmpd_status', '=', 1)->limit(12)->pluck('cmpd_cmp_id');
+            // Ranking rule is chosen in admin Settings > Top Brands
+            $topCompaniesIds = app(\App\Services\TopBrandsService::class)->rankedCompanyIds();
             // Helper::pr($top_companies);
             if ($topCompaniesIds && count($topCompaniesIds) > 0) {
 
 
                 $topCompaniesList = CompaniesDetail::select('cmpd_id', 'cmpd_cmp_id', 'cmpd_name', 'cmpd_logo', 'cmpd_estd_year')
                     ->where('cmpd_status', '=', 1)
-                    ->whereIn('cmpd_id', $topCompaniesIds)
-                    ->orderBy('cmpd_name', 'ASC')
-                    ->get();
+                    ->whereIn('cmpd_cmp_id', $topCompaniesIds)
+                    ->get()
+                    // Keep the ranked order (best first)
+                    ->sortBy(fn ($company) => array_search((int) $company->cmpd_cmp_id, $topCompaniesIds, true))
+                    ->values();
 
                 foreach ($topCompaniesList as $getCompanyDetails) {
                     if ($getCompanyDetails) {

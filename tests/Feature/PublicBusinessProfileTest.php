@@ -56,7 +56,7 @@ class PublicBusinessProfileTest extends TestCase
             'company_id' => $company->cmp_id, 'is_published' => true,
             'published_snapshot' => [
                 'whatsapp_enabled' => true, 'whatsapp_number' => '919876543210', 'contact_form_enabled' => true,
-                'items' => [['title' => 'Tax consulting', 'description' => 'GST and taxation support', 'price_label' => 'Ask for price', 'image' => null]],
+                'items' => [['title' => 'Tax consulting', 'description' => 'GST and taxation support with filing, reconciliation, compliance reviews, and practical advice for growing businesses.', 'price_label' => 'Ask for price', 'image' => 'business-portfolios/example/offerings/tax-consulting.jpg']],
                 'media' => [],
             ],
         ]);
@@ -74,7 +74,17 @@ class PublicBusinessProfileTest extends TestCase
         $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('Send enquiry')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Sign in to view contact details')->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
 
         $visitor = UserMaster::create(['um_utm_id' => 3, 'um_user_name' => 'visitor', 'um_email_id' => 'visitor@example.test', 'um_mobile_no' => '9123409876', 'um_status' => 2]);
-        $this->actingAs($visitor, 'member')->get(route('business.show', 'example-business'))->assertOk()->assertSee('business@example.test')->assertSee('9876501234')->assertSee('Private business address')->assertSee('wa.me/919876543210', false);
+        $this->actingAs($visitor, 'member')->get(route('business.show', 'example-business'))
+            ->assertOk()
+            ->assertSee('business@example.test')
+            ->assertSee('9876501234')
+            ->assertSee('Private business address')
+            ->assertSee('productPreviewDialog', false)
+            ->assertSee('Preview Tax consulting')
+            ->assertSee('Email enquiry')
+            ->assertSee('I%20want%20to%20know%20more%20about%20this%3A%20Tax%20consulting', false)
+            ->assertSee('business-portfolios%2Fexample%2Fofferings%2Ftax-consulting.jpg', false)
+            ->assertSee('wa.me/919876543210', false);
 
         $response = $this->post(route('business.lead', 'example-business'), [
             'name' => 'Prospective Customer', 'email' => 'lead@example.test', 'phone' => '9123456789',
@@ -108,11 +118,18 @@ class PublicBusinessProfileTest extends TestCase
         ]);
         DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $owner->um_id]);
         DB::table('categories_to_companies')->insert(['ctc_cmp_id' => $company->cmp_id, 'ctc_bcm_id' => $category->bcm_id, 'ctc_created_at' => now()]);
+        DB::table('business_analytics_events')->insert([
+            ['bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'view', 'bae_source' => 'WEB', 'bae_created_at' => now()],
+            ['bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'view', 'bae_source' => 'WEB', 'bae_created_at' => now()],
+            ['bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'whatsapp', 'bae_source' => 'WEB', 'bae_created_at' => now()],
+        ]);
 
         $response = $this->get(route('members.index', ['search' => 'Directory Consulting']));
         $response->assertOk()
             ->assertSee('Directory Consulting Company')
             ->assertSee($category->name)
+            ->assertSee('Highly engaged')
+            ->assertSee('data-business-id="'.$company->cmp_id.'"', false)
             ->assertSee(route('business.show', 'directory-consulting-company'), false)
             ->assertDontSee('hidden-owner')
             ->assertDontSee('directory-owner@example.test');

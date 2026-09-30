@@ -314,6 +314,14 @@ if ($pageSegment == 'orders') {
                 </div>
                 <!-- End business analytics -->
 
+                <div class="nav-item">
+                    <a class="nav-link <?= $pageSegment == 'business-categories' ? 'active' : '' ?>"
+                        href="<?= url('admin/business-categories') ?>" data-placement="left">
+                        <i class="fa fa-tags nav-icon"></i>
+                        <span class="nav-link-title">Business Categories</span>
+                    </a>
+                </div>
+
                 <!-- email logs -->
                 <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'email-logs' ? 'active' : '' ?>"

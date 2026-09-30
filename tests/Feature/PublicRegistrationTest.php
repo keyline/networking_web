@@ -16,7 +16,8 @@ class PublicRegistrationTest extends TestCase
 
     public function test_public_registration_creates_pending_member_and_business(): void
     {
-        $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
+        $categories = BusinessCategoryMaster::where('status', 1)->limit(2)->get();
+        $this->assertCount(2, $categories);
 
         $response = $this->post(route('join.store'), [
             'first_name' => 'Test',
@@ -25,7 +26,7 @@ class PublicRegistrationTest extends TestCase
             'mobile' => '9876543210',
             'whatsapp' => '9876543210',
             'business_name' => 'Fresh Start Services',
-            'business_category' => $category->bcm_id,
+            'business_categories' => $categories->pluck('bcm_id')->all(),
             'description' => 'Professional business services.',
             'address_line_1' => '1 Business Street',
             'city' => 'Kolkata',
@@ -45,8 +46,9 @@ class PublicRegistrationTest extends TestCase
             'cmpd_status' => 0,
         ]);
         $this->assertDatabaseHas('categories_to_companies', [
-            'ctc_bcm_id' => $category->bcm_id,
+            'ctc_bcm_id' => $categories[0]->bcm_id,
         ]);
+        $this->assertDatabaseHas('categories_to_companies', ['ctc_bcm_id' => $categories[1]->bcm_id]);
     }
 
     public function test_admin_approval_unlocks_login_and_owned_business_editor(): void
@@ -62,7 +64,7 @@ class PublicRegistrationTest extends TestCase
             'email' => $email,
             'mobile' => $mobile,
             'business_name' => 'Approval Flow Business',
-            'business_category' => $category->bcm_id,
+            'business_categories' => [$category->bcm_id],
             'address_line_1' => '10 Test Street',
             'city' => 'Kolkata',
             'pincode' => '700001',

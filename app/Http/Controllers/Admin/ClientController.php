@@ -114,17 +114,15 @@ class ClientController extends Controller
 
         $data['row']                    = CompaniesDetail::where('cmpd_cmp_id', $id)->first();
 
-        $catToCom                       = CategoryToCompany::where('ctc_cmp_id', $id)->first();
-
-
-
-        $data['selectedCategory'] = $catToCom['ctc_bcm_id'] ?? '';
+        $data['selectedCategories'] = CategoryToCompany::where('ctc_cmp_id', $id)
+            ->pluck('ctc_bcm_id')->map(fn ($categoryId) => (int) $categoryId)->all();
         if ($request->isMethod('post')) {
             $postData = $request->all();
 
             $validator = Validator::make($postData, [
                 'id' => 'required|integer',
-                'category_id' => 'required',
+                'category_ids' => 'required|array|min:1',
+                'category_ids.*' => 'required|integer|distinct|exists:business_category_master,bcm_id',
                 'regn_no' => 'nullable|string|max:255',
                 'name' => 'required|string|max:255',
                 'description' => 'required|string',
@@ -218,10 +216,19 @@ class ClientController extends Controller
                         if ($details_id) {
                             CategoryToCompany::where('ctc_cmp_id', $cmpId)->delete();
                         }
-                        CategoryToCompany::insert([
-                            'ctc_bcm_id' => $postData['category_id'],
-                            'ctc_cmp_id' => $id ?? $companie,
-                        ]);
+                        CategoryToCompany::insert(array_map(fn ($categoryId) => [
+                            'ctc_bcm_id' => $categoryId,
+                            'ctc_cmp_id' => $cmpId,
+                            'ctc_created_at' => now(),
+                        ], $postData['category_ids']));
+
+                        $ownerId = UserToCompanies::where('ucm_cmp_id', $cmpId)->value('ucm_um_id');
+                        if ($ownerId) {
+                            UserDetails::where('ud_um_id', $ownerId)->update([
+                                'ud_business_category' => (string) $postData['category_ids'][0],
+                                'ud_updated_at' => now(),
+                            ]);
+                        }
                         DB::commit();
                         // Successful update
 

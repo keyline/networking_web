@@ -624,66 +624,14 @@ class UserController extends Controller
             'footer_text'            => 'required',
         ];
         if ($this->validate($request, $rules)) {
-            $footer_link_name_array = $postData['footer_link_name'];
-            $footer_link_name       = [];
-            if (!empty($footer_link_name_array)) {
-                for ($f = 0; $f < count($footer_link_name_array); $f++) {
-                    if ($footer_link_name_array[$f]) {
-                        $footer_link_name[]       = $footer_link_name_array[$f];
-                    }
-                }
-            }
-            $footer_link_array = $postData['footer_link'];
-            $footer_link       = [];
-            if (!empty($footer_link_array)) {
-                for ($f = 0; $f < count($footer_link_array); $f++) {
-                    if ($footer_link_array[$f]) {
-                        $footer_link[]       = $footer_link_array[$f];
-                    }
-                }
-            }
-
-            $footer_link_name_array2 = $postData['second_col_link_text'];
-            $footer_link_name2       = [];
-            if (!empty($footer_link_name_array2)) {
-                for ($f = 0; $f < count($footer_link_name_array2); $f++) {
-                    if ($footer_link_name_array2[$f]) {
-                        $footer_link_name2[]       = $footer_link_name_array2[$f];
-                    }
-                }
-            }
-            $footer_link_array2 = $postData['second_col_link'];
-            $footer_link2       = [];
-            if (!empty($footer_link_array2)) {
-                for ($f = 0; $f < count($footer_link_array2); $f++) {
-                    if ($footer_link_array2[$f]) {
-                        $footer_link2[]       = $footer_link_array2[$f];
-                    }
-                }
-            }
-
-            $footer_link_name_array3 = $postData['footer_link_name3'];
-            $footer_link_name3       = [];
-            if (!empty($footer_link_name_array3)) {
-                for ($f = 0; $f < count($footer_link_name_array3); $f++) {
-                    if ($footer_link_name_array3[$f]) {
-                        $footer_link_name3[]       = $footer_link_name_array3[$f];
-                    }
-                }
-            }
-            $footer_link_array3 = $postData['footer_link3'];
-            $footer_link3       = [];
-            if (!empty($footer_link_array3)) {
-                for ($f = 0; $f < count($footer_link_array3); $f++) {
-                    if ($footer_link_array3[$f]) {
-                        $footer_link3[]       = $footer_link_array3[$f];
-                    }
-                }
-            }
+            // A column with no link rows sends nothing, so every list is optional
+            [$footer_link_name, $footer_link]   = $this->footerLinkPairs($request, 'footer_link_name', 'footer_link');
+            [$footer_link_name2, $footer_link2] = $this->footerLinkPairs($request, 'second_col_link_text', 'second_col_link');
+            [$footer_link_name3, $footer_link3] = $this->footerLinkPairs($request, 'footer_link_name3', 'footer_link3');
 
             $fields = [
                 'footer_text'                   => $postData['footer_text'],
-                'footer_description'            => $postData['footer_description'],
+                'footer_description'            => $request->input('footer_description', ''),
                 'footer_link_name'              => json_encode($footer_link_name),
                 'footer_link'                   => json_encode($footer_link),
                 'footer_link_name2'             => json_encode($footer_link_name2),
@@ -697,6 +645,29 @@ class UserController extends Controller
         } else {
             return redirect()->back()->with('error_message', 'All Fields Required !!!');
         }
+    }
+
+    /**
+     * Link text + URL lists for one footer column, keeping only complete
+     * rows so a blank field never shifts later links onto the wrong text.
+     */
+    private function footerLinkPairs(Request $request, string $namesField, string $linksField): array
+    {
+        $names = array_values((array) $request->input($namesField, []));
+        $links = array_values((array) $request->input($linksField, []));
+
+        $keptNames = [];
+        $keptLinks = [];
+        foreach ($names as $i => $name) {
+            $name = trim((string) $name);
+            $link = trim((string) ($links[$i] ?? ''));
+            if ($name !== '' && $link !== '') {
+                $keptNames[] = $name;
+                $keptLinks[] = $link;
+            }
+        }
+
+        return [$keptNames, $keptLinks];
     }
     public function seo_settings(Request $request)
     {
