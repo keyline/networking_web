@@ -263,7 +263,7 @@ class ClientController extends Controller
         // Conditionally add `withCount` for `companiesMap` if `client_type->utm_id` is 2
         if ($data['client_type']->utm_id == 2) {
             $UserMaster->withCount('companiesMap');
-            $UserMaster->with('companiesMap.companie:cmpd_cmp_id,cmpd_name');
+            $UserMaster->with('companiesMap.companie:cmpd_id,cmpd_cmp_id,cmpd_name,public_slug,cmpd_status');
         }
 
         // Apply filters and retrieve results

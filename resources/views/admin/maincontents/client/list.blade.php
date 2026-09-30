@@ -105,6 +105,15 @@ $controllerRoute = $module['controller_route'];
                                                                 <a href="{{ url('admin/' . $controllerRoute . '/business/info-edit/' . Helper::encoded($innerRow['companie']['cmpd_cmp_id'])) }}">
                                                                     {{ $innerRow['companie']['cmpd_name'] }}
                                                                 </a>
+                                                                @if (!empty($innerRow['companie']['public_slug']))
+                                                                    <a href="{{ route('business.show', $innerRow['companie']['public_slug']) }}"
+                                                                        target="_blank" rel="noopener"
+                                                                        class="ms-2 text-primary"
+                                                                        title="Open business page in a new tab"
+                                                                        aria-label="Open {{ $innerRow['companie']['cmpd_name'] }} business page in a new tab">
+                                                                        <i class="fa fa-external-link"></i>
+                                                                    </a>
+                                                                @endif
                                                             </small>
                                                             <livewire:admin.component.company-status-toggle :cmpId="$innerRow['companie']['cmpd_cmp_id']" :key="$innerRow['companie']['cmpd_cmp_id']" />
                                                         </div>

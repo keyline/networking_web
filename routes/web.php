@@ -42,6 +42,7 @@ Route::match(['get', 'post'], 'page/{id}', 'App\Http\Controllers\FrontController
 Route::match(['get', 'post'], '/contact-us', 'App\Http\Controllers\FrontController@contactUs');
 Route::get('/join', [PublicRegistrationController::class, 'create'])->name('join.create');
 Route::post('/join', [PublicRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('join.store');
+Route::get('/members', [PublicBusinessController::class, 'index'])->name('members.index');
 Route::get('/business/{slug}', [PublicBusinessController::class, 'show'])->name('business.show');
 Route::post('/business/{slug}/lead', [PublicBusinessController::class, 'lead'])->middleware('throttle:6,1')->name('business.lead');
 Route::match(['get', 'post'], 'cron-for-attendance-notification', 'App\Http\Controllers\FrontController@cron_for_attendance_notification');
