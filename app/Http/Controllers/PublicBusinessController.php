@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Enquiries\EnquiryMaster;
+use App\Models\BusinessPortfolio;
+use App\Models\User\UserMaster;
+use App\Notifications\BusinessLeadEmailNotification;
+use App\Notifications\BusinessLeadSmsNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class PublicBusinessController extends Controller
@@ -20,8 +25,10 @@ class PublicBusinessController extends Controller
             ->firstOrFail();
 
         $social = DB::table('company_sociallink')->where('cs_cmp_id', $business->cmpd_cmp_id)->first();
+        $portfolioModel = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->where('is_published', true)->first();
+        $portfolio = $portfolioModel?->published_snapshot;
 
-        return view('front.business-profile', compact('business', 'social'));
+        return view('front.business-profile', compact('business', 'social', 'portfolio'));
     }
 
     public function lead(Request $request, string $slug): RedirectResponse
@@ -54,7 +61,7 @@ class PublicBusinessController extends Controller
             return back()->withInput()->withErrors(['lead' => 'This business cannot receive enquiries yet. Please use its listed contact details.']);
         }
 
-        DB::transaction(function () use ($data, $business, $ownerId) {
+        $lead = DB::transaction(function () use ($data, $business, $ownerId) {
             $lead = EnquiryMaster::create([
                 'enm_name' => $data['name'],
                 'enm_email' => $data['email'] ?? null,
@@ -74,7 +81,28 @@ class PublicBusinessController extends Controller
                 'etu_um_id' => $ownerId,
                 'etu_created_at' => now(),
             ]);
+            return $lead;
         });
+
+        $owner = UserMaster::find($ownerId);
+        if ($owner) {
+            $portfolio = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->first();
+            try {
+                $email = $portfolio?->notification_email ?: $owner->um_email_id;
+                if ($email) {
+                    \Illuminate\Support\Facades\Notification::route('mail', $email)
+                        ->notify(new BusinessLeadEmailNotification($lead, $business->cmpd_name));
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('Business lead email alert failed', ['lead_id' => $lead->enm_id, 'error' => $exception->getMessage()]);
+            }
+            try {
+                $mobile = $portfolio?->notification_mobile ?: $owner->um_mobile_no;
+                if ($mobile) $owner->notify(new BusinessLeadSmsNotification($lead, $business->cmpd_name, $mobile));
+            } catch (\Throwable $exception) {
+                Log::warning('Business lead SMS alert failed', ['lead_id' => $lead->enm_id, 'error' => $exception->getMessage()]);
+            }
+        }
 
         return redirect()->route('business.show', $business->public_slug)->with('lead_success', true);
     }

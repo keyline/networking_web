@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserType\UserTypeController;
 use App\Http\Controllers\Api\V1\UtilityController;
 use App\Http\Controllers\Member\Dashboard\DashboardController;
 use App\Http\Controllers\Member\User\MemberController;
+use App\Http\Controllers\Member\BusinessPortfolioController;
 use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\MembershipAccountsController;
 use App\Http\Controllers\Admin\MembershipSettingController;
@@ -75,6 +76,14 @@ Route::middleware(['auth:member'])->prefix('member')->group(function () {
     Route::resource('dashboard', DashboardController::class);
     Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');
     Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');
+    Route::get('businesses/{company}/portfolio', [BusinessPortfolioController::class, 'edit'])->name('member.portfolio.edit');
+    Route::put('businesses/{company}/portfolio', [BusinessPortfolioController::class, 'update'])->name('member.portfolio.update');
+    Route::post('businesses/{company}/portfolio/publish', [BusinessPortfolioController::class, 'publish'])->name('member.portfolio.publish');
+    Route::post('businesses/{company}/portfolio/items', [BusinessPortfolioController::class, 'storeItem'])->name('member.portfolio.items.store');
+    Route::delete('businesses/{company}/portfolio/items/{item}', [BusinessPortfolioController::class, 'destroyItem'])->name('member.portfolio.items.destroy');
+    Route::post('businesses/{company}/portfolio/images', [BusinessPortfolioController::class, 'storeImage'])->name('member.portfolio.images.store');
+    Route::post('businesses/{company}/portfolio/videos', [BusinessPortfolioController::class, 'storeVideo'])->name('member.portfolio.videos.store');
+    Route::delete('businesses/{company}/portfolio/media/{medium}', [BusinessPortfolioController::class, 'destroyMedia'])->name('member.portfolio.media.destroy');
     Route::get('logout', [MemberController::class, 'destroy'])->name('member.logout');
 });
 
@@ -84,8 +93,6 @@ Route::middleware(['auth:member'])->prefix('member')->group(function () {
 /* Admin Panel */
 Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function () {
     Route::match(['get', 'post'], '/', 'UserController@login');
-    Route::post('/verify-login-otp', 'UserController@verifyLoginOtp')->middleware('throttle:8,1')->name('admin.login.verify-otp');
-    Route::post('/resend-login-otp', 'UserController@resendLoginOtp')->middleware('throttle:4,1')->name('admin.login.resend-otp');
     Route::match(['get', 'post'], '/forgot-password', 'UserController@forgotPassword');
     Route::match(['get', 'post'], '/validateOtp/{id}', 'UserController@validateOtp');
     Route::match(['get', 'post'], '/resendOtp/{id}', 'UserController@resendOtp');

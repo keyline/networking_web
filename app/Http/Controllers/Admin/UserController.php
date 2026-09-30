@@ -6,8 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 use App\Models\Admin;
 use App\Models\Country;
@@ -53,166 +51,37 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PHPUnit\TextUI\Help;
-use App\Notifications\AdminLoginOtpNotification;
 
 class UserController extends Controller
 {
     /* authentication */
     public function login(Request $request)
     {
-        if ($request->boolean('reset')) {
-            $request->session()->forget(['admin_otp_admin_id', 'admin_otp_channel', 'admin_otp_display']);
-        }
-
         if ($request->isMethod('post')) {
-            $method = $request->validate(['login_method' => ['required', Rule::in(['password', 'email_otp', 'mobile_otp'])]])['login_method'];
+            $credentials = $request->validate([
+                'email' => ['required', 'email', 'max:255'],
+                'password' => ['required', 'string', 'max:255'],
+            ]);
+            $admin = Admin::where('status', 1)->where('email', $credentials['email'])->first();
 
-            if ($method === 'password') {
-                $credentials = $request->validate([
-                    'identifier' => ['required', 'string', 'max:255'],
-                    'password' => ['required', 'string', 'max:255'],
-                ]);
-                $admin = Admin::where('status', 1)->where(function ($query) use ($credentials) {
-                    if (Schema::hasColumn('admins', 'login_id')) {
-                        $query->where('login_id', $credentials['identifier'])->orWhere('email', $credentials['identifier']);
-                    } else {
-                        $query->where('email', $credentials['identifier']);
-                    }
-                })->first();
-
-                if (!$admin || !Hash::check($credentials['password'], $admin->password)) {
-                    return back()->withInput()->with('error_message', 'The User ID or password is incorrect.');
-                }
-
-                Auth::guard('admin')->login($admin);
-                $request->session()->regenerate();
-                if (Schema::hasColumn('admins', 'last_login_at')) {
-                    $admin->update(['last_login_at' => now()]);
-                }
-                $this->establishAdminSession($request, $admin);
-                $this->recordAdminLoginActivity($request, $admin, 'User ID and password');
-                return redirect('admin/dashboard');
+            if (!$admin || !Hash::check($credentials['password'], $admin->password)) {
+                return back()->withInput($request->only('email'))->with('error_message', 'The email or password is incorrect.');
             }
 
-            if (!$this->adminOtpSchemaIsReady()) {
-                return back()->withInput()->with('error_message', 'OTP login is being configured. Please use email and password for now.');
+            Auth::guard('admin')->login($admin);
+            $request->session()->regenerate();
+            if (Schema::hasColumn('admins', 'last_login_at')) {
+                $admin->update(['last_login_at' => now()]);
             }
+            $this->establishAdminSession($request, $admin);
+            $this->recordAdminLoginActivity($request, $admin, 'Email and password');
 
-            if ($method === 'email_otp') {
-                $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
-                $admin = Admin::where('email', $data['email'])->where('status', 1)->first();
-                $message = 'A 6-digit admin sign-in code was sent to your email.';
-            } else {
-                $data = $request->validate(['mobile' => ['required', 'string', 'max:30']]);
-                $mobile = preg_replace('/\D+/', '', $data['mobile']);
-                $admin = Admin::whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(mobile, '+', ''), ' ', ''), '-', ''), '(', '') LIKE ?", ['%'.substr($mobile, -10)])
-                    ->where('status', 1)->first();
-                $message = 'A 6-digit admin sign-in code was sent to your mobile.';
-            }
-
-            if (!$admin) {
-                return back()->withInput()->with('error_message', 'No active admin account matches those details.');
-            }
-
-            $this->issueAdminLoginOtp($request, $admin, $method === 'email_otp' ? 'email' : 'mobile');
-            return back()->with('success_message', $message);
+            return redirect('admin/dashboard');
         }
         $data                           = [];
         $title                          = 'Sign In';
         $page_name                      = 'signin';
         echo $this->admin_before_login_layout($title, $page_name, $data);
-    }
-
-    public function verifyLoginOtp(Request $request)
-    {
-        if (!$this->adminOtpSchemaIsReady()) {
-            return redirect('/admin?reset=1')->with('error_message', 'OTP login is being configured. Please use email and password for now.');
-        }
-
-        $data = $request->validate([
-            'admin_id' => ['required', 'integer'],
-            'otp' => ['required', 'digits:6'],
-        ]);
-
-        $admin = Admin::where('id', $data['admin_id'])->where('status', 1)->first();
-        if (!$admin || !$admin->login_otp_hash || !$admin->login_otp_expires_at) {
-            return redirect('/admin')->with('error_message', 'Request a new sign-in code.');
-        }
-
-        if ($admin->login_otp_attempts >= 5 || now()->greaterThan($admin->login_otp_expires_at)) {
-            $admin->update(['login_otp_hash' => null, 'login_otp_expires_at' => null]);
-            return redirect('/admin')->with('error_message', 'The sign-in code has expired. Request a new one.');
-        }
-
-        if (!Hash::check($data['otp'], $admin->login_otp_hash)) {
-            $admin->increment('login_otp_attempts');
-            return back()->with('error_message', 'The sign-in code is incorrect.');
-        }
-
-        $admin->update([
-            'login_otp_hash' => null,
-            'login_otp_expires_at' => null,
-            'login_otp_attempts' => 0,
-            'last_login_at' => now(),
-        ]);
-
-        Auth::guard('admin')->login($admin);
-        $request->session()->regenerate();
-        $this->establishAdminSession($request, $admin);
-        $this->recordAdminLoginActivity($request, $admin, ucfirst((string) $request->session()->get('admin_otp_channel')).' OTP');
-
-        return redirect('admin/dashboard');
-    }
-
-    public function resendLoginOtp(Request $request)
-    {
-        if (!$this->adminOtpSchemaIsReady()) {
-            return redirect('/admin?reset=1')->with('error_message', 'OTP login is being configured. Please use email and password for now.');
-        }
-
-        $admin = Admin::where('id', $request->session()->get('admin_otp_admin_id'))->where('status', 1)->first();
-        if (!$admin) {
-            return redirect('/admin?reset=1')->with('error_message', 'Request a new sign-in code.');
-        }
-
-        $this->issueAdminLoginOtp($request, $admin, (string) $request->session()->get('admin_otp_channel', 'email'));
-        return redirect('/admin')->with('success_message', 'A new sign-in code was sent.');
-    }
-
-    private function issueAdminLoginOtp(Request $request, Admin $admin, string $channel): void
-    {
-        $otp = (string) random_int(100000, 999999);
-        $admin->update([
-            'login_otp_hash' => Hash::make($otp),
-            'login_otp_expires_at' => now()->addMinutes(10),
-            'login_otp_attempts' => 0,
-        ]);
-        $request->session()->put([
-            'admin_otp_admin_id' => $admin->id,
-            'admin_otp_channel' => $channel,
-            'admin_otp_display' => $channel === 'email' ? $this->maskEmail($admin->email) : $this->maskMobile($admin->mobile),
-        ]);
-
-        if ($channel === 'email') {
-            $admin->notify(new AdminLoginOtpNotification($otp));
-        } elseif (app()->environment('testing')) {
-            $request->session()->put('testing_admin_mobile_otp', $otp);
-        } else {
-            $sent = $this->sendSMS($admin->mobile, "{$otp} is your Net-Works admin sign-in code. It expires in 10 minutes.");
-            if ($sent === false) {
-                throw ValidationException::withMessages(['mobile' => 'The SMS gateway could not send the code. Please use email OTP.']);
-            }
-        }
-    }
-
-    private function adminOtpSchemaIsReady(): bool
-    {
-        return Schema::hasColumns('admins', [
-            'login_otp_hash',
-            'login_otp_expires_at',
-            'login_otp_attempts',
-            'last_login_at',
-        ]);
     }
 
     private function establishAdminSession(Request $request, Admin $admin): void

@@ -83,6 +83,6 @@ class AdminAccessController extends Controller
             Admin::create($values + ['password' => $user->um_password ?: Hash::make(Str::random(40))]);
         }
 
-        return back()->with('success_message', 'Admin access granted. The user can now sign in by email OTP.');
+        return back()->with('success_message', 'Admin access granted. The user can now sign in with their email and password.');
     }
 }

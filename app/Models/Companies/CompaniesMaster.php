@@ -7,6 +7,9 @@ use App\Models\Business\BusinessCategoryMaster;
 use App\Models\Enquiries\EnquiryMaster;
 use App\Models\Industry\IndustryMaster;
 use App\Models\User\UserMaster;
+use App\Models\BusinessPortfolio;
+use App\Models\BusinessPortfolioItem;
+use App\Models\BusinessPortfolioMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class CompaniesMaster extends BaseModel
@@ -66,6 +69,21 @@ class CompaniesMaster extends BaseModel
     public function categories()
     {
         return $this->belongsToMany(BusinessCategoryMaster::class, 'categories_to_companies', 'ctc_cmp_id', 'ctc_bcm_id'); // Adjust as necessary
+    }
+
+    public function portfolio()
+    {
+        return $this->hasOne(BusinessPortfolio::class, 'company_id', 'cmp_id');
+    }
+
+    public function portfolioItems()
+    {
+        return $this->hasMany(BusinessPortfolioItem::class, 'company_id', 'cmp_id')->orderBy('sort_order');
+    }
+
+    public function portfolioMedia()
+    {
+        return $this->hasMany(BusinessPortfolioMedia::class, 'company_id', 'cmp_id')->orderBy('sort_order');
     }
 
     public function getCmpNameAttribute(): string
