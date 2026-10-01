@@ -26,6 +26,7 @@ use App\Models\User\UserDetails;
 use App\Models\User\UserMaster;
 use App\Models\User\UserTypeMaster;
 use App\Models\UserType;
+use App\Models\PublicRegistrationSetting;
 use Auth;
 use Exception;
 use Session;
@@ -154,9 +155,27 @@ class ClientController extends Controller
                 'owners' => UserMaster::where('um_status', '!=', 3)->where('um_utm_id', 2)->count(),
                 'visitors' => UserMaster::where('um_status', '!=', 3)->where('um_utm_id', '!=', 2)->count(),
             ],
+            'registrationSettings' => PublicRegistrationSetting::current(),
         ];
 
         return $this->admin_after_login_layout('Registered Users', 'client.registered-users', $data);
+    }
+
+    public function updateRegistrationSetting(Request $request)
+    {
+        $data = $request->validate([
+            'public_registration_enabled' => ['required', 'boolean'],
+            'public_registration_closed_message' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        PublicRegistrationSetting::current()->update([
+            'enabled' => $data['public_registration_enabled'],
+            'closed_message' => $data['public_registration_closed_message'] ?? null,
+        ]);
+
+        return back()->with('success_message', $data['public_registration_enabled']
+            ? 'The public Join link is now active.'
+            : 'The public Join link is now closed.');
     }
 
     public function destroyRegisteredUser(UserMaster $user, MemberDataDeletionService $deletionService)
@@ -627,23 +646,10 @@ class ClientController extends Controller
 
     public function approveRegistration(Request $request, UserMaster $user)
     {
-        abort_unless((int) $user->um_utm_id === 2, 422, 'Only business-member registrations can be approved here.');
+        abort_unless((int) $user->um_status === 1, 422, 'Only pending registrations can be approved.');
+        $user->update(['um_status' => 2]);
 
-        $companyIds = $user->companies()->pluck('companies_master.cmp_id');
-        if ($companyIds->isEmpty()) {
-            return back()->with('error_message', 'This member has no linked business. Add or link a business before approval.');
-        }
-
-        DB::transaction(function () use ($user, $companyIds) {
-            $user->update(['um_status' => 2]);
-            CompaniesDetail::whereIn('cmpd_cmp_id', $companyIds)->update([
-                'cmpd_status' => 1,
-                'cmpd_is_document_valid' => '1',
-                'cmpd_updated_at' => now(),
-            ]);
-        });
-
-        return back()->with('success_message', 'Member and linked business approved. The member can now sign in and manage the business page.');
+        return back()->with('success_message', 'Member approved. They can now sign in with normal member access.');
     }
 
     // view details

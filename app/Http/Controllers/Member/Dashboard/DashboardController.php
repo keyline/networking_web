@@ -19,6 +19,7 @@ class DashboardController extends Controller
         /** @var UserMaster $member */
         $member = Auth::guard('member')->user();
         $member->load(['userDetail', 'companies.details']);
+        $canManageBusinesses = $member->hasActiveBusinessMembership();
 
         $search = trim((string) $request->query('search'));
         $directory = collect();
@@ -127,7 +128,7 @@ class DashboardController extends Controller
             ->values();
 
         return view('Member.Dashboard.index', compact(
-            'member', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions'
+            'member', 'canManageBusinesses', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions'
         ));
     }
 

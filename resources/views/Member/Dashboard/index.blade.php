@@ -15,7 +15,7 @@
     $detail = $member->userDetail;
     $displayName = trim(($detail?->ud_first_name ?? '').' '.($detail?->ud_last_name ?? '')) ?: ($member->um_user_name ?: 'Member');
     $initials = collect(explode(' ', $displayName))->filter()->take(2)->map(fn($word) => strtoupper(substr($word,0,1)))->implode('');
-    $isBusinessOwner = $member->companies->isNotEmpty();
+    $isBusinessOwner = $canManageBusinesses;
 @endphp
 <div class="shell">
     <header class="topbar">
@@ -39,7 +39,7 @@
             <a href="#directory"><span class="icon">⌕</span><span><strong>Find connections</strong><small>People and businesses</small></span></a>
             <button data-open="enquiryModal"><span class="icon">?</span><span><strong>Ask the network</strong><small>Post a common enquiry</small></span></button>
             <button data-open="referralModal"><span class="icon">↗</span><span><strong>Give a reference</strong><small>Connect someone trusted</small></span></button>
-            <a href="#my-business"><span class="icon">⌂</span><span><strong>{{ $isBusinessOwner ? 'My business' : 'Join as business' }}</strong><small>{{ $isBusinessOwner ? 'Review your listing' : 'Create a business profile' }}</small></span></a>
+            <a href="{{ $isBusinessOwner ? '#my-business' : route('member.membership.create') }}"><span class="icon">⌂</span><span><strong>{{ $isBusinessOwner ? 'My businesses' : 'Become a Business Owner' }}</strong><small>{{ $isBusinessOwner ? 'Review your listings' : 'Choose a plan and submit payment' }}</small></span></a>
         </nav>
 
         <div class="grid">
@@ -71,10 +71,10 @@
 
             <aside>
                 <section class="card" id="my-business">
-                    <div class="card-head"><div><h2>{{ $isBusinessOwner ? 'My business' : 'My profile' }}</h2><p>Your identity across the network.</p></div></div>
+                    <div class="card-head"><div><h2>{{ $isBusinessOwner ? 'My businesses' : 'My profile' }}</h2><p>Your identity across the network.</p></div>@if($isBusinessOwner)<a class="btn btn-primary" href="{{route('member.businesses.create')}}">Add business</a>@endif</div>
                     <div class="card-body">
                         @if($isBusinessOwner)
-                    <div class="business-list">@foreach($member->companies as $business) @php($company=$business->details)<article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business profile' }}</h3><p>{{ $company?->cmpd_email ?? $member->um_email_id }}</p></div><a class="link" href="{{route('member.portfolio.edit',$business->portfolioRouteToken())}}">Manage page</a>@if($company?->cmpd_status==1 && $company?->public_slug)<a class="link" href="{{route('business.show',$company->public_slug)}}" target="_blank">Open & share</a>@else<span class="pill">Pending approval</span>@endif</article>@endforeach</div>
+                    <div class="business-list">@forelse($member->companies as $business) @php($company=$business->details)<article class="business"><div class="logo">{{ strtoupper(substr($company?->cmpd_name ?? 'B',0,2)) }}</div><div class="business-info"><h3>{{ $company?->cmpd_name ?? 'Business profile' }}</h3><p>{{ $company?->cmpd_email ?? $member->um_email_id }}</p></div><a class="link" href="{{route('member.portfolio.edit',$business->portfolioRouteToken())}}">Manage page</a>@if($company?->cmpd_status==1 && $company?->public_slug)<a class="link" href="{{route('business.show',$company->public_slug)}}" target="_blank">Open & share</a>@else<span class="pill">Pending approval</span>@endif</article>@empty<div class="empty">You have no businesses yet. Use Add business to create one.</div>@endforelse</div>
                         @else
                             <div class="profile"><div class="profile-row"><span>Name</span><strong>{{ $displayName }}</strong></div><div class="profile-row"><span>Email</span><strong>{{ $member->um_email_id }}</strong></div><div class="profile-row"><span>Mobile</span><strong>{{ $member->um_mobile_no ?: 'Not added' }}</strong></div></div>
                         @endif

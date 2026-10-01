@@ -77,6 +77,10 @@ class MembershipController extends Controller
                 'notes' => ['nullable', 'string', 'max:2000'],
             ]);
 
+            if ($validated['membership_status'] === 'active' && (empty($validated['payment_date']) || (float) ($validated['payment_amount'] ?? 0) <= 0)) {
+                return back()->withInput()->withErrors(['membership_status' => 'A payment date and positive payment amount are required before Business Owner access can be activated.']);
+            }
+
             $plan = MembershipPlan::findOrFail($validated['plan_id']);
             $settings = MembershipSetting::firstOrCreate(['id' => 1], ['renewal_basis' => 'joining_date']);
             $validated['renewal_date'] = $renewalCalculator->nextDate(
@@ -96,6 +100,13 @@ class MembershipController extends Controller
             $membership->fill($validated);
             $membership->user_id = $user->um_id;
             $membership->save();
+
+            // Business-owner capability follows the paid/approved membership,
+            // while the account itself remains the same registered user.
+            $user->update([
+                'um_utm_id' => $validated['membership_status'] === 'active' ? 2 : 1,
+                'um_profile_type' => $validated['membership_status'] === 'active' ? 'O' : 'G',
+            ]);
 
             return redirect('admin/memberships')->with('success_message', 'Membership updated successfully.');
         }

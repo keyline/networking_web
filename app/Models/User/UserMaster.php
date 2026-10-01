@@ -77,6 +77,16 @@ class UserMaster extends Authenticatable
         return $this->hasOne(MemberMembership::class, 'user_id', 'um_id');
     }
 
+    public function hasActiveBusinessMembership(): bool
+    {
+        return $this->membership()
+            ->where('membership_status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('renewal_date')->orWhereDate('renewal_date', '>=', today());
+            })
+            ->exists();
+    }
+
     public function chapterMemberships()
     {
         return $this->hasMany(ChapterMember::class, 'user_id', 'um_id');

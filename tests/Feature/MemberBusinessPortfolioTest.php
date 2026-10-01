@@ -6,6 +6,7 @@ use App\Models\BusinessPortfolio;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
+use App\Models\MemberMembership;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
@@ -68,6 +69,7 @@ class MemberBusinessPortfolioTest extends TestCase
     private function business(string $slug): array
     {
         $owner = UserMaster::create(['um_utm_id' => 2, 'um_user_name' => $slug, 'um_email_id' => $slug.'@example.test', 'um_mobile_no' => '9000000001', 'um_status' => 2]);
+        MemberMembership::create(['user_id' => $owner->um_id, 'registration_date' => today(), 'renewal_date' => today()->addYear(), 'payment_date' => today(), 'payment_amount' => 1, 'membership_status' => 'active']);
         $company = CompaniesMaster::create([]);
         CompaniesDetail::create(['cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => ucfirst($slug), 'public_slug' => $slug, 'cmpd_description' => 'Test business description.', 'cmpd_status' => 1]);
         DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $owner->um_id]);

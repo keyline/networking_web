@@ -18,6 +18,7 @@ class AdminAccessController extends Controller
 
         $users = UserMaster::query()
             ->with('userDetail')
+            ->where('um_status', 2)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('um_email_id', 'like', "%{$search}%")
@@ -44,6 +45,7 @@ class AdminAccessController extends Controller
 
     public function toggle(Request $request, UserMaster $user): RedirectResponse
     {
+        abort_unless((int) $user->um_status === 2, 422, 'Approve the member account before granting admin access.');
         $data = $request->validate(['enabled' => ['required', 'boolean']]);
         $existing = Admin::query()
             ->where('user_master_id', $user->um_id)
