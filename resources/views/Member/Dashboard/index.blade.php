@@ -21,7 +21,7 @@
     <header class="topbar">
         <a class="brand" href="{{ route('dashboard.index') }}">Net-<i>Works</i></a>
         <div class="top-actions">
-            <div class="identity"><strong>{{ $displayName }}</strong><span>{{ $isBusinessOwner ? 'Business owner' : 'Guest member' }}</span></div>
+            <div class="identity"><strong>{{ $displayName }}</strong><span>{{ $isBusinessOwner ? 'Registered Member' : 'Registered Guest' }}</span></div>
             <div class="avatar">{{ $initials ?: 'NW' }}</div>
             <a class="logout" href="{{ route('member.logout') }}">Log out</a>
         </div>

@@ -340,6 +340,10 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         Route::get('clients/business/list', 'ClientController@businessList');
         Route::get('clients/registered-users', 'ClientController@registeredUsers')
             ->name('admin.clients.registered-users');
+        Route::get('clients/registered-members', 'ClientController@registeredMembers')
+            ->name('admin.clients.registered-members');
+        Route::get('clients/guest-users', 'ClientController@guestUsers')
+            ->name('admin.clients.guest-users');
         Route::post('clients/registered-users/registration-setting', 'ClientController@updateRegistrationSetting')
             ->name('admin.clients.registered-users.registration-setting');
         Route::post('clients/registered-users/purge/start', 'ClientController@startRegisteredUserPurge')

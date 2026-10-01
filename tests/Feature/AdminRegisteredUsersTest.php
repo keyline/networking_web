@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
+use App\Models\MemberMembership;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -99,6 +100,31 @@ class AdminRegisteredUsersTest extends TestCase
             ->assertSee('pending-owner@example.test')
             ->assertSee('Approve')
             ->assertSee(route('admin.registrations.approve', $owner), false);
+    }
+
+    public function test_paid_members_and_guest_users_have_separate_pages(): void
+    {
+        $paid = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Paid Member',
+            'um_email_id' => 'paid-member@example.test', 'um_mobile_no' => '9876500024', 'um_status' => 2,
+        ]);
+        MemberMembership::create([
+            'user_id' => $paid->um_id, 'registration_date' => today(), 'renewal_date' => today()->addYear(),
+            'payment_date' => today(), 'payment_amount' => 1000, 'membership_status' => 'active',
+        ]);
+        UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Unpaid Guest',
+            'um_email_id' => 'unpaid-guest@example.test', 'um_mobile_no' => '9876500025', 'um_status' => 2,
+        ]);
+
+        $this->signInAsAdmin()
+            ->get(route('admin.clients.registered-members'))
+            ->assertOk()->assertSee('Registered Members')->assertSee('paid-member@example.test')
+            ->assertDontSee('unpaid-guest@example.test');
+
+        $this->get(route('admin.clients.guest-users'))
+            ->assertOk()->assertSee('Guest Users')->assertSee('Registered Guest')->assertSee('unpaid-guest@example.test')
+            ->assertDontSee('paid-member@example.test');
     }
 
     public function test_admin_can_permanently_delete_a_user_business_and_uploaded_files(): void

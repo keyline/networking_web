@@ -100,7 +100,17 @@ class ClientController extends Controller
         return $this->admin_after_login_layout($title, $page_name, $data);
     }
 
-    public function registeredUsers(Request $request)
+    public function registeredMembers(Request $request)
+    {
+        return $this->registeredUsers($request, 'members');
+    }
+
+    public function guestUsers(Request $request)
+    {
+        return $this->registeredUsers($request, 'guests');
+    }
+
+    public function registeredUsers(Request $request, string $audience = 'all')
     {
         $filters = $request->validate([
             'type' => ['nullable', Rule::in(['owner', 'visitor'])],
@@ -112,9 +122,22 @@ class ClientController extends Controller
             ->with([
                 'userDetail',
                 'userType:utm_id,utm_name',
+                'membership',
                 'companiesMap.companie:cmpd_id,cmpd_cmp_id,cmpd_name,public_slug,cmpd_status',
             ])
             ->where('um_status', '!=', 3);
+
+        $businessEntitlement = fn ($membership) => $membership
+            ->where('membership_status', 'active')
+            ->whereNotNull('payment_date')
+            ->where('payment_amount', '>', 0)
+            ->where(fn ($dates) => $dates->whereNull('renewal_date')->orWhereDate('renewal_date', '>=', today()));
+
+        if ($audience === 'members') {
+            $query->whereHas('membership', $businessEntitlement);
+        } elseif ($audience === 'guests') {
+            $query->whereDoesntHave('membership', $businessEntitlement);
+        }
 
         if (($filters['type'] ?? null) === 'owner') {
             $query->where('um_utm_id', 2);
@@ -145,20 +168,36 @@ class ClientController extends Controller
             });
         }
 
+        $baseUsers = UserMaster::query()->where('um_status', '!=', 3);
+        $memberCount = (clone $baseUsers)->whereHas('membership', $businessEntitlement)->count();
+        $pageTitle = match ($audience) {
+            'members' => 'Registered Members',
+            'guests' => 'Guest Users',
+            default => 'Registered Users',
+        };
+        $listRoute = match ($audience) {
+            'members' => 'admin.clients.registered-members',
+            'guests' => 'admin.clients.guest-users',
+            default => 'admin.clients.registered-users',
+        };
+
         $data = [
-            'slug' => 'registered-users',
+            'slug' => $audience === 'members' ? 'registered-members' : ($audience === 'guests' ? 'guest-users' : 'registered-users'),
             'module' => $this->data,
+            'audience' => $audience,
+            'pageTitle' => $pageTitle,
+            'listRoute' => $listRoute,
             'filters' => $filters,
             'rows' => $query->orderByDesc('um_id')->paginate(20)->withQueryString(),
             'counts' => [
-                'all' => UserMaster::where('um_status', '!=', 3)->count(),
-                'owners' => UserMaster::where('um_status', '!=', 3)->where('um_utm_id', 2)->count(),
-                'visitors' => UserMaster::where('um_status', '!=', 3)->where('um_utm_id', '!=', 2)->count(),
+                'all' => (clone $baseUsers)->count(),
+                'owners' => $memberCount,
+                'visitors' => (clone $baseUsers)->whereDoesntHave('membership', $businessEntitlement)->count(),
             ],
             'registrationSettings' => PublicRegistrationSetting::current(),
         ];
 
-        return $this->admin_after_login_layout('Registered Users', 'client.registered-users', $data);
+        return $this->admin_after_login_layout($pageTitle, 'client.registered-users', $data);
     }
 
     public function updateRegistrationSetting(Request $request)

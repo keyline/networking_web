@@ -16,8 +16,8 @@
     @if(session('success_message'))<div class="ru-alert success">{{session('success_message')}}</div>@endif
     @if(session('error_message'))<div class="ru-alert danger">{{session('error_message')}}</div>@endif
     <div class="ru-head">
-        <div><h1>Registered Users</h1><p class="ru-sub">View and manage every business owner and visitor account.</p></div>
-        <div class="ru-head-actions"><button type="button" class="ru-purge" id="purge-all"><i class="fa fa-trash me-1"></i> Delete all test data</button><a class="ru-clear" href="{{ route('admin.clients.registered-users') }}"><i class="fa fa-refresh me-2"></i>Refresh</a></div>
+        <div><h1>{{$pageTitle}}</h1><p class="ru-sub">{{$audience === 'members' ? 'Members granted Business Add access by an administrator.' : ($audience === 'guests' ? 'Viewer accounts registered from web or mobile without Business Add access.' : 'View and manage every registered account.')}}</p></div>
+        <div class="ru-head-actions"><button type="button" class="ru-purge" id="purge-all"><i class="fa fa-trash me-1"></i> Delete all test data</button><a class="ru-clear" href="{{ route($listRoute) }}"><i class="fa fa-refresh me-2"></i>Refresh</a></div>
     </div>
 
     @php
@@ -28,26 +28,26 @@
     <div class="ru-progress" id="purge-progress" role="status" aria-live="polite"><strong id="purge-title">Preparing cleanup…</strong><div class="ru-progress-bar"><span id="purge-bar"></span></div><small id="purge-detail">Do not close this page.</small></div>
 
     <div class="ru-stats">
-        <div class="ru-stat"><span>All registered users</span><strong>{{ number_format($counts['all']) }}</strong></div>
-        <div class="ru-stat"><span>Business owners</span><strong>{{ number_format($counts['owners']) }}</strong></div>
-        <div class="ru-stat"><span>Visitors</span><strong>{{ number_format($counts['visitors']) }}</strong></div>
+        <div class="ru-stat"><span>All users</span><strong>{{ number_format($counts['all']) }}</strong></div>
+        <div class="ru-stat"><span>Registered members</span><strong>{{ number_format($counts['owners']) }}</strong></div>
+        <div class="ru-stat"><span>Registered guests</span><strong>{{ number_format($counts['visitors']) }}</strong></div>
     </div>
 
     <section class="ru-card">
-        <form class="ru-filter" method="get" action="{{ route('admin.clients.registered-users') }}">
+        <form class="ru-filter" method="get" action="{{ route($listRoute) }}">
             <input class="ru-control search" name="search" value="{{ $search }}" placeholder="Search name, email, phone or business">
-            <select class="ru-control" name="type">
+            @if($audience === 'all')<select class="ru-control" name="type">
                 <option value="">All user types</option>
                 <option value="owner" @selected($selectedType === 'owner')>Business owners</option>
                 <option value="visitor" @selected($selectedType === 'visitor')>Visitors</option>
-            </select>
+            </select>@endif
             <select class="ru-control" name="status">
                 <option value="">All statuses</option>
                 <option value="active" @selected($selectedStatus === 'active')>Active</option>
                 <option value="pending" @selected($selectedStatus === 'pending')>Pending approval</option>
                 <option value="inactive" @selected($selectedStatus === 'inactive')>Inactive</option>
             </select>
-            <div><button class="ru-btn" type="submit"><i class="fa fa-search me-1"></i> Filter</button>@if($selectedType || $selectedStatus || $search)<a class="ru-clear" href="{{ route('admin.clients.registered-users') }}">Clear</a>@endif</div>
+            <div><button class="ru-btn" type="submit"><i class="fa fa-search me-1"></i> Filter</button>@if($selectedType || $selectedStatus || $search)<a class="ru-clear" href="{{ route($listRoute) }}">Clear</a>@endif</div>
         </form>
 
         <div class="ru-table-wrap">
@@ -58,13 +58,16 @@
                     @php
                         $name = trim(($row->userDetail?->ud_first_name ?? '').' '.($row->userDetail?->ud_last_name ?? '')) ?: ($row->um_user_name ?: 'Unnamed user');
                         $initials = collect(explode(' ', $name))->filter()->take(2)->map(fn($part) => strtoupper(substr($part, 0, 1)))->implode('');
-                        $isOwner = (int) $row->um_utm_id === 2;
+                        $membership = $row->membership;
+                        $isOwner = $membership && $membership->membership_status === 'active'
+                            && $membership->payment_date && (float) $membership->payment_amount > 0
+                            && (!$membership->renewal_date || $membership->renewal_date->isToday() || $membership->renewal_date->isFuture());
                         $status = match((int) $row->um_status) { 2 => 'active', 1 => 'pending', default => 'inactive' };
                     @endphp
                     <tr>
                         <td><div class="ru-person"><span class="ru-avatar">{{ $initials ?: 'U' }}</span><div><div class="ru-name">{{ $name }}</div><div class="ru-meta">User #{{ $row->um_id }}</div></div></div></td>
                         <td><div>{{ $row->um_email_id ?: '—' }}</div><div class="ru-meta">{{ $row->um_mobile_no ?: 'No mobile number' }}</div></td>
-                        <td><span class="ru-pill {{ $isOwner ? '' : 'visitor' }}">{{ $isOwner ? 'Business owner' : 'Visitor' }}</span></td>
+                        <td><span class="ru-pill {{ $isOwner ? '' : 'visitor' }}">{{ $isOwner ? 'Registered Member' : 'Registered Guest' }}</span></td>
                         <td>
                             @forelse($row->companiesMap as $map)
                                 @if($map->companie)<div class="ru-business">{{ $map->companie->cmpd_name }}</div>@endif
@@ -134,7 +137,7 @@
             title.textContent = 'Cleanup complete';
             detail.textContent = 'All users, businesses and associated assets were removed. Reloading…';
             await wait(900);
-            window.location.href = '{{route('admin.clients.registered-users')}}';
+            window.location.href = '{{route($listRoute)}}';
         } catch (error) {
             title.textContent = 'Cleanup paused';
             detail.textContent = error.message;

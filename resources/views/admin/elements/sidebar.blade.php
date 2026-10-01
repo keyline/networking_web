@@ -170,8 +170,11 @@ if ($pageSegment == 'orders') {
                             href="<?= url('admin/clients/business/list') ?>">
                             Business </a>
 
-                        <a class="nav-link <?= $pageSegment == 'clients' && ($slug ?? '') == 'registered-users' ? 'active' : '' ?>"
-                            href="<?= route('admin.clients.registered-users') ?>">Registered Users</a>
+                        <a class="nav-link <?= $pageSegment == 'clients' && ($slug ?? '') == 'registered-members' ? 'active' : '' ?>"
+                            href="<?= route('admin.clients.registered-members') ?>">Registered Members</a>
+
+                        <a class="nav-link <?= $pageSegment == 'clients' && ($slug ?? '') == 'guest-users' ? 'active' : '' ?>"
+                            href="<?= route('admin.clients.guest-users') ?>">Guest Users</a>
                     </div>
                 </div>
                 <!-- End clients -->

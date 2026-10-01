@@ -81,6 +81,8 @@ class UserMaster extends Authenticatable
     {
         return $this->membership()
             ->where('membership_status', 'active')
+            ->whereNotNull('payment_date')
+            ->where('payment_amount', '>', 0)
             ->where(function ($query) {
                 $query->whereNull('renewal_date')->orWhereDate('renewal_date', '>=', today());
             })

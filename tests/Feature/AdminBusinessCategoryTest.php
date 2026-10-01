@@ -81,4 +81,27 @@ class AdminBusinessCategoryTest extends TestCase
             ->assertSee('Merge categories')
             ->assertSee('Assigned categories are protected from deletion.');
     }
+
+    public function test_shared_pagination_uses_compact_bootstrap_controls_without_svg_arrows(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+        foreach (range(1, 26) as $index) {
+            BusinessCategoryMaster::create([
+                'parent_id' => 0,
+                'name' => 'Pagination Test '.uniqid().'-'.$index,
+                'slug' => 'pagination-test-'.uniqid().'-'.$index,
+                'status' => 1,
+            ]);
+        }
+
+        $this->withSession([
+            'user_id' => $admin->id, 'name' => $admin->name, 'type' => $admin->type,
+            'email' => $admin->email, 'company_id' => $admin->company_id, 'is_admin_login' => 1,
+        ])->actingAs($admin, 'admin')
+            ->get(route('admin.business-categories.index'))
+            ->assertOk()
+            ->assertSee('class="pagination"', false)
+            ->assertSee('&rsaquo;', false)
+            ->assertDontSee('<svg', false);
+    }
 }
