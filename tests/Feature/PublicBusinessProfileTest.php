@@ -131,6 +131,7 @@ class PublicBusinessProfileTest extends TestCase
             ->assertSee('Highly engaged')
             ->assertSee('data-business-id="'.$company->cmp_id.'"', false)
             ->assertSee(route('business.show', 'directory-consulting-company'), false)
+            ->assertSee('target="_blank" rel="noopener noreferrer"', false)
             ->assertDontSee('hidden-owner')
             ->assertDontSee('directory-owner@example.test');
     }

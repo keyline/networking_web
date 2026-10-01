@@ -86,15 +86,15 @@ Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(fun
     Route::middleware('business.owner')->group(function () {
         Route::get('businesses/create', [MemberBusinessController::class, 'create'])->name('member.businesses.create');
         Route::post('businesses', [MemberBusinessController::class, 'store'])->name('member.businesses.store');
-        Route::get('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'edit'])->name('member.portfolio.edit');
-        Route::put('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'update'])->name('member.portfolio.update');
-        Route::post('businesses/{companyToken}/portfolio/publish', [BusinessPortfolioController::class, 'publish'])->name('member.portfolio.publish');
-        Route::post('businesses/{companyToken}/portfolio/items', [BusinessPortfolioController::class, 'storeItem'])->name('member.portfolio.items.store');
-        Route::delete('businesses/{companyToken}/portfolio/items/{item}', [BusinessPortfolioController::class, 'destroyItem'])->name('member.portfolio.items.destroy');
-        Route::post('businesses/{companyToken}/portfolio/images', [BusinessPortfolioController::class, 'storeImage'])->name('member.portfolio.images.store');
-        Route::post('businesses/{companyToken}/portfolio/videos', [BusinessPortfolioController::class, 'storeVideo'])->name('member.portfolio.videos.store');
-        Route::delete('businesses/{companyToken}/portfolio/media/{medium}', [BusinessPortfolioController::class, 'destroyMedia'])->name('member.portfolio.media.destroy');
     });
+    Route::get('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'edit'])->name('member.portfolio.edit');
+    Route::put('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'update'])->name('member.portfolio.update');
+    Route::post('businesses/{companyToken}/portfolio/publish', [BusinessPortfolioController::class, 'publish'])->name('member.portfolio.publish');
+    Route::post('businesses/{companyToken}/portfolio/items', [BusinessPortfolioController::class, 'storeItem'])->name('member.portfolio.items.store');
+    Route::delete('businesses/{companyToken}/portfolio/items/{item}', [BusinessPortfolioController::class, 'destroyItem'])->name('member.portfolio.items.destroy');
+    Route::post('businesses/{companyToken}/portfolio/images', [BusinessPortfolioController::class, 'storeImage'])->name('member.portfolio.images.store');
+    Route::post('businesses/{companyToken}/portfolio/videos', [BusinessPortfolioController::class, 'storeVideo'])->name('member.portfolio.videos.store');
+    Route::delete('businesses/{companyToken}/portfolio/media/{medium}', [BusinessPortfolioController::class, 'destroyMedia'])->name('member.portfolio.media.destroy');
     Route::get('logout', [MemberController::class, 'destroy'])->name('member.logout');
 });
 
