@@ -55,10 +55,6 @@ $controllerRoute = $module['controller_route'];
             $cmpd_country = '';
             $cmpd_state = '';
             $cmpd_pincode = '';
-            $cmpd_license_start_datetime = $currentDate;
-            $cmpd_license_end_datetime = $currentDate;
-            $cmpd_license_ref = '';
-            $cmpd_last_renewal_date = $currentDate;
             $logo_image = '';
             $selectedCategories = [];
         } else {
@@ -84,10 +80,6 @@ $controllerRoute = $module['controller_route'];
             $cmpd_district = $row->cmpd_district ?? '';
 
             $cmpd_pincode = $row->cmpd_pincode ?? '';
-            $cmpd_license_start_datetime = $row->cmpd_license_start_datetime ?? '';
-            $cmpd_license_end_datetime = $row->cmpd_license_end_datetime ?? '';
-            $cmpd_license_ref = $row->cmpd_license_ref ?? '';
-            $cmpd_last_renewal_date = $row->cmpd_last_renewal_date ?? '';
             $logo_image = $row->cmpd_logo ?? '';
             $selectedCategories = $row->companies->categories->pluck('bcm_id')->map(fn($id)=>(int)$id)->all();
         }
@@ -259,51 +251,6 @@ $controllerRoute = $module['controller_route'];
                                             value="<?= $cmpd_pincode ?>">
                                     </div>
                                 </div>
-
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">license
-                                        Reference</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="license_ref" class="form-control"
-                                            id="cmpd_license_ref" value="<?= $cmpd_license_ref ?>">
-                                    </div>
-                                </div>
-
-
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">License
-                                        Start</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="date" name="license_start" class="form-control"
-                                            id="license_start"
-                                            value="{{ date('Y-m-d', strtotime($cmpd_license_start_datetime)) }}">
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">License
-                                        End</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="date" name="license_end" class="form-control"
-                                            id="license_end"
-                                            value="{{ date('Y-m-d', strtotime($cmpd_license_end_datetime)) }}">
-                                    </div>
-                                </div>
-
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">Renewal
-                                        Start</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="date" name="renewal_date" class="form-control"
-                                            id="renewal_date"
-                                            value="{{ date('Y-m-d', strtotime($cmpd_last_renewal_date)) }}">
-                                    </div>
-                                </div>
-
-
 
 
                                 <div class="row mb-3">

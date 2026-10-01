@@ -53,6 +53,8 @@
         <div class="form-grid">
           <div class="field full"><label for="address_line_1">Address line 1 <span>*</span></label><input class="input" id="address_line_1" name="address_line_1" value="{{old('address_line_1')}}" required>@error('address_line_1')<span class="error">{{$message}}</span>@enderror</div>
           <div class="field full"><label for="address_line_2">Address line 2</label><input class="input" id="address_line_2" name="address_line_2" value="{{old('address_line_2')}}">@error('address_line_2')<span class="error">{{$message}}</span>@enderror</div>
+          <div class="field"><label for="country">Country <span>*</span></label><select class="input" id="country" name="country" required><option value="">Select country</option>@foreach($countries as $country)<option value="{{$country->id}}" @selected((string)old('country',$defaultCountryId)===(string)$country->id)>{{$country->name}}</option>@endforeach</select>@error('country')<span class="error">{{$message}}</span>@enderror</div>
+          <div class="field"><label for="state">State <span>*</span></label><select class="input" id="state" name="state" data-selected="{{old('state')}}" required><option value="">Select a country first</option></select>@error('state')<span class="error">{{$message}}</span>@enderror</div>
           <div class="field"><label for="city">City <span>*</span></label><input class="input" id="city" name="city" value="{{old('city')}}" required>@error('city')<span class="error">{{$message}}</span>@enderror</div>
           <div class="field"><label for="pincode">PIN code <span>*</span></label><input class="input" inputmode="numeric" maxlength="6" id="pincode" name="pincode" value="{{old('pincode')}}" required>@error('pincode')<span class="error">{{$message}}</span>@enderror</div>
         </div>
@@ -65,5 +67,33 @@
   </div>
 </main>
 @include('front.partials.cms-footer')
+<script>
+(() => {
+  const country = document.getElementById('country');
+  const state = document.getElementById('state');
+  if (!country || !state) return;
+  const selectedState = state.dataset.selected || '';
+  const loadStates = async (countryId, retainSelection = false) => {
+    state.disabled = true;
+    state.innerHTML = '<option value="">Loading states…</option>';
+    if (!countryId) {
+      state.innerHTML = '<option value="">Select a country first</option>';
+      return;
+    }
+    try {
+      const response = await fetch(`{{url('/api/v1/utilities/countries')}}/${countryId}/states`, {headers:{Accept:'application/json'}});
+      if (!response.ok) throw new Error('Unable to load states');
+      const states = await response.json();
+      state.innerHTML = '<option value="">Select state</option>' + states.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+      if (retainSelection && selectedState) state.value = selectedState;
+      state.disabled = false;
+    } catch (error) {
+      state.innerHTML = '<option value="">States could not be loaded. Please try again.</option>';
+    }
+  };
+  country.addEventListener('change', () => loadStates(country.value));
+  loadStates(country.value, true);
+})();
+</script>
 </body>
 </html>

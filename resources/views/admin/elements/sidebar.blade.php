@@ -170,14 +170,8 @@ if ($pageSegment == 'orders') {
                             href="<?= url('admin/clients/business/list') ?>">
                             Business </a>
 
-                        <?php if($client_types){
-                            foreach($client_types as $client_type) {
-                       if(in_array($client_type->utm_id,[2,3])){?>
-                        <a class="nav-link <?= $pageSegment == 'clients' && $slug == Str::lower($client_type->utm_name) ? 'active' : '' ?>"
-                            href="<?= url('admin/clients/' . Str::lower($client_type->utm_name) . '/list') ?>"><?= $client_type->utm_id == 2 ? 'Registered Users' : Str::ucfirst($client_type->utm_name) ?></a>
-                        <?php } }
-                         }
-                        ?>
+                        <a class="nav-link <?= $pageSegment == 'clients' && ($slug ?? '') == 'registered-users' ? 'active' : '' ?>"
+                            href="<?= route('admin.clients.registered-users') ?>">Registered Users</a>
                     </div>
                 </div>
                 <!-- End clients -->

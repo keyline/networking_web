@@ -19,12 +19,11 @@
     </div>
 
     <!-- State Dropdown -->
-    @if (!empty($states))
         <div class="row mb-3">
             <label for="state" class="col-md-2 col-lg-2 col-form-label">State <span class="text-danger">*</span></label>
             <div class="col-md-10 col-lg-10">
                 <select wire:model="selectedState" name="state" wire:change="stateChanged($event.target.value)" class="form-select" required>
-                    <option value="">Select State</option>
+                    <option value="">{{ $selectedCountry ? 'Select State' : 'Select a country first' }}</option>
                     @foreach ($states as $state)
                         <option value="{{ $state->id }}" {{ $selectedState == $state->id ? 'selected' : '' }}>
                             {{ $state->name }}
@@ -33,22 +32,20 @@
                 </select>
             </div>
         </div>
-    @endif
 
     <!-- District Dropdown -->
-    @if (!empty($districts))
         <div class="row mb-3">
-            <label for="district" class="col-md-2 col-lg-2 col-form-label">District <span class="text-danger">*</span></label>
+            <label for="district" class="col-md-2 col-lg-2 col-form-label">District</label>
             <div class="col-md-10 col-lg-10">
-                <select wire:model="selectedDistrict" name="district" class="form-select" required>
-                    <option value="">Select District</option>
+                <select wire:model="selectedDistrict" name="district" class="form-select">
+                    <option value="">{{ $selectedState ? 'Select District (optional)' : 'Select a state first (optional)' }}</option>
                     @foreach ($districts as $district)
                         <option value="{{ $district->id }}" {{ $selectedDistrict == $district->id ? 'selected' : '' }}>
                             {{ $district->name }}
                         </option>
                     @endforeach
                 </select>
+                <small class="text-muted">Optional</small>
             </div>
         </div>
-    @endif
 </div>

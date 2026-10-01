@@ -33,6 +33,7 @@ use Helper;
 use Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\MemberDataDeletionService;
 
 class ClientController extends Controller
 {
@@ -54,8 +55,10 @@ class ClientController extends Controller
         $title                          = 'Business List';
         $page_name                      = 'client.businessList';
         $data['client_type']            = null;
-        $list                   = CompaniesMaster::with(['details', 'owner', 'owner.userDtl'])->get()->toDecodedJson();
-
+        $list = CompaniesMaster::with(['details', 'owner', 'owner.userDtl'])
+            ->whereHas('details')
+            ->whereHas('owner')
+            ->get();
         foreach ($list  as $row) {
             if (!is_null($row->owner)) {
                 $tagList = [];
@@ -79,24 +82,97 @@ class ClientController extends Controller
 
                 $data['rows'][] = [
                     'cmp_id' => $row->cmp_id,
-                    'name' => $row->details->cmpd_name ?? '',
-                    'description' => $row->details->cmpd_description ?? '',
-                    'email' => $row->details->cmpd_email ?? '',
-                    'phone' => $row->details->cmpd_phone ?? '',
-                    'address1' => $row->details->cmpd_address1 ?? '',
-                    'district' =>  $row->details->cmpd_district ?? '',
-                    'pincode' =>  $row->details->cmpd_pincode ?? '',
-                    'license_start_datetime' =>  date('d-m-Y', strtotime($row->details->cmpd_license_start_datetime)),
-                    'license_end_datetime' => date('d-m-Y', strtotime($row->details->cmpd_license_end_datetime)),
-                    'last_renewal_date' => date('d-m-Y', strtotime($row->details->cmpd_last_renewal_date)),
-                    'status' =>  $row->details->cmpd_status,
+                    'name' => $row->details?->cmpd_name ?? '',
+                    'description' => $row->details?->cmpd_description ?? '',
+                    'email' => $row->details?->cmpd_email ?? '',
+                    'phone' => $row->details?->cmpd_phone ?? '',
+                    'address1' => $row->details?->cmpd_address1 ?? '',
+                    'district' => $row->details?->cmpd_district ?? '',
+                    'pincode' => $row->details?->cmpd_pincode ?? '',
+                    'status' => $row->details?->cmpd_status ?? 0,
                     'owner_name' =>  $userDetails->ud_first_name ?? '',
                     'tagCount' => implode(', ', $tagList),
                 ];
             }
         }
 
-        echo $this->admin_after_login_layout($title, $page_name, $data);
+        return $this->admin_after_login_layout($title, $page_name, $data);
+    }
+
+    public function registeredUsers(Request $request)
+    {
+        $filters = $request->validate([
+            'type' => ['nullable', Rule::in(['owner', 'visitor'])],
+            'status' => ['nullable', Rule::in(['active', 'pending', 'inactive'])],
+            'search' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $query = UserMaster::query()
+            ->with([
+                'userDetail',
+                'userType:utm_id,utm_name',
+                'companiesMap.companie:cmpd_id,cmpd_cmp_id,cmpd_name,public_slug,cmpd_status',
+            ])
+            ->where('um_status', '!=', 3);
+
+        if (($filters['type'] ?? null) === 'owner') {
+            $query->where('um_utm_id', 2);
+        } elseif (($filters['type'] ?? null) === 'visitor') {
+            $query->where('um_utm_id', '!=', 2);
+        }
+
+        if (($filters['status'] ?? null) === 'active') {
+            $query->where('um_status', 2);
+        } elseif (($filters['status'] ?? null) === 'pending') {
+            $query->where('um_status', 1);
+        } elseif (($filters['status'] ?? null) === 'inactive') {
+            $query->where('um_status', 0);
+        }
+
+        if ($search = trim($filters['search'] ?? '')) {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('um_user_name', 'like', "%{$search}%")
+                    ->orWhere('um_email_id', 'like', "%{$search}%")
+                    ->orWhere('um_mobile_no', 'like', "%{$search}%")
+                    ->orWhereHas('userDetail', function ($details) use ($search) {
+                        $details->where('ud_first_name', 'like', "%{$search}%")
+                            ->orWhere('ud_last_name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('companiesMap.companie', function ($company) use ($search) {
+                        $company->where('cmpd_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $data = [
+            'slug' => 'registered-users',
+            'module' => $this->data,
+            'filters' => $filters,
+            'rows' => $query->orderByDesc('um_id')->paginate(20)->withQueryString(),
+            'counts' => [
+                'all' => UserMaster::where('um_status', '!=', 3)->count(),
+                'owners' => UserMaster::where('um_status', '!=', 3)->where('um_utm_id', 2)->count(),
+                'visitors' => UserMaster::where('um_status', '!=', 3)->where('um_utm_id', '!=', 2)->count(),
+            ],
+        ];
+
+        return $this->admin_after_login_layout('Registered Users', 'client.registered-users', $data);
+    }
+
+    public function destroyRegisteredUser(UserMaster $user, MemberDataDeletionService $deletionService)
+    {
+        $displayName = trim(($user->userDetail?->ud_first_name ?? '').' '.($user->userDetail?->ud_last_name ?? ''))
+            ?: ($user->um_user_name ?: 'User #'.$user->um_id);
+
+        try {
+            $deletionService->delete($user);
+        } catch (\Throwable $exception) {
+            Log::error('Permanent member deletion failed.', ['user_id' => $user->um_id, 'exception' => $exception]);
+            return back()->with('error_message', 'The user could not be deleted. No partial database deletion was saved.');
+        }
+
+        return redirect()->route('admin.clients.registered-users')
+            ->with('success_message', $displayName.' and all associated business data were permanently deleted.');
     }
 
 
@@ -135,15 +211,19 @@ class ClientController extends Controller
                 'address3' => 'nullable|string|max:255',
                 'estd_year' => 'nullable|integer|digits:4|min:1900|max:' . date('Y'),
                 // 'district' => 'nullable|string|max:255',
-                "country" => 'required|integer',
-                "state" => 'required|integer',
-                "district" => 'required|integer',
+                'country' => ['required', 'integer', 'exists:countries,id'],
+                'state' => [
+                    'required',
+                    'integer',
+                    Rule::exists('states', 'id')->where(fn ($query) => $query->where('country_id', $request->input('country'))),
+                ],
+                'district' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('districts', 'id')->where(fn ($query) => $query->where('state_id', $request->input('state'))),
+                ],
 
                 'pincode' => 'nullable|string|regex:/^\d{6}$/',
-                'license_start' => 'required|date',
-                'license_end' => 'required|date',
-                'license_ref' => 'nullable|string|max:255',
-                'renewal_date' => 'required|date',
                 'logo' => 'nullable|file|image|mimes:jpeg,png,jpg|max:2048',
             ]);
 
@@ -183,12 +263,8 @@ class ClientController extends Controller
                     'cmpd_estd_year' => $postData['estd_year'],
                     'cmpd_country' => $postData['country'],
                     'cmpd_state' => $postData['state'],
-                    'cmpd_district' => $postData['district'],
+                    'cmpd_district' => $postData['district'] ?? null,
                     'cmpd_pincode' => $postData['pincode'],
-                    'cmpd_license_start_datetime' => $postData['license_start'],
-                    'cmpd_license_end_datetime' => $postData['license_end'],
-                    'cmpd_license_ref' => $postData['license_ref'],
-                    'cmpd_last_renewal_date' => $postData['renewal_date'],
                     'cmpd_logo' => $logo,
                     'cmpd_updated_at' => date('Y-m-d H:i:s')
                 ];

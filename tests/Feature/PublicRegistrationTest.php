@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Admin;
 use App\Models\Business\BusinessCategoryMaster;
+use App\Models\Country;
+use App\Models\State;
 use App\Models\User\UserMaster;
 use App\Notifications\UserOtpEmailNotify;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -18,6 +20,8 @@ class PublicRegistrationTest extends TestCase
     {
         $categories = BusinessCategoryMaster::where('status', 1)->limit(2)->get();
         $this->assertCount(2, $categories);
+        $country = Country::where('name', 'India')->firstOrFail();
+        $state = State::where('country_id', $country->id)->firstOrFail();
 
         $response = $this->post(route('join.store'), [
             'first_name' => 'Test',
@@ -30,6 +34,8 @@ class PublicRegistrationTest extends TestCase
             'description' => 'Professional business services.',
             'address_line_1' => '1 Business Street',
             'city' => 'Kolkata',
+            'country' => $country->id,
+            'state' => $state->id,
             'pincode' => '700001',
             'consent' => '1',
         ]);
@@ -43,6 +49,8 @@ class PublicRegistrationTest extends TestCase
         ]);
         $this->assertDatabaseHas('companies_details', [
             'cmpd_name' => 'Fresh Start Services',
+            'cmpd_country' => $country->id,
+            'cmpd_state' => $state->id,
             'cmpd_status' => 0,
         ]);
         $this->assertDatabaseHas('categories_to_companies', [
@@ -55,6 +63,8 @@ class PublicRegistrationTest extends TestCase
     {
         Notification::fake();
         $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
+        $country = Country::where('name', 'India')->firstOrFail();
+        $state = State::where('country_id', $country->id)->firstOrFail();
         $email = uniqid('approval-').'@example.test';
         $mobile = '9'.random_int(100000000, 999999999);
 
@@ -67,6 +77,8 @@ class PublicRegistrationTest extends TestCase
             'business_categories' => [$category->bcm_id],
             'address_line_1' => '10 Test Street',
             'city' => 'Kolkata',
+            'country' => $country->id,
+            'state' => $state->id,
             'pincode' => '700001',
             'consent' => '1',
         ])->assertSessionHas('registration_success');

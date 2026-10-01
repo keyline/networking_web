@@ -127,9 +127,6 @@ $url_slug = $slug;
                                                         <th scope="col">Company Name</th>
                                                         <th scope="col">Description</th>
                                                         <th scope="col">Address</th>
-                                                        <th scope="col">License Start</th>
-                                                        <th scope="col">License End</th>
-                                                        <th scope="col">Renewal Date</th>
                                                         <!-- <th scope="col">Action</th> -->
                                                     </tr>
                                                 </thead>
@@ -146,13 +143,6 @@ $url_slug = $slug;
                                                                         {{ $item->details->cmpd_district ?? '' }} ,
                                                                         {{ $item->details->cmpd_pincode ?? '' }}
                                                                     </td>
-                                                                    <td> {{ date('d-m-Y', strtotime($item->details->cmpd_license_start_datetime)) }}
-                                                                    </td>
-                                                                    <td> {{ date('d-m-Y', strtotime($item->details->cmpd_license_end_datetime)) }}
-                                                                    </td>
-                                                                    <td> {{ date('d-m-Y', strtotime($item->details->cmpd_last_renewal_date)) }}
-                                                                    </td>
-
                                                                 </tr>
                                                             @endif
                                                         @endforeach

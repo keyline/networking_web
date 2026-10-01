@@ -330,6 +330,10 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         /* employee-department */
         /* clients */
         Route::get('clients/business/list', 'ClientController@businessList');
+        Route::get('clients/registered-users', 'ClientController@registeredUsers')
+            ->name('admin.clients.registered-users');
+        Route::delete('clients/registered-users/{user}', 'ClientController@destroyRegisteredUser')
+            ->whereNumber('user')->name('admin.clients.registered-users.destroy');
 
         // Route::match(['get', 'post'], 'clients/{slug}/info-edit/{?id}', 'ClientController@businessEdit');
         Route::match(['get', 'post'], 'clients/{slug}/info-edit/{id?}/{u?}', 'ClientController@businessEdit');

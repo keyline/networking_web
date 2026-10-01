@@ -52,7 +52,6 @@ $controllerRoute = $module['controller_route'];
                                     <th scope="col">Email</th>
                                     <th scope="col">Phone</th>
                                     <th scope="col">Address</th>
-                                    <th scope="col">License Start </th>
                                     <th scope="col">Status</th>
                                     <th scope="col" title="Featured on the app home screen">Sponsored</th>
                                     <th scope="col">Action</th>
@@ -78,10 +77,6 @@ $controllerRoute = $module['controller_route'];
                                             <td>{{ $row['phone'] }}</td>
                                             <td>{{ $row['address1'] }} <br> {{ $row['district'] }} ,
                                                 {{ $row['pincode'] }} </td>
-                                            <td>
-                                                {{ $row['license_start_datetime'] }}
-                                            </td>
-
                                             <td>
                                                 {{-- <style>
                                                     .form-check-input.sm {

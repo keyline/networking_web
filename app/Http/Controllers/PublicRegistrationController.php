@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
+use App\Models\Country;
 use App\Models\GeneralSetting;
 use App\Models\Page;
 use App\Models\User\UserDetails;
@@ -44,6 +45,12 @@ class PublicRegistrationController extends Controller
             'address_line_1' => ['required', 'string', 'max:255'],
             'address_line_2' => ['nullable', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:100'],
+            'country' => ['required', 'integer', 'exists:countries,id'],
+            'state' => [
+                'required',
+                'integer',
+                Rule::exists('states', 'id')->where(fn ($query) => $query->where('country_id', $request->input('country'))),
+            ],
             'pincode' => ['required', 'regex:/^[1-9][0-9]{5}$/'],
             'company_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'consent' => ['accepted'],
@@ -92,6 +99,8 @@ class PublicRegistrationController extends Controller
                     'ud_business_addr_1' => $data['address_line_1'],
                     'ud_business_addr_2' => trim(($data['address_line_2'] ?? '') . ($data['city'] ? ', ' . $data['city'] : '')),
                     'ud_business_category' => (string) $data['business_categories'][0],
+                    'ud_country_id' => $data['country'],
+                    'ud_state_id' => $data['state'],
                     'ud_pincode' => $data['pincode'],
                 ]);
 
@@ -109,6 +118,8 @@ class PublicRegistrationController extends Controller
                     'cmpd_address1' => $data['address_line_1'],
                     'cmpd_address2' => $data['address_line_2'] ?? null,
                     'cmpd_address3' => $data['city'],
+                    'cmpd_country' => $data['country'],
+                    'cmpd_state' => $data['state'],
                     'cmpd_pincode' => $data['pincode'],
                     'cmpd_status' => 0,
                     'cmpd_is_document_valid' => '0',
@@ -145,6 +156,8 @@ class PublicRegistrationController extends Controller
             'title' => 'Join Net-Works',
             'generalSetting' => $generalSetting,
             'categories' => BusinessCategoryMaster::where('status', 1)->orderBy('name')->get(),
+            'countries' => Country::where('status', 1)->orderBy('name')->get(['id', 'name']),
+            'defaultCountryId' => Country::where('name', 'India')->value('id'),
             'headerNavigation' => $this->navigationFor('header'),
             'footerNavigation' => $this->navigationFor('footer'),
         ];
