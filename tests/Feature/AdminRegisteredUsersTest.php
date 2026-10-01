@@ -83,6 +83,24 @@ class AdminRegisteredUsersTest extends TestCase
             ->assertDontSee('filtered-owner@example.test');
     }
 
+    public function test_pending_business_owner_has_an_approve_button(): void
+    {
+        $owner = UserMaster::create([
+            'um_utm_id' => 2,
+            'um_user_name' => 'Pending Owner',
+            'um_email_id' => 'pending-owner@example.test',
+            'um_mobile_no' => '9876500023',
+            'um_status' => 1,
+        ]);
+
+        $this->signInAsAdmin()
+            ->get('/admin/clients/registered-users')
+            ->assertOk()
+            ->assertSee('pending-owner@example.test')
+            ->assertSee('Approve')
+            ->assertSee(route('admin.registrations.approve', $owner), false);
+    }
+
     public function test_admin_can_permanently_delete_a_user_business_and_uploaded_files(): void
     {
         $user = UserMaster::create([
