@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
-use App\Models\MemberMembership;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -32,13 +31,21 @@ class AdminRegisteredUsersTest extends TestCase
 
     public function test_registered_users_page_lists_all_supported_user_types(): void
     {
-        UserMaster::create([
+        $owner = UserMaster::create([
             'um_utm_id' => 2,
             'um_user_name' => 'Owner Test',
             'um_email_id' => 'owner-list@example.test',
             'um_mobile_no' => '9876500011',
             'um_status' => 2,
         ]);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id,
+            'cmpd_name' => 'Filtered Owner Business',
+            'cmpd_description' => 'Business used to verify user classification.',
+            'cmpd_status' => 1,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $owner->um_id, 'ucm_cmp_id' => $company->cmp_id]);
         UserMaster::create([
             'um_utm_id' => 3,
             'um_user_name' => 'Visitor Test',
@@ -57,13 +64,21 @@ class AdminRegisteredUsersTest extends TestCase
 
     public function test_registered_users_page_filters_business_owners_and_visitors(): void
     {
-        UserMaster::create([
+        $owner = UserMaster::create([
             'um_utm_id' => 2,
             'um_user_name' => 'Filtered Owner',
             'um_email_id' => 'filtered-owner@example.test',
             'um_mobile_no' => '9876500021',
             'um_status' => 2,
         ]);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id,
+            'cmpd_name' => 'Filtered Owner Business',
+            'cmpd_description' => 'Business used to verify user classification.',
+            'cmpd_status' => 1,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $owner->um_id, 'ucm_cmp_id' => $company->cmp_id]);
         UserMaster::create([
             'um_utm_id' => 3,
             'um_user_name' => 'Filtered Visitor',
@@ -102,16 +117,18 @@ class AdminRegisteredUsersTest extends TestCase
             ->assertSee(route('admin.registrations.approve', $owner), false);
     }
 
-    public function test_paid_members_and_guest_users_have_separate_pages(): void
+    public function test_users_with_businesses_and_guest_users_have_separate_pages(): void
     {
-        $paid = UserMaster::create([
-            'um_utm_id' => 2, 'um_user_name' => 'Paid Member',
-            'um_email_id' => 'paid-member@example.test', 'um_mobile_no' => '9876500024', 'um_status' => 2,
+        $member = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Business Member',
+            'um_email_id' => 'business-member@example.test', 'um_mobile_no' => '9876500024', 'um_status' => 2,
         ]);
-        MemberMembership::create([
-            'user_id' => $paid->um_id, 'registration_date' => today(), 'renewal_date' => today()->addYear(),
-            'payment_date' => today(), 'payment_amount' => 1000, 'membership_status' => 'active',
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Member Business',
+            'cmpd_description' => 'A member-owned business.', 'cmpd_status' => 1,
         ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $member->um_id, 'ucm_cmp_id' => $company->cmp_id]);
         UserMaster::create([
             'um_utm_id' => 2, 'um_user_name' => 'Unpaid Guest',
             'um_email_id' => 'unpaid-guest@example.test', 'um_mobile_no' => '9876500025', 'um_status' => 2,
@@ -119,12 +136,12 @@ class AdminRegisteredUsersTest extends TestCase
 
         $this->signInAsAdmin()
             ->get(route('admin.clients.registered-members'))
-            ->assertOk()->assertSee('Registered Members')->assertSee('paid-member@example.test')
+            ->assertOk()->assertSee('Registered Members')->assertSee('business-member@example.test')->assertSee('Member Business')
             ->assertDontSee('unpaid-guest@example.test');
 
         $this->get(route('admin.clients.guest-users'))
             ->assertOk()->assertSee('Guest Users')->assertSee('Registered Guest')->assertSee('unpaid-guest@example.test')
-            ->assertDontSee('paid-member@example.test');
+            ->assertDontSee('business-member@example.test');
     }
 
     public function test_admin_can_permanently_delete_a_user_business_and_uploaded_files(): void

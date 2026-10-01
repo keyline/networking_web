@@ -127,22 +127,16 @@ class ClientController extends Controller
             ])
             ->where('um_status', '!=', 3);
 
-        $businessEntitlement = fn ($membership) => $membership
-            ->where('membership_status', 'active')
-            ->whereNotNull('payment_date')
-            ->where('payment_amount', '>', 0)
-            ->where(fn ($dates) => $dates->whereNull('renewal_date')->orWhereDate('renewal_date', '>=', today()));
-
         if ($audience === 'members') {
-            $query->whereHas('membership', $businessEntitlement);
+            $query->whereHas('companies');
         } elseif ($audience === 'guests') {
-            $query->whereDoesntHave('membership', $businessEntitlement);
+            $query->whereDoesntHave('companies');
         }
 
         if (($filters['type'] ?? null) === 'owner') {
-            $query->where('um_utm_id', 2);
+            $query->whereHas('companies');
         } elseif (($filters['type'] ?? null) === 'visitor') {
-            $query->where('um_utm_id', '!=', 2);
+            $query->whereDoesntHave('companies');
         }
 
         if (($filters['status'] ?? null) === 'active') {
@@ -169,7 +163,7 @@ class ClientController extends Controller
         }
 
         $baseUsers = UserMaster::query()->where('um_status', '!=', 3);
-        $memberCount = (clone $baseUsers)->whereHas('membership', $businessEntitlement)->count();
+        $memberCount = (clone $baseUsers)->whereHas('companies')->count();
         $pageTitle = match ($audience) {
             'members' => 'Registered Members',
             'guests' => 'Guest Users',
@@ -192,7 +186,7 @@ class ClientController extends Controller
             'counts' => [
                 'all' => (clone $baseUsers)->count(),
                 'owners' => $memberCount,
-                'visitors' => (clone $baseUsers)->whereDoesntHave('membership', $businessEntitlement)->count(),
+                'visitors' => (clone $baseUsers)->whereDoesntHave('companies')->count(),
             ],
             'registrationSettings' => PublicRegistrationSetting::current(),
         ];

@@ -16,7 +16,7 @@
     @if(session('success_message'))<div class="ru-alert success">{{session('success_message')}}</div>@endif
     @if(session('error_message'))<div class="ru-alert danger">{{session('error_message')}}</div>@endif
     <div class="ru-head">
-        <div><h1>{{$pageTitle}}</h1><p class="ru-sub">{{$audience === 'members' ? 'Members granted Business Add access by an administrator.' : ($audience === 'guests' ? 'Viewer accounts registered from web or mobile without Business Add access.' : 'View and manage every registered account.')}}</p></div>
+        <div><h1>{{$pageTitle}}</h1><p class="ru-sub">{{$audience === 'members' ? 'Registered users who have one or more linked businesses.' : ($audience === 'guests' ? 'Registered guests without a business who can browse and view business details.' : 'View and manage every registered account.')}}</p></div>
         <div class="ru-head-actions"><button type="button" class="ru-purge" id="purge-all"><i class="fa fa-trash me-1"></i> Delete all test data</button><a class="ru-clear" href="{{ route($listRoute) }}"><i class="fa fa-refresh me-2"></i>Refresh</a></div>
     </div>
 
@@ -58,10 +58,7 @@
                     @php
                         $name = trim(($row->userDetail?->ud_first_name ?? '').' '.($row->userDetail?->ud_last_name ?? '')) ?: ($row->um_user_name ?: 'Unnamed user');
                         $initials = collect(explode(' ', $name))->filter()->take(2)->map(fn($part) => strtoupper(substr($part, 0, 1)))->implode('');
-                        $membership = $row->membership;
-                        $isOwner = $membership && $membership->membership_status === 'active'
-                            && $membership->payment_date && (float) $membership->payment_amount > 0
-                            && (!$membership->renewal_date || $membership->renewal_date->isToday() || $membership->renewal_date->isFuture());
+                        $isOwner = $row->companiesMap->contains(fn($map) => (bool) $map->companie);
                         $status = match((int) $row->um_status) { 2 => 'active', 1 => 'pending', default => 'inactive' };
                     @endphp
                     <tr>
