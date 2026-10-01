@@ -133,4 +133,25 @@ class AdminRegisteredUsersTest extends TestCase
         $this->assertFileDoesNotExist(public_path('uploads/company/delete-company-test.jpg'));
         $this->assertDirectoryDoesNotExist(public_path('uploads/portfolio/'.$company->cmp_id));
     }
+
+    public function test_bulk_cleanup_requires_exact_confirmation_and_starts_without_deleting_immediately(): void
+    {
+        $user = UserMaster::create([
+            'um_utm_id' => 3,
+            'um_user_name' => 'Bulk Start Test',
+            'um_email_id' => 'bulk-start@example.test',
+            'um_mobile_no' => '9876500041',
+            'um_status' => 2,
+        ]);
+
+        $this->signInAsAdmin()
+            ->postJson(route('admin.clients.registered-users.purge.start'), ['confirmation' => 'delete all'])
+            ->assertUnprocessable();
+
+        $this->postJson(route('admin.clients.registered-users.purge.start'), ['confirmation' => 'DELETE ALL'])
+            ->assertOk()
+            ->assertJsonStructure(['token', 'total_users', 'total_businesses', 'message']);
+
+        $this->assertDatabaseHas('user_master', ['um_id' => $user->um_id]);
+    }
 }

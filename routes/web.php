@@ -332,6 +332,10 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         Route::get('clients/business/list', 'ClientController@businessList');
         Route::get('clients/registered-users', 'ClientController@registeredUsers')
             ->name('admin.clients.registered-users');
+        Route::post('clients/registered-users/purge/start', 'ClientController@startRegisteredUserPurge')
+            ->name('admin.clients.registered-users.purge.start');
+        Route::post('clients/registered-users/purge/run', 'ClientController@runRegisteredUserPurge')
+            ->name('admin.clients.registered-users.purge.run');
         Route::delete('clients/registered-users/{user}', 'ClientController@destroyRegisteredUser')
             ->whereNumber('user')->name('admin.clients.registered-users.destroy');
 

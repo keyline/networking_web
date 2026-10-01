@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Companies\CompaniesMaster;
 use App\Models\User\UserMaster;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -70,6 +71,41 @@ class MemberDataDeletionService
             DB::table('companies_details')->whereIn('cmpd_cmp_id', $companyIds)->delete();
             DB::table('companies_master')->whereIn('cmp_id', $companyIds)->delete();
             DB::table('user_master')->where('um_id', $userId)->delete();
+        });
+
+        $this->deleteFiles($files, $companyIds);
+    }
+
+    public function deleteOrphanBusiness(CompaniesMaster $business): void
+    {
+        $companyId = (int) $business->cmp_id;
+        if (DB::table('user_companies_map')->where('ucm_cmp_id', $companyId)->exists()) {
+            throw new \RuntimeException('A linked business cannot be deleted as an orphan.');
+        }
+        $companyIds = [$companyId];
+        $files = $this->collectFiles(0, $companyIds);
+
+        DB::transaction(function () use ($companyIds) {
+            DB::table('chapter_members')->whereIn('company_id', $companyIds)->delete();
+            DB::table('business_analytics_events')->whereIn('bae_cmp_id', $companyIds)->delete();
+            DB::table('company_click_master')->whereIn('ccm_cmp_id', $companyIds)->delete();
+            DB::table('reviews')->whereIn('rev_cmp_id', $companyIds)->delete();
+            DB::table('enquiries')->whereIn('company_id', $companyIds)->delete();
+            $enquiryIds = DB::table('enquiry_to_user')->whereIn('etu_cmp_id', $companyIds)->pluck('etu_enm_id');
+            DB::table('enquiry_to_user')->whereIn('etu_cmp_id', $companyIds)->delete();
+            DB::table('enquiry_master')->whereIn('enm_id', $enquiryIds)
+                ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('enquiry_to_user')->whereColumn('etu_enm_id', 'enquiry_master.enm_id'))
+                ->delete();
+            DB::table('business_portfolio_media')->whereIn('company_id', $companyIds)->delete();
+            DB::table('business_portfolio_items')->whereIn('company_id', $companyIds)->delete();
+            DB::table('business_portfolios')->whereIn('company_id', $companyIds)->delete();
+            DB::table('categories_to_companies')->whereIn('ctc_cmp_id', $companyIds)->delete();
+            DB::table('company_sociallink')->whereIn('cs_cmp_id', $companyIds)->delete();
+            DB::table('company_images')->whereIn('ci_cmp_id', $companyIds)->delete();
+            DB::table('user_devices')->whereIn('company_id', $companyIds)->delete();
+            DB::table('user_activities')->whereIn('company_id', $companyIds)->delete();
+            DB::table('companies_details')->whereIn('cmpd_cmp_id', $companyIds)->delete();
+            DB::table('companies_master')->whereIn('cmp_id', $companyIds)->delete();
         });
 
         $this->deleteFiles($files, $companyIds);

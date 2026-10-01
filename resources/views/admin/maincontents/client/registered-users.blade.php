@@ -8,6 +8,7 @@
 <style>
 .ru-page{--ink:#17233c;--muted:#71809a;--line:#e3e9f2;--blue:#397cf6}.ru-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:22px}.ru-head h1{font-size:28px;color:var(--ink);margin:0 0 5px}.ru-sub{color:var(--muted);margin:0}.ru-stats{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:12px;margin-bottom:18px}.ru-stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px}.ru-stat span{display:block;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}.ru-stat strong{display:block;color:var(--ink);font-size:25px;margin-top:4px}.ru-card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px rgba(33,55,90,.05);overflow:hidden}.ru-filter{display:grid;grid-template-columns:minmax(240px,1fr) 190px 170px auto;gap:10px;padding:18px;border-bottom:1px solid var(--line)}.ru-control{height:44px;border:1px solid #d8e0ec;border-radius:9px;padding:0 13px;color:var(--ink);background:#fff;width:100%}.ru-btn{height:44px;border:0;border-radius:9px;padding:0 19px;background:var(--blue);color:#fff;font-weight:700}.ru-clear{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 12px;color:var(--muted)}.ru-table{width:100%;border-collapse:collapse}.ru-table th{padding:13px 16px;background:#f7f9fc;color:#738099;text-transform:uppercase;font-size:11px;letter-spacing:.05em;text-align:left}.ru-table td{padding:15px 16px;border-top:1px solid var(--line);vertical-align:middle;color:#34415a}.ru-person{display:flex;align-items:center;gap:11px}.ru-avatar{width:38px;height:38px;border-radius:11px;background:#eaf1ff;color:#397cf6;display:grid;place-items:center;font-weight:800}.ru-name{font-weight:750;color:var(--ink)}.ru-meta{font-size:12px;color:var(--muted);margin-top:2px}.ru-pill{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;letter-spacing:.04em;background:#edf3ff;color:#2769df}.ru-pill.visitor{background:#f0f1f5;color:#667085}.ru-pill.active{background:#e9f8f1;color:#13845b}.ru-pill.pending{background:#fff5df;color:#a86700}.ru-pill.inactive{background:#fff0f0;color:#c43b3b}.ru-business{font-size:13px}.ru-business+ .ru-business{margin-top:4px}.ru-actions{white-space:nowrap}.ru-icon{display:inline-grid;place-items:center;width:34px;height:34px;border:1px solid #dce4ef;border-radius:8px;color:#397cf6;margin-right:4px}.ru-empty{text-align:center;padding:55px 20px!important;color:var(--muted)!important}.ru-foot{padding:14px 18px;border-top:1px solid var(--line)}@media(max-width:900px){.ru-filter{grid-template-columns:1fr 1fr}.ru-filter .search{grid-column:1/-1}.ru-table-wrap{overflow:auto}.ru-table{min-width:850px}}@media(max-width:560px){.ru-head{display:block}.ru-stats{grid-template-columns:1fr}.ru-filter{grid-template-columns:1fr}.ru-filter .search{grid-column:auto}}
 .ru-icon{background:#fff}.ru-icon.danger{color:#d63745;border-color:#f1cbd0}.ru-delete{display:inline}.ru-alert{padding:13px 16px;border-radius:10px;margin-bottom:16px}.ru-alert.success{background:#eaf8f1;color:#14734f;border:1px solid #c8ead9}.ru-alert.danger{background:#fff0f1;color:#a82d38;border:1px solid #f2c7cb}
+.ru-head-actions{display:flex;align-items:center;gap:8px}.ru-purge{border:1px solid #dc3545;background:#fff;color:#c92f3d;border-radius:9px;padding:10px 14px;font-weight:750}.ru-purge:disabled{opacity:.55;cursor:not-allowed}.ru-progress{display:none;margin-bottom:16px;padding:16px;border:1px solid #f0c9cd;border-radius:12px;background:#fff7f8;color:#713039}.ru-progress.show{display:block}.ru-progress-bar{height:7px;margin-top:10px;overflow:hidden;border-radius:999px;background:#f1dfe1}.ru-progress-bar span{display:block;width:0;height:100%;background:#dc3545;transition:width .25s}.ru-progress small{display:block;margin-top:8px;color:#8e5960}
 </style>
 
 <div class="ru-page">
@@ -15,8 +16,10 @@
     @if(session('error_message'))<div class="ru-alert danger">{{session('error_message')}}</div>@endif
     <div class="ru-head">
         <div><h1>Registered Users</h1><p class="ru-sub">View and manage every business owner and visitor account.</p></div>
-        <a class="ru-clear" href="{{ route('admin.clients.registered-users') }}"><i class="fa fa-refresh me-2"></i>Refresh</a>
+        <div class="ru-head-actions"><button type="button" class="ru-purge" id="purge-all"><i class="fa fa-trash me-1"></i> Delete all test data</button><a class="ru-clear" href="{{ route('admin.clients.registered-users') }}"><i class="fa fa-refresh me-2"></i>Refresh</a></div>
     </div>
+
+    <div class="ru-progress" id="purge-progress" role="status" aria-live="polite"><strong id="purge-title">Preparing cleanup…</strong><div class="ru-progress-bar"><span id="purge-bar"></span></div><small id="purge-detail">Do not close this page.</small></div>
 
     <div class="ru-stats">
         <div class="ru-stat"><span>All registered users</span><strong>{{ number_format($counts['all']) }}</strong></div>
@@ -80,3 +83,51 @@
         @if($rows->hasPages())<div class="ru-foot">{{ $rows->links() }}</div>@endif
     </section>
 </div>
+
+<script>
+(() => {
+    const button = document.getElementById('purge-all');
+    const panel = document.getElementById('purge-progress');
+    const title = document.getElementById('purge-title');
+    const detail = document.getElementById('purge-detail');
+    const bar = document.getElementById('purge-bar');
+    if (!button) return;
+    const csrf = '{{csrf_token()}}';
+    const post = async (url, body) => {
+        const response = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify(body)});
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'The cleanup request failed.');
+        return data;
+    };
+    const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+    button.addEventListener('click', async () => {
+        const confirmation = window.prompt('This permanently removes ALL users, businesses, enquiries and uploaded business assets.\n\nThe admin account and master settings will remain.\n\nType DELETE ALL to continue:');
+        if (confirmation !== 'DELETE ALL') return;
+        button.disabled = true;
+        panel.classList.add('show');
+        try {
+            const start = await post('{{route('admin.clients.registered-users.purge.start')}}', {confirmation});
+            const originalTotal = start.total_users + start.total_businesses;
+            let result = {complete:false,deleted_users:0,deleted_businesses:0,remaining_users:start.total_users,remaining_businesses:start.total_businesses};
+            while (!result.complete) {
+                result = await post('{{route('admin.clients.registered-users.purge.run')}}', {token:start.token});
+                const remaining = result.remaining_users + result.remaining_businesses;
+                const percentage = originalTotal ? Math.min(100, Math.round(((originalTotal - remaining) / originalTotal) * 100)) : 100;
+                bar.style.width = percentage + '%';
+                title.textContent = `Cleaning test data… ${percentage}%`;
+                detail.textContent = `${result.deleted_users} users processed · ${result.deleted_businesses} orphan businesses processed · ${remaining} records remaining. Keep this page open.`;
+                if (!result.complete) await wait(600);
+            }
+            bar.style.width = '100%';
+            title.textContent = 'Cleanup complete';
+            detail.textContent = 'All users, businesses and associated assets were removed. Reloading…';
+            await wait(900);
+            window.location.href = '{{route('admin.clients.registered-users')}}';
+        } catch (error) {
+            title.textContent = 'Cleanup paused';
+            detail.textContent = error.message;
+            button.disabled = false;
+        }
+    });
+})();
+</script>

@@ -175,6 +175,73 @@ class ClientController extends Controller
             ->with('success_message', $displayName.' and all associated business data were permanently deleted.');
     }
 
+    public function startRegisteredUserPurge(Request $request)
+    {
+        $request->validate(['confirmation' => ['required', 'in:DELETE ALL']]);
+        $token = (string) \Illuminate\Support\Str::uuid();
+        $totalUsers = UserMaster::count();
+        $totalBusinesses = CompaniesMaster::count();
+
+        $request->session()->put('registered_user_purge', [
+            'token' => $token,
+            'deleted_users' => 0,
+            'deleted_businesses' => 0,
+            'started_at' => now()->toIso8601String(),
+        ]);
+
+        return response()->json([
+            'token' => $token,
+            'total_users' => $totalUsers,
+            'total_businesses' => $totalBusinesses,
+            'message' => 'Cleanup started. Keep this page open until it finishes.',
+        ]);
+    }
+
+    public function runRegisteredUserPurge(Request $request, MemberDataDeletionService $deletionService)
+    {
+        $request->validate(['token' => ['required', 'uuid']]);
+        $progress = $request->session()->get('registered_user_purge');
+        abort_unless($progress && hash_equals($progress['token'], $request->input('token')), 403);
+
+        try {
+            $users = UserMaster::orderBy('um_id')->limit(2)->get();
+            foreach ($users as $user) {
+                $deletionService->delete($user);
+                $progress['deleted_users']++;
+            }
+
+            if ($users->isEmpty()) {
+                $businesses = CompaniesMaster::whereNotExists(function ($query) {
+                    $query->selectRaw('1')->from('user_companies_map')
+                        ->whereColumn('ucm_cmp_id', 'companies_master.cmp_id');
+                })->orderBy('cmp_id')->limit(2)->get();
+                foreach ($businesses as $business) {
+                    $deletionService->deleteOrphanBusiness($business);
+                    $progress['deleted_businesses']++;
+                }
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Batched member cleanup failed.', ['progress' => $progress, 'exception' => $exception]);
+            return response()->json(['message' => 'Cleanup paused because one record could not be deleted. Check the application log and try again.'], 422);
+        }
+
+        $remainingUsers = UserMaster::count();
+        $remainingBusinesses = CompaniesMaster::count();
+        $complete = $remainingUsers === 0 && $remainingBusinesses === 0;
+        $request->session()->put('registered_user_purge', $progress);
+        if ($complete) {
+            $request->session()->forget('registered_user_purge');
+        }
+
+        return response()->json([
+            'complete' => $complete,
+            'deleted_users' => $progress['deleted_users'],
+            'deleted_businesses' => $progress['deleted_businesses'],
+            'remaining_users' => $remainingUsers,
+            'remaining_businesses' => $remainingBusinesses,
+        ]);
+    }
+
 
     /* edit */
     public function businessEdit(Request $request, $slug = 'business', $id = 0, $uid = null)
