@@ -68,7 +68,8 @@ class BusinessOwnerAccessTest extends TestCase
         $editUrl = route('member.portfolio.edit', $company->portfolioRouteToken());
         $this->actingAs($member, 'member')->get(route('dashboard.index'))
             ->assertOk()->assertSee('My businesses')->assertSee('Linked Member Business')
-            ->assertSee('aria-label="Edit Linked Member Business"', false)->assertSee('Edit →');
+            ->assertSee('aria-label="Edit Linked Member Business"', false)->assertSee('Edit →')
+            ->assertSee('business-priority')->assertSeeInOrder(['Edit my business', 'My profile']);
         $this->actingAs($member, 'member')->get($editUrl)->assertOk();
         $this->actingAs($member, 'member')->get(route('member.businesses.create'))->assertForbidden();
     }
