@@ -88,6 +88,7 @@ Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(fun
     Route::post('admin-dashboard', [DashboardController::class, 'openAdminDashboard'])->name('member.admin-dashboard');
     Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');
     Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');
+    Route::post('dashboard/meetings', [DashboardController::class, 'storeMeeting'])->name('member.meetings.store');
     Route::get('business-owner-membership', [MembershipRequestController::class, 'create'])->name('member.membership.create');
     Route::post('business-owner-membership', [MembershipRequestController::class, 'store'])->name('member.membership.store');
     Route::middleware('business.owner')->group(function () {

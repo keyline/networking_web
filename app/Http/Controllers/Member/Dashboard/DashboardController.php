@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin as AdminAccount;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\Enquiries\EnquiryMaster;
+use App\Models\MemberMeeting;
 use App\Models\UserActivity;
 use App\Models\User\UserMaster;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -149,8 +151,45 @@ class DashboardController extends Controller
             ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
+        $meetingMemberOptions = UserMaster::query()
+            ->with([
+                'userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
+                'companies' => fn ($query) => $query
+                    ->with('details:cmpd_id,cmpd_cmp_id,cmpd_name,cmpd_status')
+                    ->whereHas('details', fn ($details) => $details->where('cmpd_status', 1)),
+            ])
+            ->where('um_status', 2)
+            ->where('um_id', '!=', $member->um_id)
+            ->whereHas('companies.details', fn ($query) => $query->where('cmpd_status', 1))
+            ->get()
+            ->map(function (UserMaster $recipient) {
+                $memberName = trim(($recipient->userDetail?->ud_first_name ?? '').' '.($recipient->userDetail?->ud_last_name ?? ''))
+                    ?: ($recipient->um_user_name ?: 'Member');
+                $businessNames = $recipient->companies->pluck('details.cmpd_name')->filter()->implode(', ');
+
+                return (object) [
+                    'member_id' => $recipient->um_id,
+                    'name' => $memberName,
+                    'label' => $memberName.($businessNames ? ' — '.$businessNames : ''),
+                ];
+            })
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        $recentMeetings = MemberMeeting::query()
+            ->with([
+                'reporter.userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
+                'counterpart.userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
+                'inviter.userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
+            ])
+            ->where(fn ($query) => $query->where('reported_by_um_id', $member->um_id)
+                ->orWhere('counterpart_um_id', $member->um_id))
+            ->latest('meeting_at')
+            ->limit(5)
+            ->get();
+
         return view('Member.Dashboard.index', compact(
-            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions'
+            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
         ));
     }
 
@@ -231,6 +270,79 @@ class DashboardController extends Controller
         });
 
         return back()->with('success', 'Your enquiry has been shared successfully.');
+    }
+
+    public function storeMeeting(Request $request): RedirectResponse
+    {
+        /** @var UserMaster $member */
+        $member = Auth::guard('member')->user();
+        abort_unless((int) $member->um_status === 2 && $member->companies()
+            ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))->exists(), 403);
+
+        $validator = Validator::make($request->all(), [
+            'counterpart_member_id' => ['required', 'integer'],
+            'invited_by' => ['required', 'in:me,other'],
+            'meeting_at' => ['required', 'date'],
+            'mode' => ['required', 'in:in_person,online,phone'],
+            'location' => ['nullable', 'required_if:mode,in_person', 'string', 'max:250'],
+            'details' => ['required', 'string', 'max:2000'],
+            'outcome' => ['nullable', 'string', 'max:2000'],
+            'follow_up_on' => ['nullable', 'date'],
+        ]);
+
+        $validator->after(function ($validator) use ($request, $member) {
+            $counterpartId = (int) $request->input('counterpart_member_id');
+            $eligible = $counterpartId !== (int) $member->um_id && UserMaster::query()
+                ->where('um_id', $counterpartId)
+                ->where('um_status', 2)
+                ->whereHas('companies.details', fn ($query) => $query->where('cmpd_status', 1))
+                ->exists();
+            if (!$eligible) {
+                $validator->errors()->add('counterpart_member_id', 'Choose another active registered member.');
+            }
+            if ($request->filled('meeting_at') && $request->filled('follow_up_on')) {
+                try {
+                    if (\Carbon\Carbon::parse($request->input('follow_up_on'))->startOfDay()
+                        ->lt(\Carbon\Carbon::parse($request->input('meeting_at'))->startOfDay())) {
+                        $validator->errors()->add('follow_up_on', 'The follow-up date must be on or after the meeting date.');
+                    }
+                } catch (\Throwable) {
+                    // The standard date rules will report malformed values.
+                }
+            }
+        });
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput()->with('open_dialog', 'meetingModal');
+        }
+
+        $data = $validator->validated();
+        $meetingAt = \Carbon\Carbon::parse($data['meeting_at'], 'Asia/Kolkata')->utc();
+        $counterpartId = (int) $data['counterpart_member_id'];
+        $duplicate = MemberMeeting::query()
+            ->where('meeting_at', $meetingAt)
+            ->where(function ($query) use ($member, $counterpartId) {
+                $query->where(fn ($pair) => $pair->where('reported_by_um_id', $member->um_id)->where('counterpart_um_id', $counterpartId))
+                    ->orWhere(fn ($pair) => $pair->where('reported_by_um_id', $counterpartId)->where('counterpart_um_id', $member->um_id));
+            })->exists();
+        if ($duplicate) {
+            return back()->withErrors(['meeting_at' => 'This one-to-one meeting has already been registered.'])
+                ->withInput()->with('open_dialog', 'meetingModal');
+        }
+
+        MemberMeeting::create([
+            'reported_by_um_id' => $member->um_id,
+            'counterpart_um_id' => $counterpartId,
+            'invited_by_um_id' => $data['invited_by'] === 'me' ? $member->um_id : $counterpartId,
+            'meeting_at' => $meetingAt,
+            'mode' => $data['mode'],
+            'location' => $data['location'] ?? null,
+            'details' => $data['details'],
+            'outcome' => $data['outcome'] ?? null,
+            'follow_up_on' => $data['follow_up_on'] ?? null,
+        ]);
+
+        return back()->with('success', 'One-to-one member meeting registered successfully.');
     }
 
     public function storeReferral(Request $request): RedirectResponse
