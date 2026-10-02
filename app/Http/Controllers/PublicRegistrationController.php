@@ -45,7 +45,7 @@ class PublicRegistrationController extends Controller
             'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'unique:user_master,um_mobile_no'],
             'whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
             'business_name' => ['required', 'string', 'max:255'],
-            'category_ids' => ['required', 'array', 'min:1', 'max:5'],
+            'category_ids' => ['required', 'array', 'min:1', 'max:3'],
             'category_ids.*' => ['integer', 'distinct', 'exists:business_category_master,bcm_id'],
             'business_email' => ['nullable', 'email:rfc', 'max:255'],
             'business_phone' => ['nullable', 'string', 'max:15'],

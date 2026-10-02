@@ -47,7 +47,7 @@ class BusinessPortfolioController extends Controller
         $this->authorizeOwner($request, $company);
         $data = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
-            'category_ids' => ['required', 'array', 'min:1', 'max:5'],
+            'category_ids' => ['required', 'array', 'min:1', 'max:3'],
             'category_ids.*' => ['integer', 'distinct', 'exists:business_category_master,bcm_id'],
             'business_email' => ['nullable', 'email', 'max:255'],
             'business_phone' => ['nullable', 'string', 'max:15'],

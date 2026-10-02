@@ -25,7 +25,7 @@ class MemberBusinessPortfolioTest extends TestCase
         $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
 
         $this->assertStringNotContainsString('/'.$company->cmp_id.'/portfolio', route('member.portfolio.edit', $token));
-        $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', $token))->assertOk()->assertSeeText('Business identity');
+        $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', $token))->assertOk()->assertSeeText('Business identity')->assertSee('Search categories')->assertSee('Choose up to three categories');
         $this->actingAs($other, 'member')->get(route('member.portfolio.edit', $token))->assertForbidden();
         $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', '192'))->assertNotFound();
 
@@ -56,6 +56,18 @@ class MemberBusinessPortfolioTest extends TestCase
             ->assertSee('Last published')
             ->assertSee($portfolio->published_at->timezone('Asia/Kolkata')->format('d M Y, h:i A'));
         $this->get(route('business.show', 'updated-business-name'))->assertOk()->assertSee('Business consulting')->assertSee('youtube-nocookie.com', false);
+    }
+
+    public function test_member_can_select_no_more_than_three_business_categories(): void
+    {
+        [$owner, $company] = $this->business('three-category-limit');
+        $categoryIds = BusinessCategoryMaster::where('status', 1)->orderBy('bcm_id')->limit(4)->pluck('bcm_id')->all();
+        $this->assertCount(4, $categoryIds);
+
+        $this->actingAs($owner, 'member')->put(route('member.portfolio.update', $company->portfolioRouteToken()), [
+            'business_name' => 'Three Category Limit',
+            'category_ids' => $categoryIds,
+        ])->assertSessionHasErrors('category_ids');
     }
 
     public function test_gallery_upload_is_compressed_below_two_hundred_kilobytes(): void
