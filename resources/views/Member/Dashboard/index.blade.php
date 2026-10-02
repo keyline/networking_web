@@ -11,6 +11,8 @@
         .brand{display:inline-flex;align-items:center}.brand img{display:block;max-width:180px;max-height:48px}.admin-dashboard-form{margin:0}.admin-dashboard-link{height:36px;padding:0 13px;border:1px solid #c8d8f3;border-radius:9px;background:#f3f7ff;color:#2769df;font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}@media(max-width:560px){.admin-dashboard-link{width:36px;padding:0;font-size:0}.admin-dashboard-link::before{content:'⚙';font-size:16px}}
         dialog.meeting-dialog{max-height:min(760px,calc(100vh - 28px));overflow:hidden}.meeting-dialog form{display:flex;max-height:inherit;flex-direction:column}.meeting-dialog .modal-body{overflow-y:auto}.radio-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.radio-choice{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:9px;cursor:pointer}.radio-choice:has(input:checked){border-color:var(--blue);background:var(--blue-soft);color:#245fc4}.radio-choice input{width:auto;margin:0}.meeting-meta{display:flex;flex-wrap:wrap;gap:5px 10px;margin-top:6px;color:var(--muted);font-size:11px}.meeting-details{white-space:normal!important;line-height:1.45}.form-help{color:var(--muted);font-size:11px;line-height:1.45}@media(max-width:560px){dialog.meeting-dialog{width:calc(100% - 20px)}.meeting-dialog .modal-head,.meeting-dialog .modal-body,.meeting-dialog .modal-foot{padding-left:15px;padding-right:15px}.radio-row{grid-template-columns:1fr}}
         .dashboard-sidebar{display:grid;align-content:start;gap:10px}.dashboard-sidebar .section-gap{margin-top:0}.dashboard-sidebar .card{border-radius:12px;box-shadow:0 5px 16px rgba(35,55,88,.045)}.dashboard-sidebar .card-head{padding:11px 13px;gap:9px}.dashboard-sidebar .card-head h2{font-size:14px;line-height:1.25}.dashboard-sidebar .card-head p{margin-top:2px;font-size:10px;line-height:1.35}.dashboard-sidebar .card-head .btn{height:32px;padding:0 10px;border-radius:8px;font-size:11px}.dashboard-sidebar .card-body{padding:11px 13px}.dashboard-sidebar .profile{gap:6px}.dashboard-sidebar .profile-row{padding:0 0 6px}.dashboard-sidebar .profile-row:last-child{padding-bottom:0;border-bottom:0}.dashboard-sidebar .profile-row span,.dashboard-sidebar .profile-row strong{font-size:11px}.dashboard-sidebar .business-list,.dashboard-sidebar .feed{gap:6px}.dashboard-sidebar .business{gap:9px;padding:8px;border-radius:9px}.dashboard-sidebar .logo{width:34px;height:34px;flex-basis:34px;border-radius:8px;font-size:11px}.dashboard-sidebar .business h3{margin-bottom:2px;font-size:12px;line-height:1.25}.dashboard-sidebar .business p,.dashboard-sidebar .business .link,.dashboard-sidebar .business .edit-hint{font-size:10px}.dashboard-sidebar .feed-item{padding:8px 0}.dashboard-sidebar .feed-item h3{font-size:12px}.dashboard-sidebar .feed-item p{margin-top:3px;font-size:10px;line-height:1.35}.dashboard-sidebar .meeting-meta{gap:3px 8px;margin-top:4px;font-size:9px}.dashboard-sidebar .request-contact{gap:4px 8px;margin-top:5px;padding-top:5px;font-size:9px}.dashboard-sidebar .pill{padding:4px 7px;font-size:8px}.dashboard-sidebar .empty{padding:13px 8px;font-size:11px}@media(max-width:900px){.dashboard-sidebar{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.dashboard-sidebar .card{min-width:0}}@media(max-width:620px){.dashboard-sidebar{grid-template-columns:1fr}}
+        .hero + .grid{margin-top:18px}
+        .interactions-card{border-radius:12px;box-shadow:0 5px 16px rgba(35,55,88,.045)}.interactions-card .card-head{padding:11px 14px}.interactions-card .card-head h2{font-size:14px;line-height:1.25}.interactions-card .card-head p{margin-top:2px;font-size:10px;line-height:1.35}.interactions-card .card-body{max-height:190px;overflow-y:auto;padding:5px 14px;scrollbar-width:thin}.interactions-card .feed-item{padding:8px 0}.interactions-card .feed-item h3{font-size:12px}.interactions-card .feed-item p{margin-top:3px;font-size:10px;line-height:1.35}.interactions-card .request-contact{gap:4px 10px;margin-top:5px;padding-top:5px;font-size:9px}.interactions-card .pill{padding:4px 7px;font-size:8px}.interactions-card .empty{padding:13px 8px;font-size:11px}
     </style>
 </head>
 <body>
@@ -37,15 +39,8 @@
 
         <section class="hero">
             <div><div class="eyebrow">Your networking workspace</div><h1>Good to see you, {{ explode(' ', $displayName)[0] }}.</h1><p>Discover trusted businesses, ask the community for help, and turn useful introductions into new opportunities.</p></div>
-            <div class="hero-actions"><button class="btn btn-light" data-open="enquiryModal">Post an enquiry</button><button class="btn btn-primary" data-open="referralModal">Share a reference</button></div>
+            <div class="hero-actions"><button class="btn btn-light" data-open="reviewModal">Write a review</button><button class="btn btn-primary" data-open="referralModal">Share a reference</button></div>
         </section>
-
-        <nav class="quick" aria-label="Quick actions">
-            @if($hasBusinesses)<button data-open="meetingModal"><span class="icon">◷</span><span><strong>Register a meeting</strong><small>Record a one-to-one member meeting</small></span></button>@else<a href="#directory"><span class="icon">⌕</span><span><strong>Find connections</strong><small>People and businesses</small></span></a>@endif
-            <button data-open="referralModal"><span class="icon">↗</span><span><strong>Give a reference</strong><small>Connect someone trusted</small></span></button>
-            <button data-open="reviewModal"><span class="icon">★</span><span><strong>Write a review</strong><small>Rate a member business</small></span></button>
-            <a href="{{ $hasBusinesses ? '#my-business' : route('member.membership.create') }}"><span class="icon">⌂</span><span><strong>{{ $hasBusinesses ? 'My businesses' : 'Become a Business Owner' }}</strong><small>{{ $hasBusinesses ? 'Review and edit your listings' : 'Choose a plan and submit payment' }}</small></span></a>
-        </nav>
 
         <div class="grid">
             <div>
@@ -74,7 +69,7 @@
                 </section>
 
                 @if($hasBusinesses)
-                <section class="card section-gap">
+                <section class="card section-gap interactions-card">
                     <div class="card-head"><div><h2>Recent business interactions</h2><p>Registered users who viewed or contacted your businesses.</p></div></div>
                     <div class="card-body feed">
                         @forelse($recentInteractions as $interaction)

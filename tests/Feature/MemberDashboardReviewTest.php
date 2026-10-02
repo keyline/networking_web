@@ -27,9 +27,11 @@ class MemberDashboardReviewTest extends TestCase
 
         $this->actingAs($reviewer, 'member')->get(route('dashboard.index'))
             ->assertOk()
-            ->assertSee('Give a reference')
-            ->assertSee('Write a review')
+            ->assertSee('data-open="reviewModal">Write a review</button>', false)
+            ->assertSee('data-open="referralModal">Share a reference</button>', false)
             ->assertSee('Review Target Business')
+            ->assertDontSee('data-open="enquiryModal">Post an enquiry</button>', false)
+            ->assertDontSee('aria-label="Quick actions"', false)
             ->assertDontSee('Ask the network');
 
         $this->actingAs($reviewer, 'member')->post(route('member.reviews.store'), [

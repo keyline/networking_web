@@ -22,7 +22,7 @@ class MemberMeetingRegistrationTest extends TestCase
 
         $this->actingAs($reporter, 'member')->get(route('dashboard.index'))
             ->assertOk()
-            ->assertSee('Register a meeting')
+            ->assertSee('data-open="meetingModal">Register</button>', false)
             ->assertSee('Register member meeting')
             ->assertSee('Meeting Counterpart');
 
@@ -63,7 +63,10 @@ class MemberMeetingRegistrationTest extends TestCase
         $counterpart = $this->businessMember('meeting-member', '9100000104');
 
         $this->actingAs($guest, 'member')->get(route('dashboard.index'))
-            ->assertOk()->assertDontSee('Register a meeting')->assertSee('Find connections');
+            ->assertOk()
+            ->assertDontSee('Register a meeting')
+            ->assertDontSee('aria-label="Quick actions"', false)
+            ->assertSee('Find people');
 
         $this->actingAs($guest, 'member')->post(route('member.meetings.store'), [
             'counterpart_member_id' => $counterpart->um_id,
