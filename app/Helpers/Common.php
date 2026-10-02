@@ -44,6 +44,7 @@ if (!function_exists('getBusinessRating')) {
 
 
 
+
 if (!function_exists('userType')) {
     function userType(?int $userId)
     {
