@@ -24,6 +24,16 @@ class CompaniesDetail extends Model
 
     protected $guarded = [];
 
+    /**
+     * Internal setup copy must never be presented as a public business description.
+     */
+    private const SETUP_DESCRIPTIONS = [
+        'business profile submitted for approval',
+        'business profile pending approval',
+        'business profile awaiting completion by the member',
+        'business profile created by the super administrator',
+    ];
+
     protected static function booted(): void
     {
         static::creating(function (CompaniesDetail $business) {
@@ -67,6 +77,21 @@ class CompaniesDetail extends Model
         $this->saveQuietly();
 
         return $this->public_slug;
+    }
+
+    public static function isSetupDescription(?string $description): bool
+    {
+        $normalized = Str::lower(trim(strip_tags((string) $description)));
+        $normalized = rtrim($normalized, ". \t\n\r\0\x0B");
+
+        return $normalized === '' || in_array($normalized, self::SETUP_DESCRIPTIONS, true);
+    }
+
+    public function getPublicDescriptionAttribute(): ?string
+    {
+        return static::isSetupDescription($this->cmpd_description)
+            ? null
+            : $this->cmpd_description;
     }
 
 

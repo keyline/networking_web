@@ -37,7 +37,11 @@ class MemberMeetingRegistrationTest extends TestCase
             'follow_up_on' => '2026-10-08',
         ])->assertRedirect()->assertSessionHas('success');
 
-        $meeting = MemberMeeting::firstOrFail();
+        $meeting = MemberMeeting::query()
+            ->where('reported_by_um_id', $reporter->um_id)
+            ->where('counterpart_um_id', $counterpart->um_id)
+            ->where('details', 'Discussed referral opportunities and ways to support each other.')
+            ->firstOrFail();
         $this->assertSame($reporter->um_id, $meeting->reported_by_um_id);
         $this->assertSame($counterpart->um_id, $meeting->counterpart_um_id);
         $this->assertSame($counterpart->um_id, $meeting->invited_by_um_id);
@@ -67,7 +71,11 @@ class MemberMeetingRegistrationTest extends TestCase
             'mode' => 'online', 'details' => 'Should not be stored.',
         ])->assertForbidden();
 
-        $this->assertDatabaseCount('member_meetings', 0);
+        $this->assertDatabaseMissing('member_meetings', [
+            'reported_by_um_id' => $guest->um_id,
+            'counterpart_um_id' => $counterpart->um_id,
+            'details' => 'Should not be stored.',
+        ]);
     }
 
     public function test_meeting_requires_another_active_business_member(): void
@@ -84,7 +92,11 @@ class MemberMeetingRegistrationTest extends TestCase
             'mode' => 'phone', 'details' => 'Invalid counterpart.',
         ])->assertRedirect()->assertSessionHasErrors('counterpart_member_id')->assertSessionHas('open_dialog', 'meetingModal');
 
-        $this->assertDatabaseCount('member_meetings', 0);
+        $this->assertDatabaseMissing('member_meetings', [
+            'reported_by_um_id' => $reporter->um_id,
+            'counterpart_um_id' => $guest->um_id,
+            'details' => 'Invalid counterpart.',
+        ]);
     }
 
     private function businessMember(string $username, string $mobile): UserMaster

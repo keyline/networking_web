@@ -100,6 +100,17 @@ class PublicBusinessController extends Controller
         $social = DB::table('company_sociallink')->where('cs_cmp_id', $business->cmpd_cmp_id)->first();
         $portfolioModel = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->where('is_published', true)->first();
         $portfolio = $portfolioModel?->published_snapshot;
+        $publishedAbout = trim((string) ($portfolio['about'] ?? $business->cmpd_description));
+        $aboutText = CompaniesDetail::isSetupDescription($publishedAbout) ? null : $publishedAbout;
+
+        $signedInMember = Auth::guard('member')->user();
+        $isBusinessOwner = $signedInMember
+            && $business->companies->users->contains(
+                fn (UserMaster $owner) => (int) $owner->um_id === (int) $signedInMember->um_id
+            );
+        $aboutEditUrl = $isBusinessOwner
+            ? route('member.portfolio.edit', $business->companies->portfolioRouteToken()).'?focus=about#profile'
+            : null;
 
         $activeReviews = $business->reviews()->where('status', 1);
         $reviewCount = (clone $activeReviews)->count();
@@ -121,7 +132,10 @@ class PublicBusinessController extends Controller
             'reviews',
             'reviewCount',
             'reviewAverage',
-            'isActive'
+            'isActive',
+            'aboutText',
+            'isBusinessOwner',
+            'aboutEditUrl'
         ));
     }
 

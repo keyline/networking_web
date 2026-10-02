@@ -71,7 +71,7 @@ class PublicBusinessProfileTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('Register to connect')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Register as guest')->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
+        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('A useful company.')->assertSee('Register to connect')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Register as guest')->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
 
         $visitor = UserMaster::create(['um_utm_id' => 1, 'um_user_name' => 'visitor', 'um_email_id' => 'visitor@example.test', 'um_mobile_no' => '9123409876', 'um_status' => 2]);
         $this->actingAs($visitor, 'member')->get(route('business.show', 'example-business'))
@@ -111,6 +111,71 @@ class PublicBusinessProfileTest extends TestCase
             'message' => 'Please call me about this service.',
         ])->assertRedirect(route('business.show', 'example-business'));
         $this->assertDatabaseHas('enquiry_master', ['enm_name' => 'Product Buyer', 'enm_subject' => 'Enquiry about Tax consulting']);
+    }
+
+    public function test_setup_description_is_hidden_from_visitors_but_owner_can_open_the_about_editor(): void
+    {
+        $owner = UserMaster::create([
+            'um_utm_id' => 2,
+            'um_user_name' => 'EN000099',
+            'um_email_id' => 'profile-owner@example.test',
+            'um_mobile_no' => '9876500099',
+            'um_status' => 2,
+        ]);
+        $visitor = UserMaster::create([
+            'um_utm_id' => 1,
+            'um_user_name' => 'GU000099',
+            'um_email_id' => 'profile-visitor@example.test',
+            'um_mobile_no' => '9876500088',
+            'um_status' => 2,
+        ]);
+        $company = CompaniesMaster::create([]);
+        $business = CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id,
+            'cmpd_name' => 'Setup Description Business',
+            'public_slug' => 'setup-description-business',
+            'cmpd_description' => 'Business profile submitted for approval.',
+            'cmpd_status' => 1,
+            'cmpd_is_document_valid' => '1',
+        ]);
+        DB::table('user_companies_map')->insert([
+            'ucm_cmp_id' => $company->cmp_id,
+            'ucm_um_id' => $owner->um_id,
+        ]);
+        BusinessPortfolio::create([
+            'company_id' => $company->cmp_id,
+            'is_published' => true,
+            'published_snapshot' => [
+                'about' => 'Business profile submitted for approval.',
+                'items' => [],
+                'media' => [],
+            ],
+        ]);
+
+        $this->get(route('business.show', $business->public_slug))
+            ->assertOk()
+            ->assertDontSee('Business profile submitted for approval.')
+            ->assertDontSee('Complete your About section');
+
+        $this->actingAs($visitor, 'member')
+            ->get(route('business.show', $business->public_slug))
+            ->assertOk()
+            ->assertDontSee('Business profile submitted for approval.')
+            ->assertDontSee('Complete your About section');
+
+        $this->actingAs($owner, 'member')
+            ->get(route('business.show', $business->public_slug))
+            ->assertOk()
+            ->assertDontSee('Business profile submitted for approval.')
+            ->assertSee('Private owner preview')
+            ->assertSee('Complete your About section')
+            ->assertSee('Edit About section')
+            ->assertSee('?focus=about#profile', false);
+
+        $this->get(route('members.index', ['search' => 'Setup Description Business']))
+            ->assertOk()
+            ->assertSee('Setup Description Business')
+            ->assertDontSee('Business profile submitted for approval.');
     }
 
     public function test_members_directory_lists_businesses_without_member_names(): void

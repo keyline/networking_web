@@ -7,6 +7,7 @@ use App\Models\Admin as AdminAccount;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\Enquiries\EnquiryMaster;
 use App\Models\MemberMeeting;
+use App\Models\Review\ReviewMaster;
 use App\Models\UserActivity;
 use App\Models\User\UserMaster;
 use Illuminate\Http\RedirectResponse;
@@ -122,6 +123,18 @@ class DashboardController extends Controller
             ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
             ->orderBy('cmp_id')->get();
 
+        $reviewedBusinessIds = ReviewMaster::query()
+            ->where('rev_um_id', $member->um_id)
+            ->pluck('rev_cmp_id');
+        $reviewBusinessOptions = CompaniesMaster::query()
+            ->with('details:cmpd_id,cmpd_cmp_id,cmpd_name,cmpd_status')
+            ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
+            ->whereDoesntHave('users', fn ($query) => $query->where('user_master.um_id', $member->um_id))
+            ->when($reviewedBusinessIds->isNotEmpty(), fn ($query) => $query->whereNotIn('cmp_id', $reviewedBusinessIds))
+            ->get()
+            ->sortBy(fn (CompaniesMaster $business) => $business->details?->cmpd_name ?? '', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
         $memberOptions = UserMaster::query()
             ->with([
                 'userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
@@ -139,12 +152,12 @@ class DashboardController extends Controller
 
                 return $recipient->companies->map(function (CompaniesMaster $business) use ($recipient, $memberName) {
                     $businessName = $business->details?->cmpd_name ?: 'Business #'.$business->cmp_id;
-                    $categoryName = $business->categories->first()?->name ?: 'Unclassified';
+                    $categoryNames = $business->categories->pluck('name')->filter()->implode(', ') ?: 'Unclassified';
 
                     return (object) [
                         'member_id' => $recipient->um_id,
                         'company_id' => $business->cmp_id,
-                        'label' => "{$memberName} - {$businessName} ({$categoryName})",
+                        'label' => "{$memberName} - {$businessName} ({$categoryNames})",
                     ];
                 });
             })
@@ -189,7 +202,7 @@ class DashboardController extends Controller
             ->get();
 
         return view('Member.Dashboard.index', compact(
-            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
+            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'reviewBusinessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
         ));
     }
 
@@ -345,28 +358,82 @@ class DashboardController extends Controller
         return back()->with('success', 'One-to-one member meeting registered successfully.');
     }
 
+    public function storeReview(Request $request): RedirectResponse
+    {
+        /** @var UserMaster $member */
+        $member = Auth::guard('member')->user();
+        $validator = Validator::make($request->all(), [
+            'company_id' => ['required', 'integer'],
+            'rating' => ['required', 'integer', 'between:1,5'],
+            'comment' => ['required', 'string', 'min:3', 'max:1000'],
+        ]);
+
+        $validator->after(function ($validator) use ($request, $member) {
+            $companyId = (int) $request->input('company_id');
+            $eligible = CompaniesMaster::query()
+                ->where('cmp_id', $companyId)
+                ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
+                ->whereDoesntHave('users', fn ($query) => $query->where('user_master.um_id', $member->um_id))
+                ->exists();
+            if (!$eligible) {
+                $validator->errors()->add('company_id', 'Choose an active business that you do not own.');
+            }
+            if (ReviewMaster::query()->where('rev_um_id', $member->um_id)->where('rev_cmp_id', $companyId)->exists()) {
+                $validator->errors()->add('company_id', 'You have already reviewed this business.');
+            }
+        });
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput()->with('open_dialog', 'reviewModal');
+        }
+
+        $data = $validator->validated();
+        ReviewMaster::create([
+            'rev_cmp_id' => $data['company_id'],
+            'rev_um_id' => $member->um_id,
+            'rev_rating' => $data['rating'],
+            'rev_comment' => $data['comment'],
+            'status' => 1,
+        ]);
+
+        return back()->with('success', 'Your review has been published successfully.');
+    }
+
     public function storeReferral(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'company_id' => ['required', 'integer', 'exists:companies_master,cmp_id'],
+        $validator = Validator::make($request->all(), [
+            'audience' => ['required', 'in:all_members,individual'],
+            'referral_company_id' => ['nullable', 'integer', 'exists:companies_master,cmp_id'],
             'name' => ['required', 'string', 'max:250'],
             'email' => ['nullable', 'email', 'max:250'],
             'phone' => ['required', 'string', 'max:30'],
             'note' => ['required', 'string', 'max:2000'],
         ]);
 
+        $validator->after(function ($validator) use ($request) {
+            if ($request->input('audience') === 'individual' && !$request->filled('referral_company_id')) {
+                $validator->errors()->add('referral_company_id', 'Choose a business for an individual reference.');
+            }
+        });
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput()->with('open_dialog', 'referralModal');
+        }
+
+        $data = $validator->validated();
+
         /** @var UserMaster $member */
         $member = Auth::guard('member')->user();
 
         DB::transaction(function () use ($data, $member) {
             $enquiry = EnquiryMaster::create([
-                'enm_name' => $data['name'], 'enm_email' => $data['email'], 'enm_phone' => $data['phone'],
+                'enm_name' => $data['name'], 'enm_email' => $data['email'] ?? null, 'enm_phone' => $data['phone'],
                 'enm_subject' => 'Member referral', 'enm_description' => $data['note'],
-                'enm_type' => 1, 'enm_is_myself' => 0, 'enm_status' => 1,
+                'enm_type' => $data['audience'] === 'all_members' ? 2 : 1, 'enm_is_myself' => 0, 'enm_status' => 1,
             ]);
 
             DB::table('enquiry_to_user')->insert([
-                'etu_cmp_id' => $data['company_id'], 'etu_enm_id' => $enquiry->enm_id,
+                'etu_cmp_id' => $data['audience'] === 'individual' ? $data['referral_company_id'] : 0, 'etu_enm_id' => $enquiry->enm_id,
                 'etu_um_id' => $member->um_id, 'etu_created_at' => now(),
             ]);
         });
