@@ -19,6 +19,7 @@ class AdminAccessController extends Controller
         $users = UserMaster::query()
             ->with('userDetail')
             ->where('um_status', 2)
+            ->whereHas('companies')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('um_email_id', 'like', "%{$search}%")
@@ -36,16 +37,19 @@ class AdminAccessController extends Controller
 
         $assigned = Admin::query()
             ->whereNotNull('user_master_id')
+            ->whereIn('user_master_id', UserMaster::query()
+                ->where('um_status', 2)
+                ->whereHas('companies')
+                ->select('um_id'))
             ->get()
             ->keyBy('user_master_id');
 
         $data = compact('users', 'assigned', 'search');
-        echo $this->admin_after_login_layout('Admin Access', 'admin-access', $data);
+        return $this->admin_after_login_layout('Admin Access', 'admin-access', $data);
     }
 
     public function toggle(Request $request, UserMaster $user): RedirectResponse
     {
-        abort_unless((int) $user->um_status === 2, 422, 'Approve the member account before granting admin access.');
         $data = $request->validate(['enabled' => ['required', 'boolean']]);
         $existing = Admin::query()
             ->where('user_master_id', $user->um_id)
@@ -64,6 +68,12 @@ class AdminAccessController extends Controller
 
             return back()->with('success_message', 'Admin access revoked.');
         }
+
+        abort_unless(
+            (int) $user->um_status === 2 && $user->companies()->exists(),
+            422,
+            'Only an approved member with a linked business can receive admin access.'
+        );
 
         $name = trim(($user->userDetail?->ud_first_name ?? '').' '.($user->userDetail?->ud_last_name ?? ''))
             ?: ($user->um_user_name ?: $user->um_email_id);

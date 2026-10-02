@@ -45,7 +45,7 @@ class PublicBusinessProfileTest extends TestCase
         $this->assertSame('another-business', $second->fresh()->public_slug);
     }
 
-    public function test_anyone_can_view_active_business_and_send_a_lead(): void
+    public function test_anyone_can_view_business_but_only_registered_users_can_see_contacts_and_connect(): void
     {
         Notification::fake();
         $owner = UserMaster::create(['um_utm_id' => 2, 'um_user_name' => 'EN000001', 'um_email_id' => 'owner@example.test', 'um_mobile_no' => '9876543210', 'um_status' => 2]);
@@ -71,9 +71,9 @@ class PublicBusinessProfileTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('Send enquiry')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Sign in to view contact details')->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
+        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('Register to connect')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Register as guest')->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
 
-        $visitor = UserMaster::create(['um_utm_id' => 3, 'um_user_name' => 'visitor', 'um_email_id' => 'visitor@example.test', 'um_mobile_no' => '9123409876', 'um_status' => 2]);
+        $visitor = UserMaster::create(['um_utm_id' => 1, 'um_user_name' => 'visitor', 'um_email_id' => 'visitor@example.test', 'um_mobile_no' => '9123409876', 'um_status' => 2]);
         $this->actingAs($visitor, 'member')->get(route('business.show', 'example-business'))
             ->assertOk()
             ->assertSee('business@example.test')
@@ -84,7 +84,16 @@ class PublicBusinessProfileTest extends TestCase
             ->assertSee('Email enquiry')
             ->assertSee('I%20want%20to%20know%20more%20about%20this%3A%20Tax%20consulting', false)
             ->assertSee('business-portfolios%2Fexample%2Fofferings%2Ftax-consulting.jpg', false)
-            ->assertSee('wa.me/919876543210', false);
+            ->assertSee(route('business.contact', ['example-business', 'whatsapp']), false);
+
+        $this->get(route('business.contact', ['example-business', 'call']))
+            ->assertRedirect('tel:9876501234');
+        $this->assertDatabaseHas('business_analytics_events', [
+            'bae_cmp_id' => $company->cmp_id,
+            'bae_event_type' => 'call',
+            'bae_um_id' => $visitor->um_id,
+            'bae_source' => 'WEB',
+        ]);
 
         $response = $this->post(route('business.lead', 'example-business'), [
             'name' => 'Prospective Customer', 'email' => 'lead@example.test', 'phone' => '9123456789',

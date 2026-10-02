@@ -47,9 +47,14 @@ class MemberBusinessPortfolioTest extends TestCase
 
         $portfolio = BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail();
         $this->assertTrue($portfolio->is_published);
+        $this->assertNotNull($portfolio->published_at);
         $this->assertSame('Trusted business services', $portfolio->published_snapshot['tagline']);
         $this->assertDatabaseHas('companies_details', ['cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Updated Business Name', 'cmpd_gst_no' => '19ABCDE1234F1Z5']);
         $this->assertDatabaseHas('categories_to_companies', ['ctc_cmp_id' => $company->cmp_id, 'ctc_bcm_id' => $category->bcm_id]);
+        $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', $token))
+            ->assertOk()
+            ->assertSee('Last published')
+            ->assertSee($portfolio->published_at->timezone('Asia/Kolkata')->format('d M Y, h:i A'));
         $this->get(route('business.show', 'updated-business-name'))->assertOk()->assertSee('Business consulting')->assertSee('youtube-nocookie.com', false);
     }
 

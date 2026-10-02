@@ -7,6 +7,7 @@ $pageSegment = $pageName[1];
 $pageFunction = count($pageName) > 2 ? $pageName[2] : '';
 
 $parameters = $routeName->parameters();
+$memberDelegatedAdmin = session('admin_login_source') === 'member_dashboard';
 // dd($parameters);
 // if(!empty($parameters)){
 //   if (array_key_exists("id1",$parameters)){
@@ -262,6 +263,7 @@ if ($pageSegment == 'orders') {
                 </div>
                 <!-- End page -->
 
+                @unless($memberDelegatedAdmin)
                 <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'bulk-imports' ? 'active' : '' ?>"
                         href="<?= url('admin/bulk-imports') ?>" data-placement="left">
@@ -286,6 +288,7 @@ if ($pageSegment == 'orders') {
                         <span class="nav-link-title">Chapters</span>
                     </a>
                 </div>
+                @endunless
                 <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'events' ? 'active' : '' ?>"
                         href="<?= url('admin/events') ?>" data-placement="left">
@@ -301,6 +304,7 @@ if ($pageSegment == 'orders') {
                     </a>
                 </div>
 
+                @unless($memberDelegatedAdmin)
                 <!-- business analytics -->
                 <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'analytics' ? 'active' : '' ?>"
@@ -337,6 +341,7 @@ if ($pageSegment == 'orders') {
                     </a>
                 </div>
                 <!-- End login logs -->
+                @endunless
                 <?php if (($admin->type ?? null) === 'ma') { ?>
                 <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'admin-access' ? 'active' : '' ?>"
@@ -346,6 +351,7 @@ if ($pageSegment == 'orders') {
                     </a>
                 </div>
                 <?php } ?>
+                @unless($memberDelegatedAdmin)
                 <!-- settings -->
                 <div class="nav-item">
                     <a class="nav-link <?= $pageSegment == 'settings' ? 'active' : '' ?>"
@@ -355,6 +361,7 @@ if ($pageSegment == 'orders') {
                     </a>
                 </div>
                 <!-- End settings -->
+                @endunless
             </div>
         </div>
         <!-- End Content -->

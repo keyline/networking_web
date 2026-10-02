@@ -57,9 +57,36 @@ use App\Helpers\Helper;
   .node:hover {
       background: #e0e0e0;
   }
+
+  .join-control {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+      padding: 20px 22px;
+      border: 1px solid #e3e9f2;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(33, 55, 90, .05);
+  }
+  .join-control-copy h2 { margin: 0 0 5px; color: #17233c; font-size: 18px; }
+  .join-control-copy p { margin: 0; color: #71809a; }
+  .join-control-copy a { font-weight: 700; }
+  .join-control-form { display: flex; align-items: center; gap: 12px; }
+  .join-control-form input[type="text"] { width: min(420px, 32vw); height: 42px; border: 1px solid #d8e0ec; border-radius: 9px; padding: 0 13px; }
+  .join-switch { display: inline-flex; align-items: center; gap: 10px; margin: 0; cursor: pointer; white-space: nowrap; color: #53637d; font-weight: 700; }
+  .join-switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .join-switch-track { position: relative; width: 50px; height: 28px; border-radius: 999px; background: #c8d0dc; transition: background .2s; }
+  .join-switch-track::after { content: ''; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.18); transition: transform .2s; }
+  .join-switch input:checked + .join-switch-track { background: #397cf6; }
+  .join-switch input:checked + .join-switch-track::after { transform: translateX(22px); }
+  .join-control-form button { height: 42px; border: 0; border-radius: 9px; padding: 0 18px; background: #397cf6; color: #fff; font-weight: 750; }
+  .pending-card{margin:0 0 26px;border:1px solid #e3e9f2;border-radius:14px;background:#fff;box-shadow:0 8px 24px rgba(33,55,90,.05);overflow:hidden}.pending-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;border-bottom:1px solid #e8edf4}.pending-head h2{margin:0;color:#17233c;font-size:18px}.pending-head p{margin:4px 0 0;color:#71809a;font-size:12px}.pending-count{padding:6px 10px;border-radius:999px;background:#fff5df;color:#a86700;font-size:11px;font-weight:800}.pending-table-wrap{overflow-x:auto}.pending-table{width:100%;border-collapse:collapse}.pending-table th{padding:11px 14px;background:#f7f9fc;color:#738099;text-align:left;text-transform:uppercase;letter-spacing:.05em;font-size:10px}.pending-table td{padding:13px 14px;border-top:1px solid #edf1f5;color:#34415a;vertical-align:middle;font-size:12px}.pending-name{color:#17233c;font-weight:800}.pending-meta{margin-top:3px;color:#7b8798;font-size:11px}.pending-business{font-weight:700}.pending-badge{display:inline-flex;margin-left:5px;padding:4px 7px;border-radius:999px;background:#fff5df;color:#a86700;font-size:9px;font-weight:800;text-transform:uppercase}.pending-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.pending-actions form{margin:0}.pending-button{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 11px;border:1px solid #b8e2cf;border-radius:8px;background:#e9f8f1;color:#13845b;font:inherit;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}.pending-button.business{border-color:#cbdaf5;background:#f3f7ff;color:#2769df}.pending-button:disabled{border-color:#e1e5eb;background:#f3f4f6;color:#98a2b3;cursor:not-allowed}.pending-empty{padding:32px;text-align:center;color:#71809a}
+  .pending-button.review{justify-content:center;border-color:#cbdaf5;background:#fff;color:#2769df}.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.review-card{padding:15px;border:1px solid #e3e9f2;border-radius:10px;background:#f9fbfd}.review-card.full{grid-column:1/-1}.review-card h3{margin:0 0 12px;color:#17233c;font-size:15px}.review-detail{display:grid;grid-template-columns:125px minmax(0,1fr);gap:7px;padding:7px 0;border-top:1px solid #e8edf4;font-size:12px}.review-detail:first-of-type{border-top:0}.review-detail span{color:#71809a}.review-detail strong{color:#34415a;overflow-wrap:anywhere}.review-description{white-space:pre-line;line-height:1.55}.review-approval{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding-top:14px;margin-top:14px;border-top:1px solid #e3e9f2}.review-sequence{margin-right:auto;color:#71809a;font-size:11px}.review-business+.review-business{margin-top:14px;padding-top:14px;border-top:1px solid #dfe6ef}@media(max-width:700px){.review-grid{grid-template-columns:1fr}.review-card.full{grid-column:auto}.review-detail{grid-template-columns:1fr;gap:2px}}
+  @media(max-width: 900px) { .join-control { align-items: stretch; flex-direction: column; } .join-control-form { align-items: stretch; flex-wrap: wrap; } .join-control-form input[type="text"] { width: 100%; flex-basis: 100%; } }
 </style>
 <!-- Content -->
-  <div class="content container-fluid">
     <!-- Page Header -->
     <div class="page-header">
       <div class="row align-items-center">
@@ -77,6 +104,25 @@ use App\Helpers\Helper;
       <!-- End Row -->
     </div>
     <!-- End Page Header -->
+    @php $joinOpen = (bool) $registrationSettings->enabled; @endphp
+    @if(session('success_message'))<div class="alert alert-success">{{ session('success_message') }}</div>@endif
+    <section class="join-control" aria-labelledby="join-control-title">
+      <div class="join-control-copy">
+        <h2 id="join-control-title">Public Join registration</h2>
+        <p><a href="{{ route('join.create') }}" target="_blank" rel="noopener">Open Join page</a> · Currently <strong>{{ $joinOpen ? 'accepting registrations' : 'closed' }}</strong></p>
+      </div>
+      <form class="join-control-form" method="post" action="{{ route('admin.dashboard.registration-setting') }}">
+        @csrf
+        <input type="text" name="public_registration_closed_message" value="{{ $registrationSettings->closed_message }}" placeholder="Message shown when registration is closed" aria-label="Closed registration message">
+        <input type="hidden" name="public_registration_enabled" value="0">
+        <label class="join-switch">
+          <input type="checkbox" name="public_registration_enabled" value="1" @checked($joinOpen) onchange="this.form.submit()">
+          <span class="join-switch-track" aria-hidden="true"></span>
+          <span>{{ $joinOpen ? 'On' : 'Off' }}</span>
+        </label>
+        <button type="submit">Save setting</button>
+      </form>
+    </section>
     <!-- Stats -->
     {{-- <div class="dashboad_top">
         <h4>Today's Report</h4>
@@ -224,10 +270,10 @@ use App\Helpers\Helper;
             <!-- Card -->
             <a class="card card-hover-shadow h-100" target="_blank" href="<?=url('admin/clients/buyer/list')?>">
               <div class="card-body">
-                <h6 class="card-subtitle">Buyer</h6>
+                <h6 class="card-subtitle">Guests</h6>
                 <div class="row align-items-center gx-2 mb-1">
                   <div class="col-12">
-                    <h2 class="card-title text-inherit"><?=$totalBuyer?></h2>
+                    <h2 class="card-title text-inherit"><?=$totalGuests?></h2>
                   </div>
                 </div>
                 <!-- End Row -->
@@ -239,10 +285,10 @@ use App\Helpers\Helper;
             <!-- Card -->
             <a class="card card-hover-shadow h-100" target="_blank" href="<?=url('admin/clients/seller/list')?>">
               <div class="card-body">
-                <h6 class="card-subtitle">Seller</h6>
+                <h6 class="card-subtitle">Members</h6>
                 <div class="row align-items-center gx-2 mb-1">
                   <div class="col-12">
-                    <h2 class="card-title text-inherit"><?=$totalSeller?></h2>
+                    <h2 class="card-title text-inherit"><?=$totalMembers?></h2>
                   </div>
                 </div>
                 <!-- End Row -->
@@ -268,6 +314,62 @@ use App\Helpers\Helper;
         </div>
     </div>
     <!-- End Stats -->
+    <section class="pending-card" aria-labelledby="pending-registration-title">
+      <div class="pending-head"><div><h2 id="pending-registration-title">Pending member requests</h2><p>Approve the member first, then approve each linked business.</p></div><span class="pending-count">{{ $pendingRegistrations->count() }} pending</span></div>
+      @if($pendingRegistrations->isEmpty())
+        <div class="pending-empty"><i class="fa fa-check-circle me-1"></i> No member or business approvals are pending.</div>
+      @else
+        <div class="pending-table-wrap"><table class="pending-table"><thead><tr><th>Member</th><th>Business</th><th>Member status</th><th>Review</th></tr></thead><tbody>
+        @foreach($pendingRegistrations as $pendingMember)
+          @php
+            $pendingDetail = $pendingMember->userDetail;
+            $pendingName = trim(($pendingDetail?->ud_salutation ? $pendingDetail->ud_salutation.' ' : '').($pendingDetail?->ud_first_name ?? '').' '.($pendingDetail?->ud_last_name ?? '')) ?: ($pendingMember->um_user_name ?: 'Member #'.$pendingMember->um_id);
+            $memberApproved = (int) $pendingMember->um_status === 2;
+            $pendingBusinesses = $pendingMember->companies->filter(fn($company) => $company->details && (int) $company->details->cmpd_status !== 1);
+          @endphp
+          <tr><td><div class="pending-name">{{ $pendingName }}</div><div class="pending-meta">{{ $pendingMember->um_email_id }} · {{ $pendingMember->um_mobile_no }}</div></td><td>@forelse($pendingBusinesses as $company)<div class="pending-business">{{ $company->details->cmpd_name }} <span class="pending-badge">Pending</span></div>@empty<span class="pending-meta">No pending business</span>@endforelse</td><td><span class="pending-badge">{{ $memberApproved ? 'Approved' : 'Pending' }}</span></td><td><button class="pending-button review" type="button" data-bs-toggle="modal" data-bs-target="#pending-review-{{ $pendingMember->um_id }}"><i class="fa fa-eye"></i> View details</button></td></tr>
+        @endforeach
+        </tbody></table></div>
+        @foreach($pendingRegistrations as $pendingMember)
+          @php
+            $pendingDetail = $pendingMember->userDetail;
+            $pendingName = trim(($pendingDetail?->ud_salutation ? $pendingDetail->ud_salutation.' ' : '').($pendingDetail?->ud_first_name ?? '').' '.($pendingDetail?->ud_last_name ?? '')) ?: ($pendingMember->um_user_name ?: 'Member #'.$pendingMember->um_id);
+            $memberApproved = (int) $pendingMember->um_status === 2;
+          @endphp
+          <div class="modal fade" id="pending-review-{{ $pendingMember->um_id }}" tabindex="-1" aria-labelledby="pending-review-title-{{ $pendingMember->um_id }}" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><div><h2 class="modal-title fs-5" id="pending-review-title-{{ $pendingMember->um_id }}">Review member request</h2><div class="pending-meta">Registration {{ $pendingMember->um_user_name ?: '#'.$pendingMember->um_id }}</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="review-grid">
+            <section class="review-card"><h3>Member details</h3><div class="review-detail"><span>Name</span><strong>{{ $pendingName }}</strong></div><div class="review-detail"><span>Email</span><strong>{{ $pendingMember->um_email_id ?: '—' }}</strong></div><div class="review-detail"><span>Mobile</span><strong>{{ $pendingMember->um_mobile_no ?: '—' }}</strong></div><div class="review-detail"><span>WhatsApp</span><strong>{{ $pendingDetail?->ud_whatsapp_no ?: '—' }}</strong></div><div class="review-detail"><span>Joined</span><strong>{{ $pendingMember->um_created_at?->format('d M Y, h:i A') ?: '—' }}</strong></div></section>
+            <section class="review-card"><h3>Registration status</h3><div class="review-detail"><span>Member ID</span><strong>{{ $pendingMember->um_user_name ?: '#'.$pendingMember->um_id }}</strong></div><div class="review-detail"><span>Member status</span><strong>{{ $memberApproved ? 'Approved' : 'Pending approval' }}</strong></div><div class="review-detail"><span>Businesses</span><strong>{{ $pendingMember->companies->count() }}</strong></div><div class="review-detail"><span>Approval order</span><strong>Member first, then business</strong></div></section>
+            <section class="review-card full"><h3>Business details</h3>
+              @foreach($pendingMember->companies as $company)
+                @php
+                  $business = $company->details;
+                  $businessApproved = $business && (int) $business->cmpd_status === 1;
+                  $address = collect([$business?->cmpd_address1, $business?->cmpd_address2, $business?->cmpd_address3, $business?->state?->name, $business?->country?->name, $business?->cmpd_pincode])->filter()->implode(', ');
+                @endphp
+                <div class="review-business"><div class="review-detail"><span>Business name</span><strong>{{ $business?->cmpd_name ?: 'Unnamed business' }}</strong></div><div class="review-detail"><span>Categories</span><strong>{{ $company->categories->pluck('name')->implode(', ') ?: '—' }}</strong></div><div class="review-detail"><span>Email</span><strong>{{ $business?->cmpd_email ?: '—' }}</strong></div><div class="review-detail"><span>Phone</span><strong>{{ $business?->cmpd_phone ?: '—' }}</strong></div><div class="review-detail"><span>WhatsApp</span><strong>{{ $business?->cmpd_whatsapp_no ?: '—' }}</strong></div><div class="review-detail"><span>Address</span><strong>{{ $address ?: '—' }}</strong></div><div class="review-detail"><span>Registration no.</span><strong>{{ $business?->cmpd_company_regn_no ?: '—' }}</strong></div><div class="review-detail"><span>GST / PAN</span><strong>{{ collect([$business?->cmpd_gst_no, $business?->cmpd_pan_no])->filter()->implode(' / ') ?: '—' }}</strong></div><div class="review-detail"><span>Description</span><strong class="review-description">{{ $business?->cmpd_description ?: '—' }}</strong></div><div class="review-approval"><span class="review-sequence">Business status: {{ $businessApproved ? 'Approved' : 'Pending approval' }}</span>
+                  @if(!$memberApproved)
+                    <form method="post" action="{{ route('admin.registrations.approve-member', $pendingMember) }}">
+                      @csrf
+                      <button class="pending-button" type="submit"><i class="fa fa-user-check"></i> Approve member</button>
+                    </form>
+                  @endif
+                  @if(!$businessApproved)
+                    @if($memberApproved)
+                      <form method="post" action="{{ route('admin.registrations.approve-business', [$pendingMember, $company]) }}">
+                        @csrf
+                        <button class="pending-button business" type="submit"><i class="fa fa-building-circle-check"></i> Approve business</button>
+                      </form>
+                    @else
+                      <button class="pending-button business" type="button" disabled title="Approve the member first"><i class="fa fa-lock"></i> Approve business</button>
+                    @endif
+                  @endif
+                </div></div>
+              @endforeach
+            </section>
+          </div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button></div></div></div></div>
+        @endforeach
+      @endif
+    </section>
     {{-- <div class="row">
       <div class="col-sm-12 col-lg-12 mb-3 mb-lg-5">
         <div class="card">
@@ -388,7 +490,6 @@ use App\Helpers\Helper;
         </div>
       </div>
     </div> --}}
-  </div>
 <!-- End Content -->
 
 <!-- Modal -->
@@ -473,4 +574,3 @@ use App\Helpers\Helper;
   }
 
 </script>
-

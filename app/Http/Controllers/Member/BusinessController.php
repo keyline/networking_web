@@ -17,6 +17,8 @@ class BusinessController extends Controller
 {
     public function create(): View
     {
+        abort(403, 'Only an administrator can add another business to a member account.');
+
         return view('Member.Business.create', [
             'categories' => BusinessCategoryMaster::where('status', 1)->orderBy('name')->get(),
             'countries' => Country::where('status', 1)->orderBy('name')->get(['id', 'name']),
@@ -25,6 +27,8 @@ class BusinessController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort(403, 'Only an administrator can add another business to a member account.');
+
         $data = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
             'category_ids' => ['required', 'array', 'min:1', 'max:5'],

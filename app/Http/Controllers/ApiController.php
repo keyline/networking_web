@@ -2070,6 +2070,9 @@ class ApiController extends Controller
 
             $app_access_token = $headerData['authorization'][0];
             $getTokenValue    = $this->tokenAuth($app_access_token);
+            if (!$getTokenValue['status']) {
+                $this->response_to_json(false, 'A verified guest or member login is required to view business contact details.');
+            }
             $userId        = $getTokenValue['data'][1] ?? null;
 
 
@@ -2091,11 +2094,13 @@ class ApiController extends Controller
             //     ->get();
 
             $details = DB::table('companies_details as cd')
-                ->join('districts as d', 'd.id', '=', 'cd.cmpd_district')
-                ->join('states as st', 'st.id', '=', 'cd.cmpd_state')
-                ->join('countries as cu', 'cu.id', '=', 'cd.cmpd_country')
-                ->join('user_companies_map as ucm', 'cd.cmpd_cmp_id', '=', 'ucm.ucm_cmp_id')
-                ->join('user_details as ud', 'ucm.ucm_um_id', '=', 'ud.ud_um_id')
+                // Left joins: a business missing its district/state/country or
+                // owner details must still open (strict joins returned nothing)
+                ->leftJoin('districts as d', 'd.id', '=', 'cd.cmpd_district')
+                ->leftJoin('states as st', 'st.id', '=', 'cd.cmpd_state')
+                ->leftJoin('countries as cu', 'cu.id', '=', 'cd.cmpd_country')
+                ->leftJoin('user_companies_map as ucm', 'cd.cmpd_cmp_id', '=', 'ucm.ucm_cmp_id')
+                ->leftJoin('user_details as ud', 'ucm.ucm_um_id', '=', 'ud.ud_um_id')
                 ->select(
                     'cd.*',
                     'd.name as District_Name',
@@ -2167,9 +2172,9 @@ class ApiController extends Controller
                     "cmpd_address2" => $business->cmpd_address2 ?? "",
                     "cmpd_address3" => $business->cmpd_address3 ?? "",
                     "cmpd_estd_year" => $business->cmpd_estd_year ?? "",
-                    "cmpd_district" => ucwords(strtolower($business->District_Name)) ?? "",
-                    "cmpd_state" => ucwords(strtolower($business->State_Name)) ?? "",
-                    "cmpd_country" => ucwords(strtolower($business->Country_Name)) ?? "",
+                    "cmpd_district" => ucwords(strtolower((string) $business->District_Name)),
+                    "cmpd_state" => ucwords(strtolower((string) $business->State_Name)),
+                    "cmpd_country" => ucwords(strtolower((string) $business->Country_Name)),
                     "cmpd_pincode" => $business->cmpd_pincode ?? "",
                     "cmpd_status" => $business->cmpd_status,
                     "avg_rating" => (float) $ratingData->avg_rating,
@@ -2258,6 +2263,9 @@ class ApiController extends Controller
                     $uId        = $getTokenValue['data'][1];
 
                     $cmpId = $requestData['business_id'];
+                    if (!DB::table('user_companies_map')->where('ucm_um_id', $uId)->where('ucm_cmp_id', $cmpId)->exists()) {
+                        $this->response_to_json(false, 'You may only edit a business linked to your account.');
+                    }
                     // return response()->json($requestData);
 
 
@@ -3848,6 +3856,18 @@ class ApiController extends Controller
             $userType = $user ? $user->um_utm_id : 0;
             if (!in_array($userType, [1, 2])) {
                 $apiMessage = "User is not authorized to proceed with this request.";
+                $canProceed = false;
+            }
+        }
+
+        // Owners may not review their own business
+        if ($canProceed) {
+            $ownsBusiness = DB::table('user_companies_map')
+                ->where('ucm_um_id', $getTokenValue['data'][1])
+                ->where('ucm_cmp_id', (int) $request->input('business_identifier'))
+                ->exists();
+            if ($ownsBusiness) {
+                $apiMessage = 'You cannot review your own business.';
                 $canProceed = false;
             }
         }

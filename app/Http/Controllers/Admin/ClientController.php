@@ -27,6 +27,7 @@ use App\Models\User\UserMaster;
 use App\Models\User\UserTypeMaster;
 use App\Models\UserType;
 use App\Models\PublicRegistrationSetting;
+use App\Models\Country;
 use Auth;
 use Exception;
 use Session;
@@ -34,6 +35,7 @@ use Helper;
 use Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use App\Services\MemberDataDeletionService;
 
 class ClientController extends Controller
@@ -91,6 +93,7 @@ class ClientController extends Controller
                     'district' => $row->details?->cmpd_district ?? '',
                     'pincode' => $row->details?->cmpd_pincode ?? '',
                     'status' => $row->details?->cmpd_status ?? 0,
+                    'sponsored' => (bool) ($row->details?->cmpd_is_sponsored ?? false),
                     'owner_name' =>  $userDetails->ud_first_name ?? '',
                     'tagCount' => implode(', ', $tagList),
                 ];
@@ -98,6 +101,20 @@ class ClientController extends Controller
         }
 
         return $this->admin_after_login_layout($title, $page_name, $data);
+    }
+
+    public function updateBusinessSponsored(Request $request, int $company)
+    {
+        $data = $request->validate([
+            'sponsored' => ['required', 'boolean'],
+        ]);
+
+        $business = CompaniesDetail::where('cmpd_cmp_id', $company)->firstOrFail();
+        $business->update(['cmpd_is_sponsored' => $data['sponsored']]);
+
+        return back()->with('success_message', $data['sponsored']
+            ? 'Business added to the Sponsored list.'
+            : 'Business removed from the Sponsored list.');
     }
 
     public function registeredMembers(Request $request)
@@ -188,7 +205,6 @@ class ClientController extends Controller
                 'owners' => $memberCount,
                 'visitors' => (clone $baseUsers)->whereDoesntHave('companies')->count(),
             ],
-            'registrationSettings' => PublicRegistrationSetting::current(),
         ];
 
         return $this->admin_after_login_layout($pageTitle, 'client.registered-users', $data);
@@ -209,6 +225,92 @@ class ClientController extends Controller
         return back()->with('success_message', $data['public_registration_enabled']
             ? 'The public Join link is now active.'
             : 'The public Join link is now closed.');
+    }
+
+    public function createRegisteredMember(Request $request)
+    {
+        $data = [
+            'countries' => Country::where('status', 1)->orderBy('name')->get(['id', 'name']),
+            'categories' => BusinessCategoryMaster::where('status', 1)->orderBy('name')->get(['bcm_id', 'name']),
+            'defaultCountryId' => Country::where('name', 'India')->value('id'),
+        ];
+
+        if ($request->isMethod('post')) {
+            $validated = $request->validate([
+                'first_name' => ['required', 'string', 'max:100'],
+                'last_name' => ['nullable', 'string', 'max:100'],
+                'email' => ['required', 'email', 'max:255', 'unique:user_master,um_email_id'],
+                'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'unique:user_master,um_mobile_no'],
+                'business_name' => ['required', 'string', 'max:255'],
+                'category_ids' => ['required', 'array', 'min:1', 'max:5'],
+                'category_ids.*' => ['integer', 'distinct', 'exists:business_category_master,bcm_id'],
+                'country' => ['required', 'integer', 'exists:countries,id'],
+                'state' => ['required', 'integer', Rule::exists('states', 'id')->where(fn ($query) => $query->where('country_id', $request->input('country')))],
+                'pincode' => ['required', 'regex:/^[1-9][0-9]{5}$/'],
+                'address_line_1' => ['nullable', 'string', 'max:255'],
+                'city' => ['nullable', 'string', 'max:100'],
+            ]);
+
+            DB::transaction(function () use ($validated) {
+                $member = UserMaster::create([
+                    'um_utm_id' => 2, 'um_email_id' => strtolower($validated['email']),
+                    'um_mobile_no' => $validated['mobile'], 'um_password' => Hash::make(Str::random(40)),
+                    'um_status' => 2, 'um_profile_type' => 'O',
+                ]);
+                $member->update(['um_user_name' => 'EN'.str_pad((string) $member->um_id, 6, '0', STR_PAD_LEFT)]);
+                UserDetails::create([
+                    'ud_um_id' => $member->um_id, 'ud_first_name' => $validated['first_name'],
+                    'ud_last_name' => $validated['last_name'] ?? null, 'ud_whatsapp_no' => $validated['mobile'],
+                    'ud_addr_1' => $validated['address_line_1'] ?? null, 'ud_addr_2' => $validated['city'] ?? null,
+                    'ud_country_id' => $validated['country'], 'ud_state_id' => $validated['state'],
+                    'ud_pincode' => $validated['pincode'],
+                ]);
+                $company = CompaniesMaster::create([]);
+                CompaniesDetail::create([
+                    'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => $validated['business_name'],
+                    'cmpd_description' => 'Business profile created by the super administrator.',
+                    'cmpd_email' => strtolower($validated['email']), 'cmpd_phone' => $validated['mobile'],
+                    'cmpd_address1' => $validated['address_line_1'] ?? null, 'cmpd_address3' => $validated['city'] ?? null,
+                    'cmpd_country' => $validated['country'], 'cmpd_state' => $validated['state'],
+                    'cmpd_pincode' => $validated['pincode'], 'cmpd_status' => 1, 'cmpd_is_document_valid' => '1',
+                ]);
+                $company->users()->attach($member->um_id);
+                $company->categories()->attach($validated['category_ids']);
+            });
+
+            return redirect()->route('admin.clients.registered-members')->with('success_message', 'Business member created. They can now sign in with mobile OTP.');
+        }
+
+        echo $this->admin_after_login_layout('Add Business Member', 'client.create-registered-member', $data);
+    }
+
+    public function addMemberBusiness(Request $request, UserMaster $user)
+    {
+        abort_unless(
+            (int) $user->um_status === 2 && $user->companies()->exists(),
+            422,
+            'Only an approved registered member can have another business added.'
+        );
+
+        $data = $request->validate([
+            'business_name' => ['required', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($data, $user) {
+            $company = CompaniesMaster::create([]);
+            CompaniesDetail::create([
+                'cmpd_cmp_id' => $company->cmp_id,
+                'cmpd_name' => trim($data['business_name']),
+                'cmpd_description' => 'Business profile awaiting completion by the member.',
+                'cmpd_email' => $user->um_email_id,
+                'cmpd_phone' => $user->um_mobile_no,
+                'cmpd_status' => 1,
+                'cmpd_is_document_valid' => '1',
+            ]);
+            $company->users()->attach($user->um_id);
+        });
+
+        return back()->with('success_message', 'Business added. The member can now complete and publish its profile.');
     }
 
     public function destroyRegisteredUser(UserMaster $user, MemberDataDeletionService $deletionService)
@@ -677,12 +779,27 @@ class ClientController extends Controller
     }
     /* change status */
 
-    public function approveRegistration(Request $request, UserMaster $user)
+    public function approveMember(Request $request, UserMaster $user)
     {
-        abort_unless((int) $user->um_status === 1, 422, 'Only pending registrations can be approved.');
-        $user->update(['um_status' => 2]);
+        $companyIds = $user->companies()->pluck('companies_master.cmp_id');
+        abort_if($companyIds->isEmpty(), 422, 'Only a member with a linked business can be approved here.');
+        abort_if((int) $user->um_status === 2, 422, 'This member is already approved.');
 
-        return back()->with('success_message', 'Member approved. They can now sign in with normal member access.');
+        $user->update(['um_status' => 2, 'um_utm_id' => 2]);
+
+        return back()->with('success_message', 'Member approved. You may now review and approve the linked business.');
+    }
+
+    public function approveBusiness(Request $request, UserMaster $user, CompaniesMaster $company)
+    {
+        abort_unless((int) $user->um_status === 2, 422, 'Approve the member before approving the business.');
+        abort_unless($user->companies()->where('companies_master.cmp_id', $company->cmp_id)->exists(), 404);
+
+        $business = CompaniesDetail::where('cmpd_cmp_id', $company->cmp_id)->firstOrFail();
+        abort_if((int) $business->cmpd_status === 1, 422, 'This business is already approved.');
+        $business->update(['cmpd_status' => 1, 'cmpd_is_document_valid' => '1']);
+
+        return back()->with('success_message', 'Business approved and added to the public member directory.');
     }
 
     // view details

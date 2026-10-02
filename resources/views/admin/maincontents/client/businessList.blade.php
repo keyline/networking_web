@@ -39,6 +39,12 @@ $controllerRoute = $module['controller_route'];
             <div class="card">
                 <div class="card-body">
 
+                    <div class="alert alert-info mt-3" role="alert">
+                        Member and business approval is managed from
+                        <a class="alert-link" href="{{ route('admin.clients.registered-members') }}">Registered Members</a>.
+                        This page is for editing business information and Sponsored placement only.
+                    </div>
+
                     <div class="dt-responsive table-responsive">
                         <table id="<?= count($rows) > 0 ? 'simpletable' : '' ?>"
                             class="table table-striped table-bordered nowrap">
@@ -78,27 +84,18 @@ $controllerRoute = $module['controller_route'];
                                             <td>{{ $row['address1'] }} <br> {{ $row['district'] }} ,
                                                 {{ $row['pincode'] }} </td>
                                             <td>
-                                                {{-- <style>
-                                                    .form-check-input.sm {
-                                                        width: 40px;
-                                                        height: 25px;
-                                                    }
-
-                                                    .form-check-input.sm:checked {
-                                                        background-color: #28a745; /* Success color */
-                                                        border-color: #28a745;
-                                                    }
-                                                </style>
-
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input sm" type="checkbox" role="switch" id="flexSwitchCheckDefault">
-                                                </div> --}}
-
-                                                <livewire:admin.component.company-status-toggle :cmpId="$row['cmp_id']" :key="$row['cmp_id']" />
-
+                                                <span class="badge {{ (int) $row['status'] === 1 ? 'bg-success' : 'bg-warning text-dark' }}">
+                                                    {{ (int) $row['status'] === 1 ? 'Approved' : 'Pending approval' }}
+                                                </span>
                                             </td>
                                             <td>
-                                                <livewire:admin.component.company-sponsored-toggle :cmpId="$row['cmp_id']" :key="'sponsored-'.$row['cmp_id']" />
+                                                <form method="post" action="{{ route('admin.clients.business.sponsored', $row['cmp_id']) }}">
+                                                    @csrf
+                                                    <input type="hidden" name="sponsored" value="{{ $row['sponsored'] ? 0 : 1 }}">
+                                                    <button type="submit" class="btn btn-sm {{ $row['sponsored'] ? 'btn-warning' : 'btn-outline-secondary' }}" title="{{ $row['sponsored'] ? 'Remove from Sponsored' : 'Add to Sponsored' }}">
+                                                        {{ $row['sponsored'] ? 'On' : 'Off' }}
+                                                    </button>
+                                                </form>
                                             </td>
                                             <td>
                                                 <a href="{{ url('admin/' . $controllerRoute . '/' . $slug . '/info-edit/' . Helper::encoded($row['cmp_id'])) }}"

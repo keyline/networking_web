@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\BusinessAnalyticsController;
 use App\Http\Controllers\Api\V1\BusinessLandingController;
 use App\Http\Controllers\Api\V1\DeleteProfileController;
 use App\Http\Controllers\Api\V1\MembersController;
+use App\Http\Controllers\Api\V1\GuestRegistrationController;
 use App\Http\Controllers\Api\V1\UtilityController;
 use App\Http\Controllers\ApiController;
 use Illuminate\Http\Request;
@@ -33,6 +34,9 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/otp/resend', [AuthController::class, 'resendOtp']);
     Route::post('auth/otp/verify', [AuthController::class, 'validateOtp']);
     Route::post('auth/user/registration', [AuthController::class, 'userRegistration']);
+    Route::post('auth/guest/otp/send', [GuestRegistrationController::class, 'sendOtp']);
+    Route::post('auth/guest/otp/verify', [GuestRegistrationController::class, 'verifyOtp']);
+    Route::post('auth/guest/register', [GuestRegistrationController::class, 'complete']);
     Route::post('auth/registration/complete', [AuthController::class, 'completeRegsitration']);
     Route::get('auth/test', [AuthController::class, 'test']);
     Route::get('utilities/countries', [UtilityController::class, 'countries']);

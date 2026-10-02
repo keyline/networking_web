@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Business\BusinessCategoryMaster;
 use App\Models\MemberMembership;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\User\UserMaster;
+use App\Models\User\UserDetails;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -15,7 +15,7 @@ class BusinessOwnerAccessTest extends TestCase
 {
     use DatabaseTransactions;
 
-    public function test_paid_approved_member_can_create_multiple_pending_businesses(): void
+    public function test_paid_approved_member_cannot_create_another_business(): void
     {
         $member = UserMaster::create([
             'um_utm_id' => 2, 'um_user_name' => 'multi-owner',
@@ -27,18 +27,12 @@ class BusinessOwnerAccessTest extends TestCase
             'renewal_date' => today()->addYear(), 'payment_date' => today(),
             'payment_amount' => 1000, 'membership_status' => 'active',
         ]);
-        $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
+        $this->actingAs($member, 'member')->get(route('member.businesses.create'))->assertForbidden();
+        $this->actingAs($member, 'member')->post(route('member.businesses.store'), [
+            'business_name' => 'Member Attempted Business',
+        ])->assertForbidden();
 
-        foreach (['First Member Business', 'Second Member Business'] as $name) {
-            $this->actingAs($member, 'member')->post(route('member.businesses.store'), [
-                'business_name' => $name,
-                'category_ids' => [$category->bcm_id],
-            ])->assertRedirect();
-        }
-
-        $member->refresh();
-        $this->assertCount(2, $member->companies);
-        $this->assertSame([0, 0], $member->companies->load('details')->pluck('details.cmpd_status')->map(fn ($status) => (int) $status)->all());
+        $this->assertCount(0, $member->fresh()->companies);
     }
 
     public function test_expired_membership_cannot_manage_businesses(): void
@@ -77,5 +71,30 @@ class BusinessOwnerAccessTest extends TestCase
             ->assertSee('aria-label="Edit Linked Member Business"', false)->assertSee('Edit →');
         $this->actingAs($member, 'member')->get($editUrl)->assertOk();
         $this->actingAs($member, 'member')->get(route('member.businesses.create'))->assertForbidden();
+    }
+
+    public function test_business_owner_dashboard_shows_registered_user_interactions(): void
+    {
+        $owner = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'interaction-owner',
+            'um_email_id' => 'interaction-owner@example.test', 'um_mobile_no' => '9876501197', 'um_status' => 2,
+        ]);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create(['cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Interaction Business', 'cmpd_description' => 'Interaction test business.', 'cmpd_status' => 1]);
+        DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $owner->um_id]);
+
+        $guest = UserMaster::create([
+            'um_utm_id' => 1, 'um_user_name' => 'interaction-guest',
+            'um_email_id' => 'interaction-guest@example.test', 'um_mobile_no' => '9876501196', 'um_status' => 2,
+        ]);
+        UserDetails::create(['ud_um_id' => $guest->um_id, 'ud_first_name' => 'Interested', 'ud_last_name' => 'Guest']);
+        DB::table('business_analytics_events')->insert([
+            'bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'whatsapp',
+            'bae_um_id' => $guest->um_id, 'bae_source' => 'WEB', 'bae_created_at' => now(),
+        ]);
+
+        $this->actingAs($owner, 'member')->get(route('dashboard.index'))
+            ->assertOk()->assertSee('Recent business interactions')
+            ->assertSee('Interested Guest')->assertSee('Whatsapp')->assertSee('Interaction Business');
     }
 }

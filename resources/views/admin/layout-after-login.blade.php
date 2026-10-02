@@ -147,6 +147,16 @@ $pageFunction = count($pageName) > 2 ? $pageName[2] : '';
         .pagination {
             justify-content: end;
         }
+
+        /* Use the complete workspace width beside the admin sidebar. */
+        #content.main > .admin-page-content {
+            width: 100%;
+            max-width: none;
+        }
+
+        #content.main > .admin-page-content > :not(style):not(script) {
+            max-width: none !important;
+        }
     </style>
 
     <!-- Page CSS -->
@@ -173,7 +183,7 @@ $pageFunction = count($pageName) > 2 ? $pageName[2] : '';
     </aside>
     <!-- End Navbar Vertical -->
     <main id="content" role="main" class="main">
-        <div class="content container-fluid">
+        <div class="content container-fluid admin-page-content">
             <?= $maincontent ?>
         </div>
         <!-- Footer -->

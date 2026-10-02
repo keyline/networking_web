@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Member\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin as AdminAccount;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\Enquiries\EnquiryMaster;
+use App\Models\UserActivity;
 use App\Models\User\UserMaster;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +22,26 @@ class DashboardController extends Controller
         $member = Auth::guard('member')->user();
         $member->load(['userDetail', 'companies.details']);
         $canManageBusinesses = $member->hasActiveBusinessMembership();
+        $adminAccess = AdminAccount::query()
+            ->where('user_master_id', $member->um_id)
+            ->where('status', 1)
+            ->first();
+        $ownedBusinessIds = $member->companies->pluck('cmp_id');
+        $recentInteractions = collect();
+        if ($ownedBusinessIds->isNotEmpty()) {
+            $recentInteractions = DB::table('business_analytics_events as bae')
+                ->join('companies_details as cd', 'cd.cmpd_cmp_id', '=', 'bae.bae_cmp_id')
+                ->leftJoin('user_master as um', 'um.um_id', '=', 'bae.bae_um_id')
+                ->leftJoin('user_details as ud', 'ud.ud_um_id', '=', 'bae.bae_um_id')
+                ->whereIn('bae.bae_cmp_id', $ownedBusinessIds)
+                ->whereIn('bae.bae_event_type', ['view', 'call', 'whatsapp', 'email', 'share'])
+                ->orderByDesc('bae.bae_created_at')->limit(15)
+                ->get([
+                    'bae.bae_event_type', 'bae.bae_created_at', 'bae.bae_source',
+                    'cd.cmpd_name', 'um.um_email_id', 'um.um_mobile_no',
+                    'ud.ud_first_name', 'ud.ud_last_name',
+                ]);
+        }
 
         $search = trim((string) $request->query('search'));
         $directory = collect();
@@ -128,8 +150,45 @@ class DashboardController extends Controller
             ->values();
 
         return view('Member.Dashboard.index', compact(
-            'member', 'canManageBusinesses', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions'
+            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'memberOptions'
         ));
+    }
+
+    public function openAdminDashboard(Request $request): RedirectResponse
+    {
+        /** @var UserMaster $member */
+        $member = Auth::guard('member')->user();
+        abort_unless((int) $member->um_status === 2 && $member->companies()->exists(), 403);
+
+        $admin = AdminAccount::query()
+            ->where('user_master_id', $member->um_id)
+            ->where('status', 1)
+            ->firstOrFail();
+
+        Auth::guard('admin')->login($admin);
+        $request->session()->regenerate();
+        $request->session()->put([
+            'user_id' => $admin->id,
+            'name' => $admin->name,
+            'type' => $admin->type,
+            'email' => $admin->email,
+            'company_id' => $admin->company_id,
+            'is_admin_login' => 1,
+            'admin_login_source' => 'member_dashboard',
+        ]);
+        $admin->update(['last_login_at' => now()]);
+
+        UserActivity::insert([
+            'user_email' => $admin->email,
+            'user_name' => $admin->name,
+            'user_type' => 'ADMIN',
+            'ip_address' => $request->ip(),
+            'activity_type' => 1,
+            'activity_details' => 'Login Success via Member Dashboard',
+            'platform_type' => 'WEB',
+        ]);
+
+        return redirect('/admin/dashboard');
     }
 
     public function storeEnquiry(Request $request): RedirectResponse

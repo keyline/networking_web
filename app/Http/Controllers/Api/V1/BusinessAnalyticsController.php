@@ -143,6 +143,7 @@ class BusinessAnalyticsController extends Controller
                 : $this->dailyTrend($companyId, $periodStart, $rangeDays),
             'top_referrers'    => $this->topReferrers($companyId, $periodStart, $periodEnd),
             'recent_enquiries' => $this->recentEnquiries($companyId),
+            'recent_interactions' => $this->recentInteractions($companyId),
         ]);
     }
 
@@ -313,6 +314,27 @@ class BusinessAnalyticsController extends Controller
                 'created_at'   => $row->enm_created_at,
             ])
             ->all();
+    }
+
+    private function recentInteractions(int $companyId): array
+    {
+        return DB::table('business_analytics_events as bae')
+            ->leftJoin('user_master as um', 'um.um_id', '=', 'bae.bae_um_id')
+            ->leftJoin('user_details as ud', 'ud.ud_um_id', '=', 'bae.bae_um_id')
+            ->where('bae.bae_cmp_id', $companyId)
+            ->whereIn('bae.bae_event_type', self::EVENT_TYPES)
+            ->orderByDesc('bae.bae_created_at')->limit(15)
+            ->get([
+                'bae.bae_event_type', 'bae.bae_source', 'bae.bae_created_at',
+                'um.um_email_id', 'um.um_mobile_no', 'ud.ud_first_name', 'ud.ud_last_name',
+            ])->map(fn ($row) => [
+                'event_type' => $row->bae_event_type,
+                'source' => $row->bae_source ?: 'UNKNOWN',
+                'created_at' => $row->bae_created_at,
+                'user_name' => trim(($row->ud_first_name ?? '').' '.($row->ud_last_name ?? '')) ?: ($row->um_email_id ? 'Registered user' : 'Public visitor'),
+                'user_email' => $row->um_email_id,
+                'user_mobile' => $row->um_mobile_no,
+            ])->all();
     }
 
     private function ownsBusiness(int $userId, int $companyId): bool

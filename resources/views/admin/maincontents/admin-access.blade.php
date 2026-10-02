@@ -1,16 +1,15 @@
 <style>
 .access-page{--ink:#17233c;--muted:#718097;--line:#e3e9f2;--blue:#397ef6}.access-page .page-title{font-size:27px;font-weight:750;color:var(--ink);margin:0}.access-page .sub{color:var(--muted);margin:5px 0 0}.access-card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(23,35,60,.05)}.access-toolbar{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;align-items:center}.access-search{display:flex;gap:8px;width:min(540px,100%)}.access-search input{height:42px;border:1px solid #d8e1ed;border-radius:9px;padding:0 13px;flex:1}.access-table{width:100%;border-collapse:collapse}.access-table th{background:#f7f9fc;color:#68778f;font-size:11px;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:12px 18px}.access-table td{padding:13px 18px;border-top:1px solid var(--line);vertical-align:middle}.person{display:flex;align-items:center;gap:11px}.person-icon{width:38px;height:38px;border-radius:10px;background:#edf4ff;color:var(--blue);display:grid;place-items:center;font-weight:800}.person strong,.person small{display:block}.person small{color:var(--muted);margin-top:2px}.status{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:6px 10px;font-size:11px;font-weight:800;background:#eef2f7;color:#66758b}.status.on{background:#e8f8f1;color:#12805d}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.access-note{padding:13px 16px;background:#f5f8fd;border:1px solid #dfe8f5;border-radius:11px;color:#53637d;display:flex;gap:10px;align-items:start}.table-responsive{overflow:auto}@media(max-width:700px){.access-toolbar{align-items:stretch;flex-direction:column}.access-table th:nth-child(2),.access-table td:nth-child(2){display:none}}
 </style>
-<main id="content" role="main" class="main access-page">
-  <div class="content container-fluid">
-    <div class="page-header pt-4 mb-4"><div class="row align-items-end"><div class="col"><nav aria-label="breadcrumb"><ol class="breadcrumb breadcrumb-light mb-2"><li class="breadcrumb-item"><a href="{{url('admin/dashboard')}}">Dashboard</a></li><li class="breadcrumb-item active">Admin Access</li></ol></nav><h1 class="page-title">Admin access</h1><p class="sub">Allow trusted registered users to sign in to the administration portal using email OTP.</p></div><div class="col-auto"><span class="status on"><span class="dot"></span>{{$assigned->where('status',1)->count()}} assigned admins</span></div></div></div>
+<div class="access-page">
+    <div class="page-header pt-4 mb-4"><div class="row align-items-end"><div class="col"><nav aria-label="breadcrumb"><ol class="breadcrumb breadcrumb-light mb-2"><li class="breadcrumb-item"><a href="{{url('admin/dashboard')}}">Dashboard</a></li><li class="breadcrumb-item active">Admin Access</li></ol></nav><h1 class="page-title">Admin access</h1><p class="sub">Allow trusted business members to sign in to the administration portal.</p></div><div class="col-auto"><span class="status on"><span class="dot"></span>{{$assigned->where('status',1)->count()}} assigned admins</span></div></div></div>
 
     @if(session('success_message'))<div class="alert alert-success">{{session('success_message')}}</div>@endif
     @if($errors->any())<div class="alert alert-danger">{{$errors->first()}}</div>@endif
     <div class="access-note mb-3"><i class="bi-shield-lock-fill text-primary mt-1"></i><div><strong>Super Admin controlled</strong><br><small>Granting access does not change the member account. Revoking access immediately blocks future admin sign-ins while preserving activity history.</small></div></div>
 
     <section class="access-card">
-      <div class="access-toolbar"><form class="access-search" method="GET"><input name="search" value="{{$search}}" placeholder="Search by name, email, mobile or member ID"><button class="btn btn-primary" type="submit"><i class="bi-search me-1"></i>Search</button>@if($search)<a class="btn btn-white" href="{{route('admin.access.index')}}">Clear</a>@endif</form><small class="text-muted">{{$users->total()}} registered users</small></div>
+      <div class="access-toolbar"><form class="access-search" method="GET"><input name="search" value="{{$search}}" placeholder="Search by name, email, mobile or member ID"><button class="btn btn-primary" type="submit"><i class="bi-search me-1"></i>Search</button>@if($search)<a class="btn btn-white" href="{{route('admin.access.index')}}">Clear</a>@endif</form><small class="text-muted">{{$users->total()}} eligible members</small></div>
       <div class="table-responsive"><table class="access-table"><thead><tr><th>Registered user</th><th>Member details</th><th>Admin status</th><th class="text-end">Access control</th></tr></thead><tbody>
         @forelse($users as $user)
           @php $admin=$assigned->get($user->um_id); $name=trim(($user->userDetail?->ud_first_name??'').' '.($user->userDetail?->ud_last_name??''))?:($user->um_user_name?:'Member'); $active=$admin && $admin->status; @endphp
@@ -19,5 +18,4 @@
       </tbody></table></div>
       @if($users->hasPages())<div class="p-3 border-top">{{$users->links()}}</div>@endif
     </section>
-  </div>
-</main>
+</div>

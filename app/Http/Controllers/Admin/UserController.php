@@ -42,6 +42,7 @@ use App\Models\ClientType;
 use App\Models\Employees;
 use App\Models\EmployeeType;
 use App\Models\User\UserMaster;
+use App\Models\PublicRegistrationSetting;
 use Dompdf\Dompdf;
 use PDF;
 use Session;
@@ -66,6 +67,14 @@ class UserController extends Controller
 
             if (!$admin || !Hash::check($credentials['password'], $admin->password)) {
                 return back()->withInput($request->only('email'))->with('error_message', 'The email or password is incorrect.');
+            }
+
+            if ($admin->type !== 'ma' && $admin->user_master_id && !UserMaster::query()
+                ->where('um_id', $admin->user_master_id)
+                ->where('um_status', 2)
+                ->whereHas('companies')
+                ->exists()) {
+                return back()->withInput($request->only('email'))->with('error_message', 'Administrative access is not available for this account.');
             }
 
             Auth::guard('admin')->login($admin);
@@ -94,6 +103,7 @@ class UserController extends Controller
             'email' => $admin->email,
             'company_id' => $admin->company_id,
             'is_admin_login' => 1,
+            'admin_login_source' => 'credentials',
         ]);
     }
 
@@ -261,7 +271,7 @@ class UserController extends Controller
         ];
         UserActivity::insert($activityData);
         /* user activity */
-        $request->session()->forget(['user_id', 'name', 'email']);
+        $request->session()->forget(['user_id', 'name', 'email', 'admin_login_source']);
         // Helper::pr(session()->all());die;
         Auth::guard('admin')->logout();
         return redirect()->back()->with('success_message', 'You Are Successfully Logged Out !!!');
@@ -283,10 +293,26 @@ class UserController extends Controller
         $data['totalretailer']          = Client::where('client_type_id', '=', 3)->count();
         $data['totalfarmer']            = Client::where('client_type_id', '=', 4)->count();
 
-        $data['totalBuyer']                  = UserMaster::where('um_utm_id', '=', 1)->count();
-        $data['totalSeller']                 = UserMaster::where('um_utm_id', '=', 2)->count();
+        $data['totalGuests']                 = UserMaster::where('um_utm_id', '=', 1)->count();
+        $data['totalMembers']                = UserMaster::where('um_utm_id', '=', 2)->count();
         $data['totalTypes']                  = DB::table('business_category_master')->count();
         $data['totalBusiness']               = DB::table('companies_master')->count();
+        $data['registrationSettings']        = PublicRegistrationSetting::current();
+        $data['pendingRegistrations']        = UserMaster::query()
+            ->with([
+                'userDetail',
+                'companies.details.country:id,name',
+                'companies.details.state:id,name',
+                'companies.categories:bcm_id,name',
+            ])
+            ->whereHas('companies')
+            ->where(function ($query) {
+                $query->where('um_status', '!=', 2)
+                    ->orWhereHas('companies.details', fn ($business) => $business->where('cmpd_status', '!=', 1));
+            })
+            ->orderByDesc('um_id')
+            ->limit(12)
+            ->get();
         $title                          = 'Dashboard';
         $page_name                      = 'dashboard';
 

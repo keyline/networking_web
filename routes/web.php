@@ -45,9 +45,15 @@ Route::match(['get', 'post'], 'page/{id}', 'App\Http\Controllers\FrontController
 Route::match(['get', 'post'], '/contact-us', 'App\Http\Controllers\FrontController@contactUs');
 Route::get('/join', [PublicRegistrationController::class, 'create'])->name('join.create');
 Route::post('/join', [PublicRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('join.store');
+Route::get('/guest/register', [PublicRegistrationController::class, 'guestCreate'])->name('guest.register');
+Route::post('/guest/register/send-otp', [PublicRegistrationController::class, 'guestSendOtp'])->middleware('throttle:6,1')->name('guest.register.send-otp');
+Route::post('/guest/register/verify-otp', [PublicRegistrationController::class, 'guestVerifyOtp'])->middleware('throttle:10,1')->name('guest.register.verify-otp');
+Route::post('/guest/register/complete', [PublicRegistrationController::class, 'guestStore'])->middleware('throttle:10,1')->name('guest.register.complete');
 Route::get('/members', [PublicBusinessController::class, 'index'])->name('members.index');
 Route::get('/business/{slug}', [PublicBusinessController::class, 'show'])->name('business.show');
-Route::post('/business/{slug}/lead', [PublicBusinessController::class, 'lead'])->middleware('throttle:6,1')->name('business.lead');
+Route::post('/business/{slug}/interaction', [PublicBusinessController::class, 'track'])->middleware('throttle:30,1')->name('business.track');
+Route::get('/business/{slug}/contact/{type}', [PublicBusinessController::class, 'contact'])->middleware(['auth:member', 'member.active', 'throttle:30,1'])->name('business.contact');
+Route::post('/business/{slug}/lead', [PublicBusinessController::class, 'lead'])->middleware(['auth:member', 'member.active', 'throttle:6,1'])->name('business.lead');
 Route::match(['get', 'post'], 'cron-for-attendance-notification', 'App\Http\Controllers\FrontController@cron_for_attendance_notification');
 
 
@@ -79,6 +85,7 @@ Route::middleware('member.guest')->group(function () {
 
 Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(function () {
     Route::resource('dashboard', DashboardController::class);
+    Route::post('admin-dashboard', [DashboardController::class, 'openAdminDashboard'])->name('member.admin-dashboard');
     Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');
     Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');
     Route::get('business-owner-membership', [MembershipRequestController::class, 'create'])->name('member.membership.create');
@@ -338,14 +345,20 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         /* employee-department */
         /* clients */
         Route::get('clients/business/list', 'ClientController@businessList');
+        Route::post('clients/business/{company}/sponsored', 'ClientController@updateBusinessSponsored')
+            ->whereNumber('company')->name('admin.clients.business.sponsored');
         Route::get('clients/registered-users', 'ClientController@registeredUsers')
             ->name('admin.clients.registered-users');
         Route::get('clients/registered-members', 'ClientController@registeredMembers')
             ->name('admin.clients.registered-members');
+        Route::post('clients/registered-members/{user}/businesses', 'ClientController@addMemberBusiness')
+            ->whereNumber('user')->name('admin.clients.registered-members.businesses.store');
+        Route::match(['get', 'post'], 'clients/registered-members/create', 'ClientController@createRegisteredMember')
+            ->middleware('super.admin')->name('admin.clients.registered-members.create');
         Route::get('clients/guest-users', 'ClientController@guestUsers')
             ->name('admin.clients.guest-users');
-        Route::post('clients/registered-users/registration-setting', 'ClientController@updateRegistrationSetting')
-            ->name('admin.clients.registered-users.registration-setting');
+        Route::post('dashboard/registration-setting', 'ClientController@updateRegistrationSetting')
+            ->name('admin.dashboard.registration-setting');
         Route::post('clients/registered-users/purge/start', 'ClientController@startRegisteredUserPurge')
             ->name('admin.clients.registered-users.purge.start');
         Route::post('clients/registered-users/purge/run', 'ClientController@runRegisteredUserPurge')
@@ -358,8 +371,10 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
 
 
         Route::get('clients/{slug}/list', 'ClientController@list');
-        Route::post('clients/{user}/approve-registration', 'ClientController@approveRegistration')
-            ->whereNumber('user')->name('admin.registrations.approve');
+        Route::post('clients/{user}/approve-member', 'ClientController@approveMember')
+            ->whereNumber('user')->name('admin.registrations.approve-member');
+        Route::post('clients/{user}/businesses/{company}/approve', 'ClientController@approveBusiness')
+            ->whereNumber('user')->whereNumber('company')->name('admin.registrations.approve-business');
         Route::match(['get', 'post'], 'clients/{slug}/add', 'ClientController@add');
         Route::match(['get', 'post'], 'clients/{slug}/edit/{id}', 'ClientController@edit');
         Route::match(['get', 'post'], 'clients/{slug}/view_details/{id}', 'ClientController@viewDetails');

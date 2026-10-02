@@ -5,6 +5,10 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
+use App\Models\PublicRegistrationSetting;
+use App\Models\Country;
+use App\Models\State;
+use App\Models\Business\BusinessCategoryMaster;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -99,7 +103,7 @@ class AdminRegisteredUsersTest extends TestCase
             ->assertDontSee('filtered-owner@example.test');
     }
 
-    public function test_pending_business_owner_has_an_approve_button(): void
+    public function test_pending_business_owner_has_separate_approval_buttons(): void
     {
         $owner = UserMaster::create([
             'um_utm_id' => 2,
@@ -108,13 +112,108 @@ class AdminRegisteredUsersTest extends TestCase
             'um_mobile_no' => '9876500023',
             'um_status' => 1,
         ]);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id,
+            'cmpd_name' => 'Pending Owner Business',
+            'cmpd_description' => 'A business awaiting combined approval.',
+            'cmpd_status' => 0,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $owner->um_id, 'ucm_cmp_id' => $company->cmp_id]);
 
         $this->signInAsAdmin()
-            ->get('/admin/clients/registered-users')
+            ->get(route('admin.clients.registered-members'))
             ->assertOk()
             ->assertSee('pending-owner@example.test')
-            ->assertSee('Approve')
-            ->assertSee(route('admin.registrations.approve', $owner), false);
+            ->assertSee('Approve member')
+            ->assertSee('Approve business')
+            ->assertSee('disabled', false)
+            ->assertSee(route('admin.registrations.approve-member', $owner), false);
+    }
+
+    public function test_member_must_be_approved_before_business_approval(): void
+    {
+        $member = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Approval Test',
+            'um_email_id' => 'combined-approval@example.test', 'um_mobile_no' => '9876500093', 'um_status' => 1,
+        ]);
+        $company = CompaniesMaster::create([]);
+        $details = CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Combined Approval Business',
+            'cmpd_description' => 'Pending business for an active member.', 'cmpd_status' => 0,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $member->um_id, 'ucm_cmp_id' => $company->cmp_id]);
+
+        $this->signInAsAdmin()
+            ->post(route('admin.registrations.approve-business', [$member, $company]))
+            ->assertStatus(422);
+        $this->assertSame(1, (int) $member->fresh()->um_status);
+        $this->assertSame(0, (int) $details->fresh()->cmpd_status);
+
+        $this->post(route('admin.registrations.approve-member', $member))
+            ->assertRedirect()
+            ->assertSessionHas('success_message');
+        $this->assertSame(2, (int) $member->fresh()->um_status);
+        $this->assertSame(0, (int) $details->fresh()->cmpd_status);
+
+        $this->post(route('admin.registrations.approve-business', [$member, $company]))
+            ->assertRedirect()
+            ->assertSessionHas('success_message');
+        $this->assertSame(1, (int) $details->fresh()->cmpd_status);
+    }
+
+    public function test_dashboard_lists_pending_requests_and_locks_business_approval(): void
+    {
+        $member = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Dashboard Pending Member',
+            'um_email_id' => 'dashboard-pending@example.test', 'um_mobile_no' => '9876500193', 'um_status' => 1,
+        ]);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Dashboard Pending Business',
+            'cmpd_description' => 'Waiting for two-step approval.', 'cmpd_status' => 0,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $member->um_id, 'ucm_cmp_id' => $company->cmp_id]);
+
+        $this->signInAsAdmin();
+        ob_start();
+        $response = $this->get('/admin/dashboard');
+        $html = (string) ob_get_clean();
+
+        $response->assertOk();
+        $this->assertStringContainsString('Pending member requests', $html);
+        $this->assertStringContainsString('dashboard-pending@example.test', $html);
+        $this->assertStringContainsString('Dashboard Pending Business', $html);
+        $this->assertStringContainsString('View details', $html);
+        $this->assertStringContainsString('data-bs-target="#pending-review-'.$member->um_id.'"', $html);
+        $this->assertStringContainsString('Review member request', $html);
+        $this->assertStringContainsString('Member details', $html);
+        $this->assertStringContainsString('Business details', $html);
+        $this->assertStringContainsString(route('admin.registrations.approve-member', $member), $html);
+        $this->assertStringContainsString('Approve business', $html);
+        $this->assertStringContainsString('disabled', $html);
+    }
+
+    public function test_business_sponsored_button_persists_without_livewire(): void
+    {
+        $member = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Sponsor Owner',
+            'um_email_id' => 'sponsor-owner@example.test', 'um_mobile_no' => '9876500094', 'um_status' => 2,
+        ]);
+        $company = CompaniesMaster::create([]);
+        $details = CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Sponsor Toggle Business',
+            'cmpd_description' => 'Business used for sponsored persistence.',
+            'cmpd_status' => 1, 'cmpd_is_sponsored' => 0,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $member->um_id, 'ucm_cmp_id' => $company->cmp_id]);
+
+        $this->signInAsAdmin()
+            ->post(route('admin.clients.business.sponsored', $company->cmp_id), ['sponsored' => 1])
+            ->assertRedirect()
+            ->assertSessionHas('success_message');
+
+        $this->assertSame(1, (int) $details->fresh()->cmpd_is_sponsored);
     }
 
     public function test_users_with_businesses_and_guest_users_have_separate_pages(): void
@@ -142,6 +241,97 @@ class AdminRegisteredUsersTest extends TestCase
         $this->get(route('admin.clients.guest-users'))
             ->assertOk()->assertSee('Guest Users')->assertSee('Registered Guest')->assertSee('unpaid-guest@example.test')
             ->assertDontSee('business-member@example.test');
+    }
+
+    public function test_join_registration_switch_is_managed_from_the_dashboard(): void
+    {
+        PublicRegistrationSetting::current()->update(['enabled' => false]);
+
+        $dashboard = file_get_contents(resource_path('views/admin/maincontents/dashboard.blade.php'));
+        $registeredUsers = file_get_contents(resource_path('views/admin/maincontents/client/registered-users.blade.php'));
+
+        $this->assertStringContainsString('Public Join registration', $dashboard);
+        $this->assertStringContainsString("route('admin.dashboard.registration-setting')", $dashboard);
+        $this->assertStringNotContainsString('Public Join registration', $registeredUsers);
+
+        $this->signInAsAdmin()->post(route('admin.dashboard.registration-setting'), [
+            'public_registration_enabled' => 1,
+            'public_registration_closed_message' => 'Registration is temporarily closed.',
+        ])->assertRedirect();
+
+        $this->assertTrue((bool) PublicRegistrationSetting::current()->fresh()->enabled);
+    }
+
+    public function test_super_admin_can_create_an_active_business_member(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+        $admin->update(['type' => 'ma']);
+        $state = State::query()->firstOrFail();
+        $country = Country::findOrFail($state->country_id);
+        $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.clients.registered-members.create'), [
+            'first_name' => 'Admin Added', 'email' => 'admin-added-member@example.test',
+            'mobile' => '9876507733', 'business_name' => 'Admin Added Business',
+            'category_ids' => [$category->bcm_id], 'country' => $country->id,
+            'state' => $state->id, 'pincode' => '700001',
+        ])->assertRedirect(route('admin.clients.registered-members'));
+
+        $member = UserMaster::where('um_email_id', 'admin-added-member@example.test')->firstOrFail();
+        $this->assertSame(2, (int) $member->um_utm_id);
+        $this->assertSame(2, (int) $member->um_status);
+        $this->assertSame(1, (int) $member->companies()->with('details')->firstOrFail()->details->cmpd_status);
+    }
+
+    public function test_admin_can_add_another_business_by_name_for_an_existing_member(): void
+    {
+        $member = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Multi Business Member',
+            'um_email_id' => 'multi-business-admin@example.test',
+            'um_mobile_no' => '9876507744', 'um_status' => 2,
+        ]);
+        $firstCompany = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $firstCompany->cmp_id, 'cmpd_name' => 'Existing Business',
+            'cmpd_description' => 'The member existing business.', 'cmpd_status' => 1,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_um_id' => $member->um_id, 'ucm_cmp_id' => $firstCompany->cmp_id]);
+
+        $this->signInAsAdmin()
+            ->post(route('admin.clients.registered-members.businesses.store', $member), [
+                'business_name' => 'Admin Added Second Business',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success_message');
+
+        $member->refresh();
+        $this->assertCount(2, $member->companies);
+        $this->assertDatabaseHas('companies_details', [
+            'cmpd_name' => 'Admin Added Second Business',
+            'cmpd_status' => 1,
+        ]);
+
+        $this->actingAs($member, 'member')->get(route('dashboard.index'))
+            ->assertOk()
+            ->assertSee('Admin Added Second Business')
+            ->assertDontSee('Add business');
+    }
+
+    public function test_admin_cannot_add_a_business_to_a_guest(): void
+    {
+        $guest = UserMaster::create([
+            'um_utm_id' => 1, 'um_user_name' => 'Businessless Guest',
+            'um_email_id' => 'businessless-guest@example.test',
+            'um_mobile_no' => '9876507755', 'um_status' => 2,
+        ]);
+
+        $this->signInAsAdmin()
+            ->post(route('admin.clients.registered-members.businesses.store', $guest), [
+                'business_name' => 'Forbidden Guest Business',
+            ])
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('companies_details', ['cmpd_name' => 'Forbidden Guest Business']);
     }
 
     public function test_admin_can_permanently_delete_a_user_business_and_uploaded_files(): void

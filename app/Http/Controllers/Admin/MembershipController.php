@@ -17,21 +17,33 @@ class MembershipController extends Controller
     public function index(Request $request)
     {
         $today = now()->startOfDay();
-        $baseMembers = UserMaster::query()->where('um_status', '!=', 3);
+        // Membership billing applies only to sellers (registered members with
+        // at least one linked business). Registered guests/buyers never belong
+        // in the membership register.
+        $baseMembers = UserMaster::query()
+            ->where('um_status', '!=', 3)
+            ->whereHas('companies');
+        $paidMembership = fn ($q) => $q
+            ->where('membership_status', 'active')
+            ->whereNotNull('payment_date')
+            ->where('payment_amount', '>', 0)
+            ->where(function ($renewal) use ($today) {
+                $renewal->whereNull('renewal_date')->orWhereDate('renewal_date', '>=', $today);
+            });
         $data['stats'] = [
             'total' => (clone $baseMembers)->count(),
-            'active' => (clone $baseMembers)->whereHas('membership', fn ($q) => $q->where('membership_status', 'active'))->count(),
+            'paid' => (clone $baseMembers)->whereHas('membership', $paidMembership)->count(),
             'due_soon' => (clone $baseMembers)->whereHas('membership', fn ($q) => $q
                 ->where('membership_status', 'active')
+                ->whereNotNull('payment_date')
+                ->where('payment_amount', '>', 0)
                 ->whereBetween('renewal_date', [$today, $today->copy()->addDays(30)]))->count(),
-            'pending' => (clone $baseMembers)->where(function ($q) {
-                $q->whereDoesntHave('membership')
-                    ->orWhereHas('membership', fn ($membership) => $membership->where('membership_status', 'pending'));
-            })->count(),
+            'free' => (clone $baseMembers)->whereDoesntHave('membership', $paidMembership)->count(),
         ];
 
         $query = UserMaster::with(['userDetail', 'userType', 'membership.plan'])
-            ->where('um_status', '!=', 3);
+            ->where('um_status', '!=', 3)
+            ->whereHas('companies');
 
         if ($search = trim((string) $request->query('search'))) {
             $query->where(function ($builder) use ($search) {
@@ -46,19 +58,17 @@ class MembershipController extends Controller
         }
 
         if ($status = $request->query('status')) {
-            $query->where(function ($builder) use ($status) {
-                $builder->whereHas('membership', fn ($membership) => $membership->where('membership_status', $status));
-
-                if ($status === 'pending') {
-                    $builder->orWhereDoesntHave('membership');
-                }
-            });
+            if ($status === 'paid') {
+                $query->whereHas('membership', $paidMembership);
+            } elseif ($status === 'free') {
+                $query->whereDoesntHave('membership', $paidMembership);
+            }
         }
 
         $data['members'] = $query->orderByDesc('um_id')->paginate(25)->withQueryString();
         $data['filters'] = $request->only(['search', 'status']);
 
-        echo $this->admin_after_login_layout('Memberships', 'membership.index', $data);
+        return $this->admin_after_login_layout('Memberships', 'membership.index', $data);
     }
 
     public function edit(Request $request, UserMaster $user, MembershipRenewalCalculator $renewalCalculator)

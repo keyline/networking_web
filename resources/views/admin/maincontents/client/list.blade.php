@@ -153,12 +153,12 @@ $controllerRoute = $module['controller_route'];
                                                         <i class="fa fa-times"></i> Deactivate
                                                     </a>
                                                 @elseif ((int) $row['um_status'] === 1 && $client_type && (int) $client_type['utm_id'] === 2)
-                                                    <form method="post" action="{{ route('admin.registrations.approve', $row['um_id']) }}" class="d-inline">
+                                                    <form method="post" action="{{ route('admin.registrations.approve-member', $row['um_id']) }}" class="d-inline">
                                                         @csrf
                                                         <button type="submit" class="btn btn-success btn-sm"
-                                                            title="Approve this member and all linked businesses"
-                                                            onclick="return confirm('Approve this member and their linked business? They will be able to log in and edit their business page.');">
-                                                            <i class="fa fa-check-circle"></i> Approve member &amp; business
+                                                            title="Approve this member account"
+                                                            onclick="return confirm('Approve this member account? Business approval remains separate.');">
+                                                            <i class="fa fa-user-check"></i> Approve member
                                                         </button>
                                                     </form>
                                                 @else

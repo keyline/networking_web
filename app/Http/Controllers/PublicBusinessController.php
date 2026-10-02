@@ -13,9 +13,12 @@ use App\Notifications\BusinessLeadEmailNotification;
 use App\Notifications\BusinessLeadSmsNotification;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class PublicBusinessController extends Controller
@@ -85,13 +88,14 @@ class PublicBusinessController extends Controller
         ]));
     }
 
-    public function show(string $slug): View
+    public function show(Request $request, string $slug): View
     {
         $business = CompaniesDetail::query()
             ->with(['companies.categories', 'companies.users.userDetail', 'gallery'])
             ->where('public_slug', $slug)
             ->firstOrFail();
         $isActive = (int) $business->cmpd_status === 1;
+        $this->logInteraction($request, (int) $business->cmpd_cmp_id, 'view');
 
         $social = DB::table('company_sociallink')->where('cs_cmp_id', $business->cmpd_cmp_id)->first();
         $portfolioModel = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->where('is_published', true)->first();
@@ -141,6 +145,8 @@ class PublicBusinessController extends Controller
             ->where('public_slug', $slug)
             ->where('cmpd_status', 1)
             ->firstOrFail();
+
+        abort_unless(Auth::guard('member')->check(), 403, 'Register or sign in to contact this business.');
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
@@ -210,5 +216,58 @@ class PublicBusinessController extends Controller
         }
 
         return redirect()->route('business.show', $business->public_slug)->with('lead_success', true);
+    }
+
+    public function contact(Request $request, string $slug, string $type): RedirectResponse
+    {
+        abort_unless(in_array($type, ['call', 'whatsapp', 'email'], true), 404);
+        $business = CompaniesDetail::where('public_slug', $slug)->where('cmpd_status', 1)->firstOrFail();
+        $this->logInteraction($request, (int) $business->cmpd_cmp_id, $type);
+
+        if ($type === 'call' && $business->cmpd_phone) {
+            return redirect()->away('tel:'.preg_replace('/[^0-9+]/', '', $business->cmpd_phone));
+        }
+        if ($type === 'email' && $business->cmpd_email) {
+            return redirect()->away('mailto:'.$business->cmpd_email);
+        }
+        $number = preg_replace('/\D/', '', (string) ($business->cmpd_whatsapp_no ?: $business->cmpd_phone));
+        if ($type === 'whatsapp' && $number) {
+            $message = Str::limit((string) $request->query('message', 'Hello, I found your Net-Works business page.'), 500, '');
+            return redirect()->away('https://wa.me/'.$number.'?text='.rawurlencode($message));
+        }
+
+        return redirect()->route('business.show', $slug)->withErrors(['contact' => 'This contact method is not available.']);
+    }
+
+    public function track(Request $request, string $slug): JsonResponse
+    {
+        $data = $request->validate(['event_type' => ['required', 'in:share']]);
+        $business = CompaniesDetail::where('public_slug', $slug)->where('cmpd_status', 1)->firstOrFail();
+        $this->logInteraction($request, (int) $business->cmpd_cmp_id, $data['event_type']);
+        return response()->json(['tracked' => true]);
+    }
+
+    private function logInteraction(Request $request, int $companyId, string $type): void
+    {
+        $userId = Auth::guard('member')->id();
+        if ($userId && DB::table('user_companies_map')->where('ucm_um_id', $userId)->where('ucm_cmp_id', $companyId)->exists()) {
+            return;
+        }
+
+        $deviceId = hash('sha256', $request->session()->getId());
+        $duplicate = DB::table('business_analytics_events')
+            ->where('bae_cmp_id', $companyId)->where('bae_event_type', $type)
+            ->where('bae_um_id', $userId)->where('bae_device_id', $deviceId)
+            ->where('bae_created_at', '>=', now()->subMinutes(30))->exists();
+        if (!$duplicate) {
+            DB::table('business_analytics_events')->insert([
+                'bae_cmp_id' => $companyId,
+                'bae_event_type' => $type,
+                'bae_um_id' => $userId,
+                'bae_device_id' => $deviceId,
+                'bae_source' => 'WEB',
+                'bae_created_at' => now(),
+            ]);
+        }
     }
 }

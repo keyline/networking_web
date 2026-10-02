@@ -11,14 +11,23 @@ use App\Models\Page;
 use App\Models\PublicRegistrationSetting;
 use App\Models\User\UserDetails;
 use App\Models\User\UserMaster;
+use App\Services\DigitalSmsOtpService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PublicRegistrationController extends Controller
 {
+    public function __construct(private DigitalSmsOtpService $sms)
+    {
+    }
+
     public function create()
     {
         return view('front.join', $this->viewData());
@@ -29,81 +38,186 @@ class PublicRegistrationController extends Controller
         abort_unless(PublicRegistrationSetting::current()->enabled, 403, 'Public registration is currently closed.');
 
         $data = $request->validate([
+            'salutation' => ['nullable', Rule::in(['Mr.', 'Mrs.', 'Ms.', 'Miss', 'Dr.', 'Prof.', 'Mx.'])],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['nullable', 'string', 'max:100'],
             'email' => ['required', 'email:rfc', 'max:255', 'unique:user_master,um_email_id'],
             'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'unique:user_master,um_mobile_no'],
             'whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
-            'address_line_1' => ['nullable', 'string', 'max:255'],
-            'address_line_2' => ['nullable', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'country' => ['nullable', 'integer', 'exists:countries,id'],
-            'state' => ['nullable', 'integer', Rule::exists('states', 'id')->where(fn ($query) => $query->where('country_id', $request->input('country')))],
-            'pincode' => ['nullable', 'regex:/^[1-9][0-9]{5}$/'],
-            'wants_business' => ['nullable', 'boolean'],
-            'business_name' => ['nullable', 'required_if:wants_business,1', 'string', 'max:255'],
-            'category_ids' => ['nullable', 'required_if:wants_business,1', 'array', 'min:1', 'max:5'],
+            'business_name' => ['required', 'string', 'max:255'],
+            'category_ids' => ['required', 'array', 'min:1', 'max:5'],
             'category_ids.*' => ['integer', 'distinct', 'exists:business_category_master,bcm_id'],
             'business_email' => ['nullable', 'email:rfc', 'max:255'],
             'business_phone' => ['nullable', 'string', 'max:15'],
             'business_description' => ['nullable', 'string', 'max:3000'],
+            'business_address_line_1' => ['nullable', 'string', 'max:255'],
+            'business_address_line_2' => ['nullable', 'string', 'max:255'],
+            'business_city' => ['nullable', 'string', 'max:100'],
+            'business_country' => ['nullable', 'integer', 'exists:countries,id'],
+            'business_state' => ['nullable', 'integer', Rule::exists('states', 'id')->where(fn ($query) => $query->where('country_id', $request->input('business_country')))],
+            'business_pincode' => ['nullable', 'regex:/^[1-9][0-9]{5}$/'],
             'consent' => ['accepted'],
             'website' => ['nullable', 'max:0'],
         ]);
 
-        $requiresApproval = !empty($data['wants_business']);
-        $registrationNumber = DB::transaction(function () use ($data, $requiresApproval) {
+        $registrationNumber = DB::transaction(function () use ($data) {
             $user = UserMaster::create([
-                'um_utm_id' => 1,
+                'um_utm_id' => 2,
                 'um_email_id' => strtolower($data['email']),
                 'um_mobile_no' => $data['mobile'],
                 'um_password' => Hash::make(Str::random(40)),
-                'um_status' => $requiresApproval ? 1 : 2,
-                'um_profile_type' => 'G',
+                'um_status' => 1,
+                'um_profile_type' => 'O',
             ]);
             $registrationNumber = 'EN'.str_pad((string) $user->um_id, 6, '0', STR_PAD_LEFT);
             $user->update(['um_user_name' => $registrationNumber]);
 
             UserDetails::create([
                 'ud_um_id' => $user->um_id,
+                'ud_salutation' => $data['salutation'] ?? null,
                 'ud_first_name' => $data['first_name'],
                 'ud_last_name' => $data['last_name'] ?? null,
                 'ud_whatsapp_no' => ($data['whatsapp'] ?? null) ?: $data['mobile'],
-                'ud_addr_1' => $data['address_line_1'] ?? null,
-                'ud_addr_2' => trim(($data['address_line_2'] ?? '').(!empty($data['city']) ? ', '.$data['city'] : '')) ?: null,
-                'ud_country_id' => $data['country'] ?? null,
-                'ud_state_id' => $data['state'] ?? null,
-                'ud_pincode' => $data['pincode'] ?? null,
             ]);
 
-            if (!empty($data['wants_business'])) {
-                $company = CompaniesMaster::create([]);
-                CompaniesDetail::create([
+            $company = CompaniesMaster::create([]);
+            CompaniesDetail::create([
                     'cmpd_cmp_id' => $company->cmp_id,
                     'cmpd_name' => $data['business_name'],
                     'cmpd_description' => $data['business_description'] ?? 'Business profile pending approval.',
                     'cmpd_email' => $data['business_email'] ?? $data['email'],
                     'cmpd_phone' => $data['business_phone'] ?? $data['mobile'],
-                    'cmpd_address1' => $data['address_line_1'] ?? null,
-                    'cmpd_address2' => $data['address_line_2'] ?? null,
-                    'cmpd_address3' => $data['city'] ?? null,
-                    'cmpd_country' => $data['country'] ?? null,
-                    'cmpd_state' => $data['state'] ?? null,
-                    'cmpd_pincode' => $data['pincode'] ?? null,
+                    'cmpd_address1' => $data['business_address_line_1'] ?? null,
+                    'cmpd_address2' => $data['business_address_line_2'] ?? null,
+                    'cmpd_address3' => $data['business_city'] ?? null,
+                    'cmpd_country' => $data['business_country'] ?? null,
+                    'cmpd_state' => $data['business_state'] ?? null,
+                    'cmpd_pincode' => $data['business_pincode'] ?? null,
                     'cmpd_status' => 0,
                     'cmpd_is_document_valid' => '0',
-                ]);
-                $company->users()->attach($user->um_id);
-                $company->categories()->attach($data['category_ids']);
-            }
+            ]);
+            $company->users()->attach($user->um_id);
+            $company->categories()->attach($data['category_ids']);
 
             return $registrationNumber;
         });
 
         return redirect()->route('join.create')->with([
             'registration_success' => $registrationNumber,
-            'registration_requires_approval' => $requiresApproval,
+            'registration_requires_approval' => true,
         ]);
+    }
+
+    public function guestCreate(Request $request)
+    {
+        if (Auth::guard('member')->check()) {
+            return redirect()->route('dashboard.index');
+        }
+
+        $redirect = (string) $request->query('redirect', '');
+        if ($redirect !== '' && str_starts_with($redirect, url('/'))) {
+            $request->session()->put('guest_registration_intended', $redirect);
+        }
+
+        return view('front.guest-register', array_merge($this->viewData(), [
+            'title' => 'Guest registration · Net-Works',
+            'guestMobile' => $request->session()->get('guest_registration_mobile'),
+            'guestVerified' => (bool) $request->session()->get('guest_registration_verified'),
+        ]));
+    }
+
+    public function guestSendOtp(Request $request)
+    {
+        $data = $request->validate([
+            'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'unique:user_master,um_mobile_no'],
+        ]);
+        $key = 'guest-registration:send:'.$data['mobile'].'|'.$request->ip();
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            throw ValidationException::withMessages(['mobile' => 'Too many attempts. Please try again later.']);
+        }
+
+        $otp = (string) random_int(1000, 9999);
+        if (!app()->environment('testing')) {
+            try {
+                $this->sms->send($data['mobile'], $otp);
+            } catch (\Throwable $exception) {
+                throw ValidationException::withMessages(['mobile' => 'We could not send the OTP right now. Please try again.']);
+            }
+        }
+
+        $request->session()->put([
+            'guest_registration_mobile' => $data['mobile'],
+            'guest_registration_otp_hash' => Hash::make($otp),
+            'guest_registration_otp_expires_at' => now()->addMinutes(10)->timestamp,
+            'guest_registration_verified' => false,
+        ]);
+        if (app()->environment('testing')) {
+            $request->session()->put('testing_guest_registration_otp', $otp);
+        }
+        RateLimiter::hit($key, 60);
+
+        return redirect()->route('guest.register')->with('success', 'OTP sent to your mobile number.');
+    }
+
+    public function guestVerifyOtp(Request $request)
+    {
+        $data = $request->validate(['otp' => ['required', 'digits:4']]);
+        $hash = $request->session()->get('guest_registration_otp_hash');
+        $expiresAt = (int) $request->session()->get('guest_registration_otp_expires_at');
+        if (!$hash || !$expiresAt || Carbon::createFromTimestamp($expiresAt)->isPast() || !Hash::check($data['otp'], $hash)) {
+            throw ValidationException::withMessages(['otp' => 'The OTP is invalid or has expired.']);
+        }
+
+        $request->session()->put('guest_registration_verified', true);
+        $request->session()->forget(['guest_registration_otp_hash', 'guest_registration_otp_expires_at', 'testing_guest_registration_otp']);
+        return redirect()->route('guest.register')->with('success', 'Mobile number verified. Complete your profile.');
+    }
+
+    public function guestStore(Request $request)
+    {
+        abort_unless($request->session()->get('guest_registration_verified'), 403, 'Verify your mobile number first.');
+        $mobile = (string) $request->session()->get('guest_registration_mobile');
+        $data = $request->validate([
+            'salutation' => ['nullable', Rule::in(['Mr.', 'Mrs.', 'Ms.', 'Miss', 'Dr.', 'Prof.', 'Mx.'])],
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:100'],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:user_master,um_email_id'],
+            'country' => ['required', 'integer', 'exists:countries,id'],
+            'state' => ['required', 'integer', Rule::exists('states', 'id')->where(fn ($query) => $query->where('country_id', $request->input('country')))],
+            'consent' => ['accepted'],
+        ]);
+
+        if (UserMaster::where('um_mobile_no', $mobile)->exists()) {
+            throw ValidationException::withMessages(['email' => 'This mobile number is already registered. Please sign in.']);
+        }
+
+        $guest = DB::transaction(function () use ($data, $mobile) {
+            $guest = UserMaster::create([
+                'um_utm_id' => 1,
+                'um_email_id' => strtolower($data['email']),
+                'um_mobile_no' => $mobile,
+                'um_password' => Hash::make(Str::random(40)),
+                'um_status' => 2,
+                'um_profile_type' => 'G',
+            ]);
+            $guest->update(['um_user_name' => 'GU'.str_pad((string) $guest->um_id, 6, '0', STR_PAD_LEFT)]);
+            UserDetails::create([
+                'ud_um_id' => $guest->um_id,
+                'ud_salutation' => $data['salutation'] ?? null,
+                'ud_first_name' => $data['first_name'],
+                'ud_last_name' => $data['last_name'] ?? null,
+                'ud_whatsapp_no' => $mobile,
+                'ud_country_id' => $data['country'],
+                'ud_state_id' => $data['state'],
+            ]);
+            return $guest;
+        });
+
+        Auth::guard('member')->login($guest);
+        $request->session()->regenerate();
+        $intended = $request->session()->pull('guest_registration_intended', route('dashboard.index'));
+        $request->session()->forget(['guest_registration_mobile', 'guest_registration_verified']);
+        return redirect()->to($intended)->with('success', 'Your guest account is ready.');
     }
 
     private function viewData(): array

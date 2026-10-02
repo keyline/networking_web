@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 class MembersController extends Controller
 {
     private const PER_PAGE = 20;
-    private const GUEST_TYPE_ID = 3;
 
     public function list(Request $request)
     {
@@ -28,11 +27,6 @@ class MembersController extends Controller
         if (!$auth['status']) {
             $this->response_to_json(false, $auth['data']);
         }
-
-        // Guests share one anonymous account, so they never see full numbers
-        $isGuest = DB::table('user_master')
-            ->where('um_id', (int) $auth['data'][1])
-            ->value('um_utm_id') == self::GUEST_TYPE_ID;
 
         $page   = max(1, (int) $request->input('page_no', 1));
         $search = trim((string) $request->input('search', ''));
@@ -81,7 +75,7 @@ class MembersController extends Controller
             ")
             ->get();
 
-        $members = $rows->map(function ($row) use ($isGuest) {
+        $members = $rows->map(function ($row) {
             $businesses = array_values(array_filter(explode('||', (string) $row->business_names)));
             $categories = array_values(array_filter(explode('||', (string) $row->categories)));
             $phone      = (string) $row->um_mobile_no;
@@ -92,8 +86,8 @@ class MembersController extends Controller
                 'profile_image' => !empty($row->ud_profile_image)
                     ? env('UPLOADS_URL') . 'user/' . $row->ud_profile_image
                     : null,
-                'phone'         => $isGuest ? $this->maskPhone($phone) : $phone,
-                'phone_hidden'  => $isGuest,
+                'phone'         => $phone,
+                'phone_hidden'  => false,
                 'business_id'   => (int) $row->business_id,
                 'business_name' => $businesses[0] ?? '',
                 'more_businesses' => max(0, count($businesses) - 1),
@@ -107,16 +101,6 @@ class MembersController extends Controller
             'page_no'  => $page,
             'has_more' => ($page * self::PER_PAGE) < $total,
         ]);
-    }
-
-    /** "9830012345" -> "98XXXXXX45" */
-    private function maskPhone(string $phone): string
-    {
-        $digits = preg_replace('/\D/', '', $phone);
-        if (strlen($digits) < 5) {
-            return str_repeat('X', strlen($digits));
-        }
-        return substr($digits, 0, 2) . str_repeat('X', strlen($digits) - 4) . substr($digits, -2);
     }
 
     /* Same token check the other API controllers use */

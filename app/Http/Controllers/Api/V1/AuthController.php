@@ -244,16 +244,33 @@ class AuthController extends Controller
                         $subject = $generalSetting->site_name . ' :: Signup Validate OTP';
                         $message = view('email-templates.otp', $mailData);
 
-                        // Send the OTP email
-                        $this->sendMail($user->um_email_id, $subject, $message);
+                        // Either channel is enough; one being down (e.g. the SMS
+                        // gateway) must not block registration
+                        $emailSent = false;
+                        try {
+                            $emailSent = (bool) $this->sendMail($user->um_email_id, $subject, $message);
+                        } catch (\Throwable $e) {
+                            Log::warning('Registration OTP email failed', ['user_id' => $user->um_id, 'error' => $e->getMessage()]);
+                        }
 
-                        // Send the OTP SMS or any other notification
-                        $this->loginOtpService->sendOTP($user->um_id);
+                        $smsSent = false;
+                        try {
+                            $this->loginOtpService->sendOTP($user->um_id);
+                            $smsSent = true;
+                        } catch (\Throwable $e) {
+                            Log::warning('Registration OTP SMS failed', ['user_id' => $user->um_id, 'error' => $e->getMessage()]);
+                        }
+
+                        if (!$emailSent && !$smsSent) {
+                            throw new \Exception('We could not send the OTP right now. Please try again in a few minutes.');
+                        }
 
                         $apiResponse    = ['user_id' => $user->um_id];
                         $apiStatus      = true;
                         http_response_code(200);
-                        $apiMessage     = 'OTP sent successfully';
+                        $apiMessage     = ($smsSent && $emailSent)
+                            ? 'OTP sent successfully'
+                            : ($emailSent ? 'OTP sent to your email' : 'OTP sent to your phone');
                         $apiExtraField  = 'response_code';
                         $apiExtraData   = http_response_code();
                     }
@@ -390,7 +407,12 @@ class AuthController extends Controller
                         //return response()->json(['error' => 'OTP not expired yet'], Response::HTTP_BAD_REQUEST);
 
 
-                        $this->loginOtpService->sendOTP($user->um_id, $user->um_otp);
+                        // SMS is best effort; the email below still carries the OTP
+                        try {
+                            $this->loginOtpService->sendOTP($user->um_id, $user->um_otp);
+                        } catch (\Throwable $e) {
+                            Log::warning('Resend OTP SMS failed', ['user_id' => $user->um_id, 'error' => $e->getMessage()]);
+                        }
 
                         $otp = $user->um_otp;
 
@@ -404,7 +426,12 @@ class AuthController extends Controller
 
                         $otp = $this->loginOtpService->generateOTP($user->um_id);
 
-                        $this->loginOtpService->sendOTP($user->um_id, $otp);
+                        // SMS is best effort; the email below still carries the OTP
+                        try {
+                            $this->loginOtpService->sendOTP($user->um_id, $otp);
+                        } catch (\Throwable $e) {
+                            Log::warning('Resend OTP SMS failed', ['user_id' => $user->um_id, 'error' => $e->getMessage()]);
+                        }
                     }
                     //return response()->json(['message' => 'OTP resent successfull'], Response::HTTP_OK);
 
