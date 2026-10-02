@@ -36,6 +36,7 @@ use App\Models\Source;
 use App\Models\Notification;
 use App\Models\NotificationTemplate;
 use App\Models\UserDevice;
+use App\Models\User\UserMaster;
 
 use Auth;
 use Session;
@@ -83,7 +84,7 @@ class FrontController extends Controller
                 ->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
             : collect();
         $data['homeStats'] = [
-            'members' => DB::table('user_master')->count(),
+            'members' => UserMaster::activeMembers()->count(),
             'businesses' => DB::table('companies_master')->count(),
             'events' => $data['openEventCount'],
         ];

@@ -294,7 +294,7 @@ class UserController extends Controller
         $data['totalfarmer']            = Client::where('client_type_id', '=', 4)->count();
 
         $data['totalGuests']                 = UserMaster::where('um_utm_id', '=', 1)->count();
-        $data['totalMembers']                = UserMaster::where('um_utm_id', '=', 2)->count();
+        $data['totalMembers']                = UserMaster::activeMembers()->count();
         $data['totalTypes']                  = DB::table('business_category_master')->count();
         $data['totalBusiness']               = DB::table('companies_master')->count();
         $data['registrationSettings']        = PublicRegistrationSetting::current();

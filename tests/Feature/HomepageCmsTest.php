@@ -139,4 +139,35 @@ class HomepageCmsTest extends TestCase
             ->assertDontSee('Register as guest')
             ->assertDontSee('Member login');
     }
+
+    public function test_homepage_member_total_counts_only_active_approved_members(): void
+    {
+        $initialActiveMembers = UserMaster::activeMembers()->count();
+
+        UserMaster::create([
+            'um_utm_id' => 2,
+            'um_user_name' => 'Active Counted Member',
+            'um_email_id' => uniqid('active-counted-').'@example.test',
+            'um_mobile_no' => '9'.random_int(100000000, 999999999),
+            'um_status' => 2,
+        ]);
+        UserMaster::create([
+            'um_utm_id' => 2,
+            'um_user_name' => 'Pending Uncounted Member',
+            'um_email_id' => uniqid('pending-uncounted-').'@example.test',
+            'um_mobile_no' => '8'.random_int(100000000, 999999999),
+            'um_status' => 1,
+        ]);
+        UserMaster::create([
+            'um_utm_id' => 1,
+            'um_user_name' => 'Active Uncounted Guest',
+            'um_email_id' => uniqid('guest-uncounted-').'@example.test',
+            'um_mobile_no' => '7'.random_int(100000000, 999999999),
+            'um_status' => 2,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertViewHas('homeStats', fn (array $stats) => $stats['members'] === $initialActiveMembers + 1);
+    }
 }

@@ -288,7 +288,7 @@ use App\Helpers\Helper;
                 <h6 class="card-subtitle">Members</h6>
                 <div class="row align-items-center gx-2 mb-1">
                   <div class="col-12">
-                    <h2 class="card-title text-inherit"><?=$totalMembers?></h2>
+                    <h2 class="card-title text-inherit" data-stat="active-members"><?=$totalMembers?></h2>
                   </div>
                 </div>
                 <!-- End Row -->

@@ -10,6 +10,7 @@ use App\Models\ChapterMember;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Builder;
 // class UserMaster extends BaseModel
 
 
@@ -41,6 +42,14 @@ class UserMaster extends Authenticatable
     public function routeNotificationForMail(): ?string
     {
         return $this->um_email_id;
+    }
+
+    /**
+     * Approved business-member accounts used by public and admin totals.
+     */
+    public function scopeActiveMembers(Builder $query): Builder
+    {
+        return $query->where('um_utm_id', 2)->where('um_status', 2);
     }
 
     #____________________________ Relationships ____________________________

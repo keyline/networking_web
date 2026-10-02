@@ -194,6 +194,32 @@ class AdminRegisteredUsersTest extends TestCase
         $this->assertStringContainsString('disabled', $html);
     }
 
+    public function test_dashboard_member_total_counts_only_active_approved_members(): void
+    {
+        $initialActiveMembers = UserMaster::activeMembers()->count();
+        UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Dashboard Active Count',
+            'um_email_id' => uniqid('dashboard-active-').'@example.test',
+            'um_mobile_no' => '6'.random_int(100000000, 999999999), 'um_status' => 2,
+        ]);
+        UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'Dashboard Pending Count',
+            'um_email_id' => uniqid('dashboard-pending-count-').'@example.test',
+            'um_mobile_no' => '5'.random_int(100000000, 999999999), 'um_status' => 1,
+        ]);
+
+        $this->signInAsAdmin();
+        ob_start();
+        $response = $this->get('/admin/dashboard');
+        $html = (string) ob_get_clean();
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'data-stat="active-members">'.($initialActiveMembers + 1).'</h2>',
+            $html
+        );
+    }
+
     public function test_business_sponsored_button_persists_without_livewire(): void
     {
         $member = UserMaster::create([
