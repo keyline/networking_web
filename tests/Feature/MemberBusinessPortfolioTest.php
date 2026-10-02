@@ -135,6 +135,30 @@ class MemberBusinessPortfolioTest extends TestCase
         @unlink(public_path($path));
     }
 
+    public function test_owner_can_upload_a_hero_image_and_sees_image_guidance(): void
+    {
+        [$owner, $company] = $this->business('hero-image-upload');
+        $token = $company->portfolioRouteToken();
+        $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
+
+        $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', $token))
+            ->assertOk()
+            ->assertSee('Recommended: 1600 × 600 px landscape (8:3).')
+            ->assertSee('maximum 10 MB');
+
+        $this->actingAs($owner, 'member')->put(route('member.portfolio.update', $token), [
+            'business_name' => 'Hero Image Upload',
+            'category_ids' => [$category->bcm_id],
+            'hero_image' => UploadedFile::fake()->image('hero.jpg', 2400, 900),
+        ])->assertRedirect(route('member.portfolio.edit', $token).'#profile');
+
+        $path = BusinessPortfolio::where('company_id', $company->cmp_id)->value('hero_image');
+        $this->assertNotNull($path);
+        $this->assertFileExists(public_path($path));
+        $this->assertLessThanOrEqual(204800, filesize(public_path($path)));
+        @unlink(public_path($path));
+    }
+
     private function business(string $slug): array
     {
         $owner = UserMaster::create(['um_utm_id' => 2, 'um_user_name' => $slug, 'um_email_id' => $slug.'@example.test', 'um_mobile_no' => '9000000001', 'um_status' => 2]);

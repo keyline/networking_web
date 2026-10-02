@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -44,6 +45,7 @@ class PublicRegistrationController extends Controller
             'email' => ['required', 'email:rfc', 'max:255', 'unique:user_master,um_email_id'],
             'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'unique:user_master,um_mobile_no'],
             'whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'business_name' => ['required', 'string', 'max:255'],
             'category_ids' => ['required', 'array', 'min:1', 'max:3'],
             'category_ids.*' => ['integer', 'distinct', 'exists:business_category_master,bcm_id'],
@@ -58,30 +60,52 @@ class PublicRegistrationController extends Controller
             'business_pincode' => ['nullable', 'regex:/^[1-9][0-9]{5}$/'],
             'consent' => ['accepted'],
             'website' => ['nullable', 'max:0'],
+        ], [
+            'profile_photo.uploaded' => 'Your photo could not be uploaded. Choose a JPG, PNG or WebP image no larger than 5 MB.',
+            'profile_photo.image' => 'Your photo must be a valid image file.',
+            'profile_photo.mimes' => 'Your photo must be a JPG, PNG or WebP file.',
+            'profile_photo.max' => 'Your photo must not be larger than 5 MB.',
         ]);
 
-        $registrationNumber = DB::transaction(function () use ($data) {
-            $user = UserMaster::create([
-                'um_utm_id' => 2,
-                'um_email_id' => strtolower($data['email']),
-                'um_mobile_no' => $data['mobile'],
-                'um_password' => Hash::make(Str::random(40)),
-                'um_status' => 1,
-                'um_profile_type' => 'O',
-            ]);
-            $registrationNumber = 'EN'.str_pad((string) $user->um_id, 6, '0', STR_PAD_LEFT);
-            $user->update(['um_user_name' => $registrationNumber]);
+        $profilePhotoName = null;
+        if ($request->hasFile('profile_photo')) {
+            try {
+                $directory = public_path('uploads/user');
+                File::ensureDirectoryExists($directory);
+                $profilePhotoName = Str::uuid().'.'.$request->file('profile_photo')->extension();
+                $request->file('profile_photo')->move($directory, $profilePhotoName);
+            } catch (\Throwable $exception) {
+                report($exception);
+                return back()->withInput()->withErrors([
+                    'profile_photo' => 'Your photo could not be saved. Please try another image.',
+                ]);
+            }
+        }
 
-            UserDetails::create([
-                'ud_um_id' => $user->um_id,
-                'ud_salutation' => $data['salutation'] ?? null,
-                'ud_first_name' => $data['first_name'],
-                'ud_last_name' => $data['last_name'] ?? null,
-                'ud_whatsapp_no' => ($data['whatsapp'] ?? null) ?: $data['mobile'],
-            ]);
+        try {
+            $registrationNumber = DB::transaction(function () use ($data, $profilePhotoName) {
+                $user = UserMaster::create([
+                    'um_utm_id' => 2,
+                    'um_email_id' => strtolower($data['email']),
+                    'um_mobile_no' => $data['mobile'],
+                    'um_password' => Hash::make(Str::random(40)),
+                    'um_status' => 1,
+                    'um_profile_type' => 'O',
+                ]);
+                $registrationNumber = 'EN'.str_pad((string) $user->um_id, 6, '0', STR_PAD_LEFT);
+                $user->update(['um_user_name' => $registrationNumber]);
 
-            $company = CompaniesMaster::create([]);
-            CompaniesDetail::create([
+                UserDetails::create([
+                    'ud_um_id' => $user->um_id,
+                    'ud_salutation' => $data['salutation'] ?? null,
+                    'ud_first_name' => $data['first_name'],
+                    'ud_last_name' => $data['last_name'] ?? null,
+                    'ud_whatsapp_no' => ($data['whatsapp'] ?? null) ?: $data['mobile'],
+                    'ud_profile_image' => $profilePhotoName,
+                ]);
+
+                $company = CompaniesMaster::create([]);
+                CompaniesDetail::create([
                     'cmpd_cmp_id' => $company->cmp_id,
                     'cmpd_name' => $data['business_name'],
                     'cmpd_description' => $data['business_description'] ?? 'Business profile pending approval.',
@@ -95,12 +119,18 @@ class PublicRegistrationController extends Controller
                     'cmpd_pincode' => $data['business_pincode'] ?? null,
                     'cmpd_status' => 0,
                     'cmpd_is_document_valid' => '0',
-            ]);
-            $company->users()->attach($user->um_id);
-            $company->categories()->attach($data['category_ids']);
+                ]);
+                $company->users()->attach($user->um_id);
+                $company->categories()->attach($data['category_ids']);
 
-            return $registrationNumber;
-        });
+                return $registrationNumber;
+            });
+        } catch (\Throwable $exception) {
+            if ($profilePhotoName) {
+                File::delete(public_path('uploads/user/'.$profilePhotoName));
+            }
+            throw $exception;
+        }
 
         return redirect()->route('join.create')->with([
             'registration_success' => $registrationNumber,

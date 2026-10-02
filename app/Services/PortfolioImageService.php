@@ -60,7 +60,9 @@ class PortfolioImageService
         $directory = "uploads/portfolio/{$companyId}/{$group}";
         File::ensureDirectoryExists(public_path($directory));
         $relativePath = $directory.'/'.Str::uuid().'.jpg';
-        file_put_contents(public_path($relativePath), $encoded);
+        if (file_put_contents(public_path($relativePath), $encoded) === false) {
+            throw new RuntimeException('The image could not be saved. Please try again or contact the administrator.');
+        }
 
         return $relativePath;
     }

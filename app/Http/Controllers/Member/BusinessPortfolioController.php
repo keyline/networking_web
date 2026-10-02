@@ -69,6 +69,11 @@ class BusinessPortfolioController extends Controller
             'whatsapp_number' => ['nullable', 'string', 'max:30'],
             'whatsapp_message' => ['nullable', 'string', 'max:255'],
             'hero_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ], [
+            'hero_image.uploaded' => 'The hero image could not be uploaded. Choose a JPG, PNG or WebP image no larger than 10 MB.',
+            'hero_image.image' => 'The hero image must be a valid image file.',
+            'hero_image.mimes' => 'The hero image must be a JPG, PNG or WebP file.',
+            'hero_image.max' => 'The hero image must not be larger than 10 MB.',
         ]);
 
         $portfolio = BusinessPortfolio::firstOrCreate(['company_id' => $company->cmp_id]);
@@ -97,7 +102,13 @@ class BusinessPortfolioController extends Controller
             $detailData['cmpd_logo'] = $logoName;
         }
         if ($request->hasFile('hero_image')) {
-            $newPath = $images->store($request->file('hero_image'), $company->cmp_id, 'hero');
+            try {
+                $newPath = $images->store($request->file('hero_image'), $company->cmp_id, 'hero');
+            } catch (\RuntimeException $exception) {
+                return $this->redirectToTab($companyToken, 'profile')
+                    ->withErrors(['hero_image' => $exception->getMessage()])
+                    ->withInput();
+            }
             $images->delete($portfolio->hero_image);
             $data['hero_image'] = $newPath;
         }

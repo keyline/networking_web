@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Models\Events\Event;
 use App\Models\HomepageSection;
+use App\Models\User\UserDetails;
+use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -111,5 +113,30 @@ class HomepageCmsTest extends TestCase
             ->assertSee('Register')
             ->assertSee(route('events.show', $open), false)
             ->assertDontSee('Registration Opens Later');
+    }
+
+    public function test_authenticated_member_header_replaces_join_actions_with_account_controls(): void
+    {
+        $member = UserMaster::create([
+            'um_utm_id' => 2,
+            'um_user_name' => 'EN009991',
+            'um_email_id' => 'header-member@example.test',
+            'um_mobile_no' => '9876509991',
+            'um_status' => 2,
+        ]);
+        UserDetails::create([
+            'ud_um_id' => $member->um_id,
+            'ud_first_name' => 'Header',
+            'ud_last_name' => 'Member',
+        ]);
+
+        $this->actingAs($member, 'member')->get('/')
+            ->assertOk()
+            ->assertSee('Header Member')
+            ->assertSee('Dashboard')
+            ->assertSee('Log out')
+            ->assertDontSee('Join as member')
+            ->assertDontSee('Register as guest')
+            ->assertDontSee('Member login');
     }
 }

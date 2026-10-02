@@ -9,6 +9,7 @@ use App\Models\Country;
 use App\Models\State;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class PublicRegistrationTest extends TestCase
@@ -115,6 +116,31 @@ class PublicRegistrationTest extends TestCase
             ->assertSee('name="business_address_line_1"', false)
             ->assertSee('name="business_country"', false)
             ->assertDontSee('name="address_line_1"', false);
+    }
+
+    public function test_member_can_optionally_upload_a_profile_photo_during_registration(): void
+    {
+        PublicRegistrationSetting::current()->update(['enabled' => true]);
+        $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
+
+        $this->get(route('join.create'))
+            ->assertOk()
+            ->assertSee('Upload your photo')
+            ->assertSee('(optional)')
+            ->assertSee('Recommended: 600 × 600 px square.')
+            ->assertSee('name="profile_photo"', false);
+
+        $this->post(route('join.store'), array_merge($this->registrationData(), [
+            'business_name' => 'Photo Upload Business',
+            'category_ids' => [$category->bcm_id],
+            'profile_photo' => UploadedFile::fake()->image('member-photo.jpg', 900, 900),
+        ]))->assertRedirect(route('join.create'));
+
+        $member = UserMaster::where('um_email_id', 'new-member@example.test')->firstOrFail();
+        $photo = $member->userDetail->ud_profile_image;
+        $this->assertNotNull($photo);
+        $this->assertFileExists(public_path('uploads/user/'.$photo));
+        @unlink(public_path('uploads/user/'.$photo));
     }
 
     private function registrationData(): array
