@@ -36,13 +36,13 @@ class MemberBusinessPortfolioTest extends TestCase
             'address1' => '10 Example Street', 'pincode' => '700001',
             'tagline' => 'Trusted business services', 'about' => 'A complete business profile.',
             'website' => 'https://example.test', 'whatsapp_enabled' => 1, 'contact_form_enabled' => 1,
-        ])->assertRedirect();
+        ])->assertRedirect(route('member.portfolio.edit', $token).'#profile');
         $this->actingAs($owner, 'member')->post(route('member.portfolio.items.store', $token), [
             'type' => 'service', 'title' => 'Business consulting', 'description' => 'Practical advice.', 'price_label' => 'Ask for price',
-        ])->assertRedirect();
+        ])->assertRedirect(route('member.portfolio.edit', $token).'#offerings');
         $this->actingAs($owner, 'member')->post(route('member.portfolio.videos.store', $token), [
             'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'title' => 'Introduction',
-        ])->assertRedirect();
+        ])->assertRedirect(route('member.portfolio.edit', $token).'#videos');
         $this->actingAs($owner, 'member')->post(route('member.portfolio.publish', $token))->assertRedirect();
 
         $portfolio = BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail();
@@ -73,10 +73,11 @@ class MemberBusinessPortfolioTest extends TestCase
     public function test_gallery_upload_is_compressed_below_two_hundred_kilobytes(): void
     {
         [$owner, $company] = $this->business('compressed-gallery');
-        $response = $this->actingAs($owner, 'member')->post(route('member.portfolio.images.store', $company->portfolioRouteToken()), [
+        $token = $company->portfolioRouteToken();
+        $response = $this->actingAs($owner, 'member')->post(route('member.portfolio.images.store', $token), [
             'image' => UploadedFile::fake()->image('large.jpg', 2400, 1800), 'title' => 'Completed project', 'caption' => 'Our work',
         ]);
-        $response->assertRedirect();
+        $response->assertRedirect(route('member.portfolio.edit', $token).'#gallery');
         $path = DB::table('business_portfolio_media')->where('company_id', $company->cmp_id)->value('path');
         $this->assertNotNull($path);
         $this->assertLessThanOrEqual(204800, filesize(public_path($path)));

@@ -112,7 +112,7 @@ class BusinessPortfolioController extends Controller
             ])->all());
         });
 
-        return back()->with('success', 'Changes saved as draft.');
+        return $this->redirectToTab($companyToken, 'profile')->with('success', 'Changes saved as draft.');
     }
 
     public function storeItem(Request $request, string $companyToken, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -136,7 +136,7 @@ class BusinessPortfolioController extends Controller
         $data['sort_order'] = (int) BusinessPortfolioItem::where('company_id', $company->cmp_id)->max('sort_order') + 1;
         BusinessPortfolioItem::create($data);
 
-        return back()->with('success', 'Offering added. Publish when you are ready.');
+        return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering added. Publish when you are ready.');
     }
 
     public function destroyItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -146,7 +146,7 @@ class BusinessPortfolioController extends Controller
         abort_unless((int) $item->company_id === (int) $company->cmp_id, 404);
         $images->delete($item->image);
         $item->delete();
-        return back()->with('success', 'Offering removed.');
+        return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering removed.');
     }
 
     public function storeImage(Request $request, string $companyToken, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -166,7 +166,7 @@ class BusinessPortfolioController extends Controller
             'caption' => $data['caption'] ?? null,
             'sort_order' => (int) BusinessPortfolioMedia::where('company_id', $company->cmp_id)->max('sort_order') + 1,
         ]);
-        return back()->with('success', 'Photo compressed and added.');
+        return $this->redirectToTab($companyToken, 'gallery')->with('success', 'Photo compressed and added.');
     }
 
     public function storeVideo(Request $request, string $companyToken, PortfolioRouteToken $tokens): RedirectResponse
@@ -177,14 +177,14 @@ class BusinessPortfolioController extends Controller
         $data = $request->validate(['youtube_url' => ['required', 'url', 'max:255'], 'title' => ['nullable', 'string', 'max:150']]);
         $youtubeId = $this->youtubeId($data['youtube_url']);
         if (!$youtubeId) {
-            return back()->withErrors(['youtube_url' => 'Enter a valid YouTube link.'])->withInput();
+            return $this->redirectToTab($companyToken, 'videos')->withErrors(['youtube_url' => 'Enter a valid YouTube link.'])->withInput();
         }
         BusinessPortfolioMedia::create([
             'company_id' => $company->cmp_id, 'type' => 'youtube', 'youtube_id' => $youtubeId,
             'title' => $data['title'] ?? null,
             'sort_order' => (int) BusinessPortfolioMedia::where('company_id', $company->cmp_id)->max('sort_order') + 1,
         ]);
-        return back()->with('success', 'YouTube video added.');
+        return $this->redirectToTab($companyToken, 'videos')->with('success', 'YouTube video added.');
     }
 
     public function destroyMedia(Request $request, string $companyToken, BusinessPortfolioMedia $medium, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -192,9 +192,10 @@ class BusinessPortfolioController extends Controller
         $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
         abort_unless((int) $medium->company_id === (int) $company->cmp_id, 404);
+        $tab = $medium->type === 'image' ? 'gallery' : 'videos';
         $images->delete($medium->path);
         $medium->delete();
-        return back()->with('success', 'Media removed.');
+        return $this->redirectToTab($companyToken, $tab)->with('success', 'Media removed.');
     }
 
     public function publish(Request $request, string $companyToken, PortfolioRouteToken $tokens): RedirectResponse
@@ -213,6 +214,11 @@ class BusinessPortfolioController extends Controller
     private function authorizeOwner(Request $request, CompaniesMaster $company): void
     {
         abort_unless($request->user('member')->companies()->where('companies_master.cmp_id', $company->cmp_id)->exists(), 403);
+    }
+
+    private function redirectToTab(string $companyToken, string $tab): RedirectResponse
+    {
+        return redirect()->to(route('member.portfolio.edit', $companyToken).'#'.$tab);
     }
 
     private function companyFromToken(string $token, PortfolioRouteToken $tokens): CompaniesMaster
