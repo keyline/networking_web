@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -29,6 +30,20 @@ class AdminBusinessListTest extends TestCase
             'ucm_um_id' => $member->um_id,
         ]);
 
+        $listedCompany = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $listedCompany->cmp_id,
+            'cmpd_name' => 'Admin Preview Business',
+            'public_slug' => 'admin-preview-business',
+            'cmpd_description' => 'Public preview description.',
+            'cmpd_status' => 1,
+            'cmpd_is_document_valid' => '1',
+        ]);
+        DB::table('user_companies_map')->insert([
+            'ucm_cmp_id' => $listedCompany->cmp_id,
+            'ucm_um_id' => $member->um_id,
+        ]);
+
         $this->withSession([
             'user_id' => $admin->id,
             'name' => $admin->name,
@@ -40,6 +55,9 @@ class AdminBusinessListTest extends TestCase
             ->get('/admin/clients/business/list')
             ->assertOk()
             ->assertSee('Business List')
-            ->assertDontSee('orphan-business@example.test');
+            ->assertDontSee('orphan-business@example.test')
+            ->assertSee('Admin Preview Business')
+            ->assertSee(route('business.show', ['slug' => 'admin-preview-business', 'preview' => 'visitor']), false)
+            ->assertSee('target="_blank" rel="noopener noreferrer"', false);
     }
 }

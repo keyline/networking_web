@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Admin;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\BusinessPortfolio;
@@ -71,7 +72,7 @@ class PublicBusinessProfileTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('A useful company.')->assertSee('Register to connect')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Register as guest')->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
+        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('A useful company.')->assertSee('Register to connect')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Register as guest')->assertSee('Share this page')->assertSee('data:image/svg+xml;base64,', false)->assertSee('data-url="'.route('business.show', 'example-business').'"', false)->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
 
         $visitor = UserMaster::create(['um_utm_id' => 1, 'um_user_name' => 'visitor', 'um_email_id' => 'visitor@example.test', 'um_mobile_no' => '9123409876', 'um_status' => 2]);
         $this->actingAs($visitor, 'member')->get(route('business.show', 'example-business'))
@@ -85,6 +86,29 @@ class PublicBusinessProfileTest extends TestCase
             ->assertSee('I%20want%20to%20know%20more%20about%20this%3A%20Tax%20consulting', false)
             ->assertSee('business-portfolios%2Fexample%2Fofferings%2Ftax-consulting.jpg', false)
             ->assertSee(route('business.contact', ['example-business', 'whatsapp']), false);
+
+        $admin = Admin::query()->firstOrFail();
+        $eventsBeforePreview = DB::table('business_analytics_events')->where('bae_cmp_id', $company->cmp_id)->count();
+        $this->actingAs($admin, 'admin')
+            ->get(route('business.show', ['slug' => 'example-business', 'preview' => 'visitor']))
+            ->assertOk()
+            ->assertSee('Admin preview')
+            ->assertSee('Visitor view')
+            ->assertSee('Registered member view')
+            ->assertSee('data-url="'.route('business.show', 'example-business').'"', false)
+            ->assertDontSee('data-url="'.route('business.show', ['slug' => 'example-business', 'preview' => 'visitor']).'"', false)
+            ->assertDontSee('business@example.test')
+            ->assertDontSee('Private business address');
+        $this->get(route('business.show', ['slug' => 'example-business', 'preview' => 'member']))
+            ->assertOk()
+            ->assertSee('Admin preview')
+            ->assertSee('business@example.test')
+            ->assertSee('Private business address');
+        $this->assertSame(
+            $eventsBeforePreview,
+            DB::table('business_analytics_events')->where('bae_cmp_id', $company->cmp_id)->count()
+        );
+        $this->app['auth']->guard('admin')->logout();
 
         $this->get(route('business.contact', ['example-business', 'call']))
             ->assertRedirect('tel:9876501234');

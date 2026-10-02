@@ -86,6 +86,7 @@ class ClientController extends Controller
                 $data['rows'][] = [
                     'cmp_id' => $row->cmp_id,
                     'name' => $row->details?->cmpd_name ?? '',
+                    'public_slug' => $row->details?->ensurePublicSlug(),
                     'description' => $row->details?->cmpd_description ?? '',
                     'email' => $row->details?->cmpd_email ?? '',
                     'phone' => $row->details?->cmpd_phone ?? '',

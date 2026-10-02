@@ -100,6 +100,8 @@ Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(fun
     Route::put('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'update'])->name('member.portfolio.update');
     Route::post('businesses/{companyToken}/portfolio/publish', [BusinessPortfolioController::class, 'publish'])->name('member.portfolio.publish');
     Route::post('businesses/{companyToken}/portfolio/items', [BusinessPortfolioController::class, 'storeItem'])->name('member.portfolio.items.store');
+    Route::put('businesses/{companyToken}/portfolio/items/{item}', [BusinessPortfolioController::class, 'updateItem'])->name('member.portfolio.items.update');
+    Route::patch('businesses/{companyToken}/portfolio/items/{item}/status', [BusinessPortfolioController::class, 'toggleItem'])->name('member.portfolio.items.toggle');
     Route::delete('businesses/{companyToken}/portfolio/items/{item}', [BusinessPortfolioController::class, 'destroyItem'])->name('member.portfolio.items.destroy');
     Route::post('businesses/{companyToken}/portfolio/images', [BusinessPortfolioController::class, 'storeImage'])->name('member.portfolio.images.store');
     Route::post('businesses/{companyToken}/portfolio/videos', [BusinessPortfolioController::class, 'storeVideo'])->name('member.portfolio.videos.store');

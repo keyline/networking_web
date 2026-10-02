@@ -56,6 +56,28 @@ class FrontController extends Controller
             return $banner->banner_image && is_file(public_path('uploads/banners/'.$banner->banner_image));
         })->values();
         $data['featuredEvents'] = Event::where('status', 'published')->where('ends_at', '>=', now())->orderBy('starts_at')->limit(12)->get();
+        $now = now();
+        $openEvents = Event::query()
+            ->where('status', 'published')
+            ->where('starts_at', '>', $now)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('registration_opens_at')->orWhere('registration_opens_at', '<=', $now);
+            })
+            ->where(function ($query) use ($now) {
+                $query->whereNull('registration_closes_at')->orWhere('registration_closes_at', '>=', $now);
+            })
+            ->whereHas('tickets', function ($query) use ($now) {
+                $query->where('is_active', true)
+                    ->where(function ($sales) use ($now) {
+                        $sales->whereNull('sales_start_at')->orWhere('sales_start_at', '<=', $now);
+                    })
+                    ->where(function ($sales) use ($now) {
+                        $sales->whereNull('sales_end_at')->orWhere('sales_end_at', '>=', $now);
+                    });
+            })
+            ->orderBy('starts_at');
+        $data['openEventCount'] = (clone $openEvents)->count();
+        $data['openEvents'] = $openEvents->limit(3)->get();
         $data['homeSections'] = Schema::hasTable('homepage_sections')
             ? HomepageSection::with(['items' => fn ($query) => $query->where('is_active', true)])
                 ->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
@@ -63,7 +85,7 @@ class FrontController extends Controller
         $data['homeStats'] = [
             'members' => DB::table('user_master')->count(),
             'businesses' => DB::table('companies_master')->count(),
-            'events' => Event::where('status', 'published')->where('ends_at', '>=', now())->count(),
+            'events' => $data['openEventCount'],
         ];
 
         return view('front.cms-home', $data);

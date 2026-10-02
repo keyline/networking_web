@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BusinessPortfolio;
+use App\Models\BusinessPortfolioItem;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
@@ -68,6 +69,56 @@ class MemberBusinessPortfolioTest extends TestCase
             'business_name' => 'Three Category Limit',
             'category_ids' => $categoryIds,
         ])->assertSessionHasErrors('category_ids');
+    }
+
+    public function test_owner_can_edit_and_activate_or_deactivate_an_offering(): void
+    {
+        [$owner, $company] = $this->business('editable-offering');
+        $token = $company->portfolioRouteToken();
+
+        $this->actingAs($owner, 'member')->post(route('member.portfolio.items.store', $token), [
+            'type' => 'service',
+            'title' => 'Original service',
+            'description' => 'Original description.',
+            'price_label' => 'Ask for price',
+        ])->assertRedirect(route('member.portfolio.edit', $token).'#offerings');
+
+        $item = BusinessPortfolioItem::where('company_id', $company->cmp_id)->firstOrFail();
+        $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', $token))
+            ->assertOk()
+            ->assertSee('Edit')
+            ->assertSee('Active')
+            ->assertSee(route('member.portfolio.items.update', [$token, $item]), false)
+            ->assertSee(route('member.portfolio.items.toggle', [$token, $item]), false);
+
+        $this->actingAs($owner, 'member')->put(route('member.portfolio.items.update', [$token, $item]), [
+            'type' => 'product',
+            'title' => 'Updated product',
+            'description' => 'Updated description.',
+            'price_label' => '₹2,500',
+            'external_url' => 'https://example.test/product',
+        ])->assertRedirect(route('member.portfolio.edit', $token).'#offerings');
+
+        $this->assertDatabaseHas('business_portfolio_items', [
+            'id' => $item->id,
+            'type' => 'product',
+            'title' => 'Updated product',
+            'is_active' => 1,
+        ]);
+
+        $this->actingAs($owner, 'member')
+            ->patch(route('member.portfolio.items.toggle', [$token, $item]))
+            ->assertRedirect(route('member.portfolio.edit', $token).'#offerings');
+        $this->assertDatabaseHas('business_portfolio_items', ['id' => $item->id, 'is_active' => 0]);
+
+        $this->actingAs($owner, 'member')->post(route('member.portfolio.publish', $token))->assertRedirect();
+        $portfolio = BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail();
+        $this->assertSame([], $portfolio->published_snapshot['items']);
+        $this->get(route('business.show', 'editable-offering'))->assertOk()->assertDontSee('Updated product');
+
+        $this->actingAs($owner, 'member')->patch(route('member.portfolio.items.toggle', [$token, $item]));
+        $this->actingAs($owner, 'member')->post(route('member.portfolio.publish', $token));
+        $this->get(route('business.show', 'editable-offering'))->assertOk()->assertSee('Updated product');
     }
 
     public function test_gallery_upload_is_compressed_below_two_hundred_kilobytes(): void

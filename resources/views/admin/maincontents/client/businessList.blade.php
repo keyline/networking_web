@@ -72,8 +72,9 @@ $controllerRoute = $module['controller_route'];
                                         <tr>
                                             <th scope="row">{{ $sl++ }}</th>
                                             <td>
-                                                <a
-                                                    href="{{ url('admin/' . $controllerRoute . '/' . $slug . '/info-edit/' . Helper::encoded($row['cmp_id'])) }}">{{ wordwrap($row['name'], 40, "\n", true) }}</a>
+                                                <a href="{{ route('business.show', ['slug' => $row['public_slug'], 'preview' => 'visitor']) }}"
+                                                    target="_blank" rel="noopener noreferrer"
+                                                    title="Preview public business page">{{ wordwrap($row['name'], 40, "\n", true) }} <i class="fa fa-external-link-alt small"></i></a>
                                                 <br>
                                                 <small><span style="color: #ccc8c8"> Owner :</span>
                                                     {{ $row['owner_name'] }}</small>

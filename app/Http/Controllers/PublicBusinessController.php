@@ -12,6 +12,9 @@ use App\Models\User\UserMaster;
 use App\Notifications\BusinessLeadEmailNotification;
 use App\Notifications\BusinessLeadSmsNotification;
 use Carbon\Carbon;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\SvgWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -95,7 +98,11 @@ class PublicBusinessController extends Controller
             ->where('public_slug', $slug)
             ->firstOrFail();
         $isActive = (int) $business->cmpd_status === 1;
-        $this->logInteraction($request, (int) $business->cmpd_cmp_id, 'view');
+        $isAdminPreview = Auth::guard('admin')->check();
+        $previewAudience = $isAdminPreview && $request->query('preview') === 'member' ? 'member' : 'visitor';
+        if (!$isAdminPreview) {
+            $this->logInteraction($request, (int) $business->cmpd_cmp_id, 'view');
+        }
 
         $social = DB::table('company_sociallink')->where('cs_cmp_id', $business->cmpd_cmp_id)->first();
         $portfolioModel = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->where('is_published', true)->first();
@@ -103,7 +110,10 @@ class PublicBusinessController extends Controller
         $publishedAbout = trim((string) ($portfolio['about'] ?? $business->cmpd_description));
         $aboutText = CompaniesDetail::isSetupDescription($publishedAbout) ? null : $publishedAbout;
 
-        $signedInMember = Auth::guard('member')->user();
+        $signedInMember = $isAdminPreview ? null : Auth::guard('member')->user();
+        $canViewContacts = $isAdminPreview
+            ? $previewAudience === 'member'
+            : $signedInMember && (int) $signedInMember->um_status === 2;
         $isBusinessOwner = $signedInMember
             && $business->companies->users->contains(
                 fn (UserMaster $owner) => (int) $owner->um_id === (int) $signedInMember->um_id
@@ -111,6 +121,22 @@ class PublicBusinessController extends Controller
         $aboutEditUrl = $isBusinessOwner
             ? route('member.portfolio.edit', $business->companies->portfolioRouteToken()).'?focus=about#profile'
             : null;
+
+        $businessPublicUrl = route('business.show', $business->public_slug);
+        $businessQrDataUri = null;
+        try {
+            $businessQrDataUri = (new SvgWriter())->write(
+                QrCode::create($businessPublicUrl)
+                    ->setErrorCorrectionLevel(ErrorCorrectionLevel::Medium)
+                    ->setSize(220)
+                    ->setMargin(8)
+            )->getDataUri();
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to generate business page QR code.', [
+                'business_id' => $business->cmpd_cmp_id,
+                'exception' => $exception->getMessage(),
+            ]);
+        }
 
         $activeReviews = $business->reviews()->where('status', 1);
         $reviewCount = (clone $activeReviews)->count();
@@ -135,7 +161,12 @@ class PublicBusinessController extends Controller
             'isActive',
             'aboutText',
             'isBusinessOwner',
-            'aboutEditUrl'
+            'aboutEditUrl',
+            'canViewContacts',
+            'isAdminPreview',
+            'previewAudience',
+            'businessPublicUrl',
+            'businessQrDataUri'
         ));
     }
 
@@ -263,6 +294,10 @@ class PublicBusinessController extends Controller
 
     private function logInteraction(Request $request, int $companyId, string $type): void
     {
+        if (Auth::guard('admin')->check()) {
+            return;
+        }
+
         $userId = Auth::guard('member')->id();
         if ($userId && DB::table('user_companies_map')->where('ucm_um_id', $userId)->where('ucm_cmp_id', $companyId)->exists()) {
             return;

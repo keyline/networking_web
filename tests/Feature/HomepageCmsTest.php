@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Models\Events\Event;
 use App\Models\HomepageSection;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
@@ -66,5 +67,49 @@ class HomepageCmsTest extends TestCase
             ->assertSee('Trusted by local businesses')
             ->assertSee('A clean and useful community experience.')
             ->assertDontSee('This must stay hidden');
+    }
+
+    public function test_homepage_shows_only_events_currently_open_for_registration(): void
+    {
+        $open = Event::create([
+            'title' => 'Open Networking Breakfast',
+            'slug' => 'open-networking-breakfast',
+            'starts_at' => now()->addWeek(),
+            'ends_at' => now()->addWeek()->addHours(2),
+            'registration_opens_at' => now()->subDay(),
+            'registration_closes_at' => now()->addDays(5),
+            'status' => 'published',
+            'currency' => 'INR',
+        ]);
+        $open->tickets()->create([
+            'name' => 'General admission',
+            'price' => 0,
+            'maximum_per_order' => 5,
+            'is_active' => true,
+        ]);
+
+        $notOpen = Event::create([
+            'title' => 'Registration Opens Later',
+            'slug' => 'registration-opens-later',
+            'starts_at' => now()->addWeeks(2),
+            'ends_at' => now()->addWeeks(2)->addHours(2),
+            'registration_opens_at' => now()->addDays(3),
+            'status' => 'published',
+            'currency' => 'INR',
+        ]);
+        $notOpen->tickets()->create([
+            'name' => 'General admission',
+            'price' => 0,
+            'maximum_per_order' => 5,
+            'is_active' => true,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Open for registration')
+            ->assertSee('Open Networking Breakfast')
+            ->assertSee('Register')
+            ->assertSee(route('events.show', $open), false)
+            ->assertDontSee('Registration Opens Later');
     }
 }

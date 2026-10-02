@@ -139,6 +139,45 @@ class BusinessPortfolioController extends Controller
         return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering added. Publish when you are ready.');
     }
 
+    public function updateItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
+    {
+        $company = $this->companyFromToken($companyToken, $tokens);
+        $this->authorizeOwner($request, $company);
+        abort_unless((int) $item->company_id === (int) $company->cmp_id, 404);
+
+        $data = $request->validate([
+            'type' => ['required', Rule::in(['product', 'service'])],
+            'title' => ['required', 'string', 'max:150'],
+            'description' => ['nullable', 'string', 'max:1500'],
+            'price_label' => ['nullable', 'string', 'max:100'],
+            'external_url' => ['nullable', 'url:http,https', 'max:255'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ]);
+
+        if ($request->hasFile('image')) {
+            $newImage = $images->store($request->file('image'), $company->cmp_id, 'offerings');
+            $images->delete($item->image);
+            $data['image'] = $newImage;
+        }
+
+        $item->update($data);
+
+        return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering updated. Publish when you are ready.');
+    }
+
+    public function toggleItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioRouteToken $tokens): RedirectResponse
+    {
+        $company = $this->companyFromToken($companyToken, $tokens);
+        $this->authorizeOwner($request, $company);
+        abort_unless((int) $item->company_id === (int) $company->cmp_id, 404);
+
+        $item->update(['is_active' => !$item->is_active]);
+        $status = $item->is_active ? 'active' : 'inactive';
+
+        return $this->redirectToTab($companyToken, 'offerings')
+            ->with('success', "Offering marked {$status}. Publish to update the public page.");
+    }
+
     public function destroyItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
     {
         $company = $this->companyFromToken($companyToken, $tokens);
