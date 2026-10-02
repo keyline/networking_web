@@ -405,10 +405,11 @@ class ClientController extends Controller
         $data['module']                 = $this->data;
         $data['slug']                   = $slug;
         $id                             = $id ? Helper::decoded($id) : $id;
-        $title                          = ucfirst($data['slug']) . $id ? 'Update' : 'Add';
+        $title                          = $id ? 'Edit business' : 'Add business';
 
         $page_name                      = 'client.business-add-edit';
-        $data['category']               = BusinessCategoryMaster::select('bcm_id', 'name')->get()->toDecodedJson();
+        $data['category']               = BusinessCategoryMaster::where('status', 1)->select('bcm_id', 'name')->orderBy('name')->get();
+        $data['countries']              = Country::where('status', 1)->orderBy('name')->get(['id', 'name']);
 
         $data['row']                    = CompaniesDetail::where('cmpd_cmp_id', $id)->first();
 
@@ -447,10 +448,11 @@ class ClientController extends Controller
 
                 'pincode' => 'nullable|string|regex:/^\d{6}$/',
                 'logo' => 'nullable|file|image|mimes:jpeg,png,jpg|max:2048',
+                'status' => ['required', 'boolean'],
             ]);
 
             if ($validator->fails()) {
-                return back()->with('errors', $validator->errors());
+                return back()->withErrors($validator)->withInput();
             } else {
 
                 $details_id = $request->input('id');
@@ -488,6 +490,7 @@ class ClientController extends Controller
                     'cmpd_district' => $postData['district'] ?? null,
                     'cmpd_pincode' => $postData['pincode'],
                     'cmpd_logo' => $logo,
+                    'cmpd_status' => (int) $postData['status'],
                     'cmpd_updated_at' => date('Y-m-d H:i:s')
                 ];
 

@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Models\Business\BusinessCategoryMaster;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
+use App\Models\Country;
+use App\Models\State;
 use App\Models\User\UserMaster;
+use App\Helpers\Helper;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -59,5 +63,70 @@ class AdminBusinessListTest extends TestCase
             ->assertSee('Admin Preview Business')
             ->assertSee(route('business.show', ['slug' => 'admin-preview-business', 'preview' => 'visitor']), false)
             ->assertSee('target="_blank" rel="noopener noreferrer"', false);
+    }
+
+    public function test_admin_business_editor_matches_member_ui_and_updates_visibility(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+        $category = BusinessCategoryMaster::query()->where('status', 1)->firstOrFail();
+        $country = Country::query()->where('status', 1)->firstOrFail();
+        $state = State::query()->where('country_id', $country->id)->where('status', 1)->firstOrFail();
+        $company = CompaniesMaster::create([]);
+        $details = CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id,
+            'cmpd_name' => 'Admin Editor Test Business',
+            'cmpd_description' => 'A business used to test the admin editor.',
+            'cmpd_phone' => '9876500021',
+            'cmpd_country' => $country->id,
+            'cmpd_state' => $state->id,
+            'cmpd_status' => 1,
+        ]);
+        DB::table('categories_to_companies')->insert([
+            'ctc_cmp_id' => $company->cmp_id,
+            'ctc_bcm_id' => $category->bcm_id,
+        ]);
+
+        $session = [
+            'user_id' => $admin->id,
+            'name' => $admin->name,
+            'type' => $admin->type,
+            'email' => $admin->email,
+            'company_id' => $admin->company_id,
+            'is_admin_login' => 1,
+        ];
+        $url = '/admin/clients/business/info-edit/'.Helper::encoded($company->cmp_id);
+
+        $template = file_get_contents(resource_path('views/admin/maincontents/client/business-add-edit.blade.php'));
+        $this->assertStringContainsString('admin-business-editor', $template);
+        $this->assertStringContainsString('Business profile', $template);
+        $this->assertStringContainsString('Business visibility', $template);
+        $this->assertStringContainsString('Search categories', $template);
+        $this->assertStringContainsString('name="status"', $template);
+
+        $this->withSession($session)->actingAs($admin, 'admin')->post($url, [
+            'id' => $details->cmpd_id,
+            'category_ids' => [$category->bcm_id],
+            'regn_no' => '',
+            'name' => 'Admin Editor Test Business',
+            'description' => 'A business used to test the admin editor.',
+            'email' => '',
+            'alternate_email' => '',
+            'phone' => '9876500021',
+            'whatsapp_no' => '',
+            'address1' => '',
+            'address2' => '',
+            'address3' => '',
+            'estd_year' => '',
+            'country' => $country->id,
+            'state' => $state->id,
+            'district' => '',
+            'pincode' => '',
+            'status' => 0,
+        ])->assertRedirect('/admin/clients/business/list');
+
+        $this->assertDatabaseHas('companies_details', [
+            'cmpd_id' => $details->cmpd_id,
+            'cmpd_status' => 0,
+        ]);
     }
 }

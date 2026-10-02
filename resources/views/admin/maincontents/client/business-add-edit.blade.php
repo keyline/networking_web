@@ -1,342 +1,85 @@
-<?php
-use App\Helpers\Helper;
-$controllerRoute = $module['controller_route'];
-?>
-<div class="pagetitle">
-    <h1><?= $page_header ?></h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="<?= url('admin/dashboard') ?>">Home</a></li>
-            <li class="breadcrumb-item active"><a
-                    href="<?= url('admin/' . $controllerRoute . '/' . $slug . '/list/') ?>"><?= ucfirst($slug) ?>
-                    List</a></li>
-            <li class="breadcrumb-item active"><?= $page_header ?></li>
-        </ol>
-    </nav>
-</div><!-- End Page Title -->
-<section class="section profile">
-    <div class="row">
-        <div class="col-xl-12">
-            @if (session('success_message'))
-                <div class="alert alert-success bg-success text-light border-0 alert-dismissible fade show autohide"
-                    role="alert">
-                    {{ session('success_message') }}
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"
-                        aria-label="Close"></button>
+@php
+    $isEdit = ! is_null($row);
+    $updateId = $row?->cmpd_id ?? 0;
+    $status = (int) old('status', $row?->cmpd_status ?? 1);
+    $selectedCategoryIds = collect(old('category_ids', $selectedCategories ?? []))->map(fn ($id) => (int) $id)->all();
+    $countryId = old('country', $row?->cmpd_country ?? '');
+    $stateId = old('state', $row?->cmpd_state ?? '');
+    $districtId = old('district', $row?->cmpd_district ?? '');
+    $publicUrl = $isEdit && $row?->public_slug ? route('business.show', ['slug' => $row->public_slug, 'preview' => 'visitor']) : null;
+@endphp
+
+<style>
+    .admin-business-editor{--abe-blue:#3b82f6;--abe-navy:#17233d;--abe-muted:#71809a;--abe-line:#dce5f2;color:var(--abe-navy)}
+    .admin-business-editor *{box-sizing:border-box}.abe-page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 18px}.abe-page-head h1{margin:0;font-size:28px;font-weight:750;color:var(--abe-navy)}.abe-page-head p{margin:5px 0 0;color:var(--abe-muted);font-size:14px}
+    .abe-preview,.abe-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:10px 17px;border:1px solid var(--abe-line);border-radius:10px;background:#fff;color:#43526b;font-weight:700;text-decoration:none;cursor:pointer}.abe-preview:hover{color:var(--abe-blue);border-color:#b8cff4}
+    .abe-alert{margin-bottom:14px;padding:12px 15px;border:1px solid;border-radius:10px;font-size:14px}.abe-alert.success{border-color:#b8e5d1;background:#ecf9f3;color:#147650}.abe-alert.error{border-color:#f2c4c8;background:#fff1f2;color:#b4232e}.abe-alert ul{margin:0;padding-left:18px}
+    .abe-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:15px;padding:7px;border:1px solid var(--abe-line);border-radius:13px;background:#fff}.abe-tabs .nav-link{width:100%;min-height:42px;border:0!important;border-radius:9px!important;color:#61708a;font-size:14px;font-weight:750;background:transparent}.abe-tabs .nav-link.active{background:var(--abe-blue)!important;color:#fff!important;box-shadow:0 5px 14px rgba(59,130,246,.2)}
+    .abe-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}.abe-card{overflow:hidden;border:1px solid var(--abe-line);border-radius:14px;background:#fff;box-shadow:0 7px 22px rgba(39,57,91,.04)}.abe-card-head{padding:20px 22px;border-bottom:1px solid var(--abe-line)}.abe-card-head h2{margin:0;font-size:20px;font-weight:750;color:var(--abe-navy)}.abe-card-head p{margin:4px 0 0;color:var(--abe-muted);font-size:13px}.abe-card-body{padding:22px}
+    .abe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.abe-field.full{grid-column:1/-1}.abe-field label{display:block;margin-bottom:6px;color:var(--abe-navy);font-size:13px;font-weight:750}.abe-required{color:#d92d38}.abe-input{display:block;width:100%;min-height:45px;padding:10px 13px;border:1px solid #cfdaea;border-radius:9px;background:#fff;color:#17233d;font-size:14px;outline:0;transition:.15s}textarea.abe-input{min-height:112px;resize:vertical}.abe-input:focus{border-color:var(--abe-blue);box-shadow:0 0 0 3px rgba(59,130,246,.12)}.abe-help{display:block;margin-top:6px;color:var(--abe-muted);font-size:11px;line-height:1.45}.abe-section-title{grid-column:1/-1;margin:6px 0 -2px;padding-top:14px;border-top:1px solid #edf1f7;font-size:15px;font-weight:750}
+    .abe-category-tools{display:flex;align-items:center;gap:12px;margin-bottom:9px}.abe-category-tools .abe-input{flex:1}.abe-category-count{white-space:nowrap;color:var(--abe-muted);font-size:12px;font-weight:700}.abe-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:210px;overflow:auto;padding:2px 5px 2px 2px}.abe-category{display:flex;align-items:center;gap:9px;min-height:42px;margin:0;padding:9px 11px;border:1px solid #dbe4f1;border-radius:9px;background:#fbfcfe;color:#263550;font-size:13px;font-weight:650;cursor:pointer}.abe-category:hover{border-color:#a9c6f5}.abe-category input{width:17px;height:17px;accent-color:var(--abe-blue)}.abe-category.is-hidden{display:none}
+    .abe-logo-row{display:flex;align-items:center;gap:13px}.abe-logo-row img{width:68px;height:68px;border:1px solid var(--abe-line);border-radius:11px;object-fit:contain;background:#fff;padding:4px}.abe-logo-row>div{flex:1}.abe-side{position:sticky;top:82px}.abe-status-card{padding:20px}.abe-status-card h2{margin:0;font-size:19px}.abe-status-card>p{margin:5px 0 17px;color:var(--abe-muted);font-size:12px;line-height:1.5}
+    .abe-status-switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--abe-line);border-radius:10px;background:#f8fafc}.abe-status-copy strong,.abe-status-copy span{display:block}.abe-status-copy strong{font-size:13px}.abe-status-copy span{margin-top:2px;color:var(--abe-muted);font-size:11px}.abe-switch{position:relative;width:46px;height:26px;margin:0;flex:0 0 auto}.abe-switch input{position:absolute;opacity:0}.abe-switch span{position:absolute;inset:0;border-radius:20px;background:#aab4c3;cursor:pointer;transition:.2s}.abe-switch span:before{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:.2s}.abe-switch input:checked+span{background:#19a56c}.abe-switch input:checked+span:before{transform:translateX(20px)}
+    .abe-status-note{margin:12px 0;color:var(--abe-muted);font-size:11px;line-height:1.45}.abe-submit{width:100%;border-color:var(--abe-blue);background:var(--abe-blue);color:#fff}.abe-submit:hover{background:#256fe0;color:#fff}.abe-side .abe-preview{width:100%;margin-top:9px}.abe-tab-card{padding:20px}
+    @media(max-width:1100px){.abe-layout{grid-template-columns:1fr}.abe-side{position:static}.abe-status-card{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}.abe-status-card>p{display:none}.abe-status-card .abe-status-switch{min-width:230px}.abe-status-note{display:none}.abe-submit,.abe-side .abe-preview{width:auto;margin:0}}
+    @media(max-width:700px){.abe-page-head{align-items:flex-start}.abe-page-head h1{font-size:23px}.abe-page-head p{font-size:12px}.abe-preview{min-height:38px;padding:8px 11px;font-size:12px}.abe-tabs{grid-template-columns:1fr;padding:5px}.abe-tabs .nav-link{min-height:38px}.abe-grid{grid-template-columns:1fr;gap:13px}.abe-field.full,.abe-section-title{grid-column:auto}.abe-card-head{padding:16px}.abe-card-body{padding:16px}.abe-categories{grid-template-columns:1fr;max-height:190px}.abe-category-tools{align-items:stretch;flex-direction:column;gap:5px}.abe-status-card{display:block;padding:16px}.abe-status-card>p,.abe-status-note{display:block}.abe-status-card .abe-status-switch{min-width:0;margin:13px 0}.abe-submit,.abe-side .abe-preview{width:100%;margin-top:8px}}
+</style>
+
+<section class="admin-business-editor">
+    <div class="abe-page-head"><div><h1>{{ $isEdit ? 'Edit business' : 'Add business' }}</h1><p>Manage the business page using the same clear layout available to members.</p></div>@if($publicUrl)<a class="abe-preview" href="{{ $publicUrl }}" target="_blank" rel="noopener">Preview page ↗</a>@endif</div>
+    @if(session('success_message'))<div class="abe-alert success">{{ session('success_message') }}</div>@endif
+    @if(session('error_message'))<div class="abe-alert error">{{ session('error_message') }}</div>@endif
+    @if($errors->any())<div class="abe-alert error"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+
+    <ul class="nav abe-tabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#business" type="button">Business profile</button></li>
+        @if($updateId)<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#gallery" type="button">Gallery</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#social-links" type="button">Social links</button></li>@endif
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="business">
+            <form method="POST" action="" enctype="multipart/form-data">@csrf
+                <input type="hidden" name="id" value="{{ $updateId }}"><input type="hidden" name="status" value="0">
+                <div class="abe-layout">
+                    <section class="abe-card">
+                        <header class="abe-card-head"><h2>Business identity & page</h2><p>Keep official, contact and public-page information accurate.</p></header>
+                        <div class="abe-card-body abe-grid">
+                            <div class="abe-field full"><label for="name">Business name <span class="abe-required">*</span></label><input class="abe-input" id="name" name="name" value="{{ old('name',$row?->cmpd_name) }}" required></div>
+                            <div class="abe-field"><label for="regn_no">Registration number</label><input class="abe-input" id="regn_no" name="regn_no" value="{{ old('regn_no',$row?->cmpd_company_regn_no) }}"></div>
+                            <div class="abe-field"><label for="estd_year">Established year</label><input class="abe-input" id="estd_year" name="estd_year" inputmode="numeric" maxlength="4" value="{{ old('estd_year',$row?->cmpd_estd_year) }}"></div>
+                            <div class="abe-field full"><label for="description">About the business <span class="abe-required">*</span></label><textarea class="abe-input" id="description" name="description" required>{{ old('description',$row?->cmpd_description) }}</textarea><small class="abe-help">A concise description helps visitors understand what this business offers.</small></div>
+
+                            <div class="abe-field full"><label for="categorySearch">Business categories <span class="abe-required">*</span></label><div class="abe-category-tools"><input class="abe-input" id="categorySearch" type="search" placeholder="Search categories"><span class="abe-category-count"><b id="selectedCategoryCount">{{ count($selectedCategoryIds) }}</b> selected</span></div><div class="abe-categories" id="categoryList">@foreach($category as $businessCategory)<label class="abe-category" data-category-name="{{ Str::lower($businessCategory->name) }}"><input type="checkbox" name="category_ids[]" value="{{ $businessCategory->bcm_id }}" @checked(in_array((int)$businessCategory->bcm_id,$selectedCategoryIds))><span>{{ $businessCategory->name }}</span></label>@endforeach</div><small class="abe-help">Select one or more categories that describe the business.</small></div>
+
+                            <h3 class="abe-section-title">Contact information</h3>
+                            <div class="abe-field"><label for="email">Business email</label><input class="abe-input" type="email" id="email" name="email" value="{{ old('email',$row?->cmpd_email) }}"></div>
+                            <div class="abe-field"><label for="alternate_email">Alternate email</label><input class="abe-input" type="email" id="alternate_email" name="alternate_email" value="{{ old('alternate_email',$row?->cmpd_alternate_email) }}"></div>
+                            <div class="abe-field"><label for="phone">Business phone</label><input class="abe-input" id="phone" name="phone" inputmode="numeric" maxlength="10" value="{{ old('phone',$row?->cmpd_phone) }}"></div>
+                            <div class="abe-field"><label for="whatsapp_no">Business WhatsApp</label><input class="abe-input" id="whatsapp_no" name="whatsapp_no" inputmode="numeric" maxlength="10" value="{{ old('whatsapp_no',$row?->cmpd_whatsapp_no) }}"></div>
+
+                            <h3 class="abe-section-title">Business address</h3>
+                            <div class="abe-field full"><label for="address1">Address line 1</label><input class="abe-input" id="address1" name="address1" value="{{ old('address1',$row?->cmpd_address1) }}"></div>
+                            <div class="abe-field"><label for="address2">Address line 2</label><input class="abe-input" id="address2" name="address2" value="{{ old('address2',$row?->cmpd_address2) }}"></div>
+                            <div class="abe-field"><label for="address3">Address line 3</label><input class="abe-input" id="address3" name="address3" value="{{ old('address3',$row?->cmpd_address3) }}"></div>
+                            <div class="abe-field"><label for="country">Country <span class="abe-required">*</span></label><select class="abe-input" id="country" name="country" required><option value="">Select country</option>@foreach($countries as $country)<option value="{{ $country->id }}" @selected((string)$countryId===(string)$country->id)>{{ $country->name }}</option>@endforeach</select></div>
+                            <div class="abe-field"><label for="state">State <span class="abe-required">*</span></label><select class="abe-input" id="state" name="state" data-selected="{{ $stateId }}" required><option value="">Select a country first</option></select></div>
+                            <div class="abe-field"><label for="district">District</label><select class="abe-input" id="district" name="district" data-selected="{{ $districtId }}"><option value="">Select a state first</option></select></div>
+                            <div class="abe-field"><label for="pincode">PIN code</label><input class="abe-input" id="pincode" name="pincode" inputmode="numeric" maxlength="6" value="{{ old('pincode',$row?->cmpd_pincode) }}"></div>
+
+                            <h3 class="abe-section-title">Branding</h3>
+                            <div class="abe-field full"><label for="logo">Business logo</label><div class="abe-logo-row"><img src="{{ $row?->cmpd_logo ? env('UPLOADS_URL').'company/'.$row->cmpd_logo : env('NO_CATEGORY_IMAGE') }}" alt="Current business logo"><div><input class="abe-input" type="file" id="logo" name="logo" accept="image/jpeg,image/png"><small class="abe-help">JPG or PNG, up to 2 MB. A square image works best.</small></div></div></div>
+                        </div>
+                    </section>
+
+                    <aside class="abe-side"><section class="abe-card abe-status-card"><h2>Business visibility</h2><p>Control whether this business is available to members and visitors.</p><div class="abe-status-switch"><div class="abe-status-copy"><strong id="statusLabel">{{ $status?'Active':'Inactive' }}</strong><span id="statusDescription">{{ $status?'Visible in the directory':'Hidden from the directory' }}</span></div><label class="abe-switch" aria-label="Business active status"><input id="status" type="checkbox" name="status" value="1" @checked($status)><span></span></label></div><div class="abe-status-note">Inactive businesses remain saved but their public page and directory listing are unavailable.</div><button class="abe-btn abe-submit" type="submit">{{ $isEdit?'Save changes':'Add business' }}</button>@if($publicUrl)<a class="abe-preview" href="{{ $publicUrl }}" target="_blank" rel="noopener">Preview page ↗</a>@endif</section></aside>
                 </div>
-            @endif
-            @if (session('error_message'))
-                <div class="alert alert-danger bg-danger text-light border-0 alert-dismissible fade show autohide"
-                    role="alert">
-                    {{ session('error_message') }}
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"
-                        aria-label="Close"></button>
-                </div>
-            @endif
+            </form>
         </div>
-        <?php
-        if (is_null($row)) {
-            $currentDate = date('Y-m-d 00:00:00');
-            $update_id = 0;
-            $cmpd_cmp_id = '';
-            $cmpd_company_regn_no = '';
-            $cmpd_name = '';
-            $cmpd_description = '';
-            $cmpd_email = '';
-            $cmpd_alternate_email = '';
-            $cmpd_phone = '';
-            $cmpd_whatsapp_no = '';
-            $cmpd_logo = '';
-            $cmpd_address1 = '';
-            $cmpd_address2 = '';
-            $cmpd_address3 = '';
-            $cmpd_estd_year = '';
-            $cmpd_district = '';
-            $cmpd_country = '';
-            $cmpd_state = '';
-            $cmpd_pincode = '';
-            $logo_image = '';
-            $selectedCategories = [];
-        } else {
-            $categoryInfo = $row->companies->categories->first();
-
-            $update_id = $row->cmpd_id;
-            $cmpd_cmp_id = $row->cmpd_cmp_id;
-            $cmpd_company_regn_no = $row->cmpd_company_regn_no ?? '';
-            $cmpd_name = $row->cmpd_name ?? '';
-            $cmpd_description = $row->cmpd_description ?? '';
-            $cmpd_email = $row->cmpd_email ?? '';
-            $cmpd_alternate_email = $row->cmpd_alternate_email ?? '';
-            $cmpd_phone = $row->cmpd_phone ?? '';
-            $cmpd_whatsapp_no = $row->cmpd_whatsapp_no ?? '';
-            $cmpd_logo = $row->cmpd_logo ?? '';
-            $cmpd_address1 = $row->cmpd_address1 ?? '';
-            $cmpd_address2 = $row->cmpd_address2 ?? '';
-            $cmpd_address3 = $row->cmpd_address3 ?? '';
-            $cmpd_estd_year = $row->cmpd_estd_year ?? '';
-
-            $cmpd_country = $row->cmpd_country ?? '';
-            $cmpd_state = $row->cmpd_state ?? '';
-            $cmpd_district = $row->cmpd_district ?? '';
-
-            $cmpd_pincode = $row->cmpd_pincode ?? '';
-            $logo_image = $row->cmpd_logo ?? '';
-            $selectedCategories = $row->companies->categories->pluck('bcm_id')->map(fn($id)=>(int)$id)->all();
-        }
-        ?>
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body pt-3">
-                    <!-- Bordered Tabs -->
-                    <ul class="nav nav-tabs nav-tabs-bordered">
-                        <!-- Business Tab -->
-                        <li class="nav-item">
-                            <button class="nav-link active" data-bs-toggle="tab"
-                                data-bs-target="#business">Business</button>
-                        </li>
-                        @if ($update_id)
-                            <!-- Gallery Tab -->
-                            <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#gallery">Gallery</button>
-                            </li>
-                            <!-- Social Links Tab -->
-                            <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#social-links">Social
-                                    Links</button>
-                            </li>
-                        @endif
-                    </ul>
-
-                    <!-- Tab Content -->
-                    <div class="tab-content pt-2">
-                        <!-- Business Tab Content -->
-                        <div class="tab-pane fade show active" id="business">
-                            @if ($errors->any())
-                                <div class="alert alert-danger">
-                                    <ul>
-                                        @foreach ($errors->all() as $error)
-                                            <li>{{ $error }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @endif
-
-                            <span class="text-danger">Star (*) marks fields are mandatory</span>
-                            <form method="POST" action="" enctype="multipart/form-data">
-                                @csrf
-                                <div class="row mb-3">
-                                    <label for="client_type" class="col-md-2 col-lg-2 col-form-label">Registration
-                                        No</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="regn_no" class="form-control" id="client_type"
-                                            value="<?= $cmpd_company_regn_no ?>">
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="name" class="col-md-2 col-lg-2 col-form-label">Business Name
-                                        <span class="text-danger">*</span>
-                                    </label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="name" class="form-control" id="name"
-                                            value="<?= $cmpd_name ?>" required>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <label for="name" class="col-md-2 col-lg-2 col-form-label">Description
-                                        <span class="text-danger">*</span>
-                                    </label>
-                                    <div class="col-md-10 col-lg-10">
-                                        {{-- <input type="text" name="description" class="form-control" id="description"
-                                        value="<?= $cmpd_description ?>" required> --}}
-
-
-                                        <textarea id="description" name="description" style="width: 100%" rows="5" required>{{ $cmpd_description }}</textarea>
-                                        <small>
-                                            <p class="text-info">The description field must not be greater than 500
-                                                characters.</p>
-                                        </small>
-                                    </div>
-                                </div>
-
-
-                                <div class="row mb-3">
-                                    <label for="email" class="col-md-2 col-lg-2 col-form-label">Business
-                                        Email</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="email" name="email" class="form-control" id="email"
-                                            value="<?= $cmpd_email ?>">
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="alt_email" class="col-md-2 col-lg-2 col-form-label">Alternate
-                                        Email</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="alt_email" name="alternate_email" class="form-control"
-                                            id="alt_email" value="<?= $cmpd_alternate_email ?>">
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="phone" class="col-md-2 col-lg-2 col-form-label">Business Phone<span
-                                            class="text-danger">*</span></label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="phone" class="form-control" maxlength="10"
-                                            id="phone" value="<?= $cmpd_phone ?>" required>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">Whatsapp
-                                        No</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="whatsapp_no" class="form-control"
-                                            id="whatsapp_no" value="<?= $cmpd_whatsapp_no ?>">
-                                    </div>
-                                </div>
-
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">Address line 1
-                                    </label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="address1" class="form-control" id="address1"
-                                            value="<?= $cmpd_address1 ?>">
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">Address line 2
-                                    </label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="address2" class="form-control" id="address2"
-                                            value="<?= $cmpd_address2 ?>">
-                                    </div>
-                                </div>
-
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">Address line 3
-                                    </label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="address3" class="form-control" id="address3"
-                                            value="<?= $cmpd_address3 ?>">
-                                    </div>
-                                </div>
-
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label"> Established
-                                        Year
-                                    </label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="estd_year" class="form-control" id="estd_year"
-                                            value="<?= $cmpd_estd_year ?>">
-                                    </div>
-                                </div>
-
-
-
-                                <!-- Render the Livewire dependent dropdown -->
-
-                                <livewire:admin.layout.dependent-dropdown c="{{ $cmpd_country }}"
-                                    s="{{ $cmpd_state }}" d="{{ $cmpd_district }}" />
-
-
-
-
-                                <div class="row mb-3">
-                                    <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">Pincode</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="text" name="pincode" class="form-control" id="cmpd_pincode"
-                                            value="<?= $cmpd_pincode ?>">
-                                    </div>
-                                </div>
-
-
-                                <div class="row mb-3">
-                                    <label for="category_ids" class="col-md-2 col-lg-2 col-form-label">Categories</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <select name="category_ids[]" class="form-control" id="category_ids" multiple size="7" required>
-                                            @if ($category)
-                                                @foreach ($category as $row)
-                                                    <option value="{{ $row->bcm_id }}" @selected(in_array((int)$row->bcm_id,old('category_ids',$selectedCategories)))>
-                                                        {{ $row->name }}</option>
-                                                @endforeach
-                                            @endif
-                                        </select>
-                                        <small class="text-info">Select one or more categories. Hold Ctrl/Command when using a desktop keyboard.</small>
-                                    </div>
-                                </div>
-
-
-
-                                <div class="row mb-3">
-                                    <label for="logo_image" class="col-md-2 col-lg-2 col-form-label">Logo
-                                        Image</label>
-                                    <div class="col-md-10 col-lg-10">
-                                        <input type="file" name="logo" class="form-control" id="logo_image">
-                                        <small class="text-info">* jpeg,png,jpg files are
-                                            allowed</small><br>
-                                        <?php if($logo_image != ''){?>
-                                        <img src="<?= env('UPLOADS_URL') . 'company/' . $logo_image ?>"
-                                            class="img-thumbnail" alt="<?= $logo_image ?>"
-                                            style="width: 150px; height: 150px; margin-top: 10px;">
-                                        <?php } else {?>
-                                        <img src="<?= env('NO_CATEGORY_IMAGE') ?>" alt="IMG"
-                                            class="img-thumbnail"
-                                            style="width: 150px; height: 150px; margin-top: 10px;">
-                                        <?php }?>
-                                    </div>
-                                </div>
-                                <div class="text-center">
-                                    <input type="hidden" name="id" value="{{ $update_id }}">
-                                    <button type="submit"
-                                        class="btn btn-primary"><?= $row ? 'Save' : 'Add' ?></button>
-                                </div>
-                            </form>
-
-                        </div>
-
-                        <!-- Gallery Tab Content -->
-                        <div class="tab-pane fade" id="gallery">
-                            @if ($update_id)
-                                <livewire:admin.pages.business.business-images :business_id="$update_id" />
-                            @endif
-
-
-                            {{-- <form method="POST" action="" enctype="multipart/form-data">
-                                @csrf
-                                <div class="row mb-3">
-                                    <label for="gallery_images" class="col-md-4 col-lg-3 col-form-label">Upload
-                                        Images</label>
-                                    <div class="col-md-8 col-lg-9">
-                                        <input type="file" name="gallery_images[]" class="form-control"
-                                            id="gallery_images" multiple>
-                                        <small class="text-info">* Only JPG, JPEG, PNG files are allowed</small>
-                                    </div>
-                                </div>
-
-                                <div class="text-center">
-                                    <button type="submit" class="btn btn-primary">Save Gallery</button>
-                                </div>
-                            </form> --}}
-                        </div>
-
-                        <!-- Social Links Tab Content -->
-                        <div class="tab-pane fade" id="social-links">
-
-                            @if ($update_id)
-                                <livewire:admin.pages.Social.social-links :business_id="$update_id" />
-                            @endif
-                        </div>
-                    </div><!-- End Tab Content -->
-                </div>
-            </div>
-        </div>
+        @if($updateId)<div class="tab-pane fade" id="gallery"><section class="abe-card abe-tab-card"><livewire:admin.pages.business.business-images :business_id="$updateId" /></section></div><div class="tab-pane fade" id="social-links"><section class="abe-card abe-tab-card"><livewire:admin.pages.Social.social-links :business_id="$updateId" /></section></div>@endif
     </div>
 </section>
-{{-- <script src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script type="text/javascript"
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBMbNCogNokCwVmJCRfefB6iCYUWv28LjQ&libraries=places&callback=initAutocomplete&libraries=places&v=weekly">
-</script> --}}
+
+<script>
+(()=>{const status=document.getElementById('status'),label=document.getElementById('statusLabel'),description=document.getElementById('statusDescription');status?.addEventListener('change',()=>{label.textContent=status.checked?'Active':'Inactive';description.textContent=status.checked?'Visible in the directory':'Hidden from the directory'});const search=document.getElementById('categorySearch'),checks=[...document.querySelectorAll('#categoryList input[type="checkbox"]')],count=document.getElementById('selectedCategoryCount');checks.forEach(input=>input.addEventListener('change',()=>count.textContent=checks.filter(item=>item.checked).length));search?.addEventListener('input',()=>{const query=search.value.trim().toLowerCase();document.querySelectorAll('#categoryList .abe-category').forEach(item=>item.classList.toggle('is-hidden',!item.dataset.categoryName.includes(query)))});
+const country=document.getElementById('country'),state=document.getElementById('state'),district=document.getElementById('district'),initialState=state?.dataset.selected||'',initialDistrict=district?.dataset.selected||'',options=(label,rows)=>`<option value="">${label}</option>`+rows.map(row=>`<option value="${row.id}">${row.name}</option>`).join('');async function loadDistricts(selected=''){if(!state.value){district.innerHTML='<option value="">Select a state first</option>';return}const response=await fetch(`{{ url('/api/v1/utilities/states') }}/${state.value}/districts`,{headers:{Accept:'application/json'}});if(!response.ok)return;district.innerHTML=options('Select district',await response.json());if(selected)district.value=selected}async function loadStates(selected='',selectedDistrict=''){if(!country.value){state.innerHTML='<option value="">Select a country first</option>';district.innerHTML='<option value="">Select a state first</option>';return}const response=await fetch(`{{ url('/api/v1/utilities/countries') }}/${country.value}/states`,{headers:{Accept:'application/json'}});if(!response.ok)return;state.innerHTML=options('Select state',await response.json());if(selected)state.value=selected;await loadDistricts(selectedDistrict)}country?.addEventListener('change',()=>loadStates());state?.addEventListener('change',()=>loadDistricts());if(country?.value)loadStates(initialState,initialDistrict)})();
+</script>
