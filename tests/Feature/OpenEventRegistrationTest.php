@@ -35,6 +35,9 @@ class OpenEventRegistrationTest extends TestCase
             ->assertSee('Choose admission')
             ->assertSee('name="ticket_id"', false)
             ->assertSee('1 attendee')
+            ->assertSee('<button class="pay">Register</button>', false)
+            ->assertSee('id="payment-note"', false)
+            ->assertSee('id="payment-note" style="font-size:12px;text-align:center" hidden', false)
             ->assertDontSee('Attendee details')
             ->assertDontSee('name="tickets[', false)
             ->assertDontSee('left');
