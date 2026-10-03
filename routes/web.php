@@ -154,6 +154,7 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         Route::resource('homepage', HomepageController::class)->except('show')->names('admin.homepage');
         Route::post('membership-settings', [MembershipSettingController::class, 'update'])->name('admin.membership-settings.update');
         Route::post('top-brands-settings', [\App\Http\Controllers\Admin\TopBrandsSettingController::class, 'update'])->name('admin.top-brands-settings.update');
+        Route::post('legal-pages-settings', [\App\Http\Controllers\Admin\LegalPagesController::class, 'update'])->name('admin.legal-pages-settings.update');
         Route::get('memberships', [MembershipController::class, 'index'])->name('admin.memberships.index');
         Route::resource('chapters', ChapterController::class)->names('admin.chapters');
         Route::post('chapters/{chapter}/members', [ChapterController::class, 'addMember'])->name('admin.chapters.members.store');

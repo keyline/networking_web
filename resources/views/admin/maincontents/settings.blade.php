@@ -172,6 +172,9 @@ $user_type = session('type');
             <li class="nav-item">
               <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab12"><i class="fa fa-trophy"></i>Top Brands</button>
             </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab13"><i class="fa fa-file-contract"></i>Legal Pages</button>
+            </li>
             <?php }?>
           </ul>
           <div class="tab-content pt-2 settings-content">
@@ -828,6 +831,7 @@ $user_type = session('type');
               </form>
             </div>
             @include('admin.maincontents.settings.top-brands-tab')
+            @include('admin.maincontents.settings.legal-pages-tab')
           </div><!-- End Bordered Tabs -->
         </div>
       </div>
