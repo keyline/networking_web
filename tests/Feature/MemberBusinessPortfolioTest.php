@@ -26,7 +26,15 @@ class MemberBusinessPortfolioTest extends TestCase
         $category = BusinessCategoryMaster::where('status', 1)->firstOrFail();
 
         $this->assertStringNotContainsString('/'.$company->cmp_id.'/portfolio', route('member.portfolio.edit', $token));
-        $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', $token))->assertOk()->assertSeeText('Business identity')->assertSee('Search categories')->assertSee('Choose up to three categories');
+        $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', $token))
+            ->assertOk()
+            ->assertSeeText('Business identity')
+            ->assertSee('Search categories')
+            ->assertSee('Choose up to three categories')
+            ->assertSee('data-mini-editor', false)
+            ->assertSee('data-command="bold"', false)
+            ->assertSee('data-command="italic"', false)
+            ->assertSee('data-command="insertUnorderedList"', false);
         $this->actingAs($other, 'member')->get(route('member.portfolio.edit', $token))->assertForbidden();
         $this->actingAs($owner, 'member')->get(route('member.portfolio.edit', '192'))->assertNotFound();
 
@@ -35,7 +43,8 @@ class MemberBusinessPortfolioTest extends TestCase
             'business_email' => 'business@example.test', 'business_phone' => '9876543210',
             'business_whatsapp' => '9876543210', 'gst_number' => '19ABCDE1234F1Z5',
             'address1' => '10 Example Street', 'pincode' => '700001',
-            'tagline' => 'Trusted business services', 'about' => 'A complete business profile.',
+            'tagline' => 'Trusted business services',
+            'about' => '<p>A <strong onclick="alert(1)">complete</strong> business profile.</p><ul><li>Trusted advice</li></ul><script>alert("unsafe")</script>',
             'website' => 'https://example.test', 'whatsapp_enabled' => 1, 'contact_form_enabled' => 1,
         ])->assertRedirect(route('member.portfolio.edit', $token).'#profile');
         $this->actingAs($owner, 'member')->post(route('member.portfolio.items.store', $token), [
@@ -49,6 +58,11 @@ class MemberBusinessPortfolioTest extends TestCase
         $portfolio = BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail();
         $this->assertTrue($portfolio->is_published);
         $this->assertNotNull($portfolio->published_at);
+        $this->assertStringContainsString('<strong>complete</strong>', $portfolio->about);
+        $this->assertStringContainsString('<li>Trusted advice</li>', $portfolio->about);
+        $this->assertStringNotContainsString('<script', $portfolio->about);
+        $this->assertStringNotContainsString('onclick', $portfolio->about);
+        $this->assertStringNotContainsString('unsafe', $portfolio->about);
         $this->assertSame('Trusted business services', $portfolio->published_snapshot['tagline']);
         $this->assertDatabaseHas('companies_details', ['cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Updated Business Name', 'cmpd_gst_no' => '19ABCDE1234F1Z5']);
         $this->assertDatabaseHas('categories_to_companies', ['ctc_cmp_id' => $company->cmp_id, 'ctc_bcm_id' => $category->bcm_id]);
@@ -56,7 +70,13 @@ class MemberBusinessPortfolioTest extends TestCase
             ->assertOk()
             ->assertSee('Last published')
             ->assertSee($portfolio->published_at->timezone('Asia/Kolkata')->format('d M Y, h:i A'));
-        $this->get(route('business.show', 'updated-business-name'))->assertOk()->assertSee('Business consulting')->assertSee('youtube-nocookie.com', false);
+        $this->get(route('business.show', 'updated-business-name'))
+            ->assertOk()
+            ->assertSee('Business consulting')
+            ->assertSee('<strong>complete</strong>', false)
+            ->assertSee('<li>Trusted advice</li>', false)
+            ->assertDontSee('unsafe')
+            ->assertSee('youtube-nocookie.com', false);
     }
 
     public function test_member_can_select_no_more_than_three_business_categories(): void

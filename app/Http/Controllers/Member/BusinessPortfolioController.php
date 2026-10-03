@@ -9,6 +9,7 @@ use App\Models\BusinessPortfolioMedia;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\Enquiries\EnquiryMaster;
+use App\Services\BusinessAboutService;
 use App\Services\PortfolioImageService;
 use App\Services\PortfolioRouteToken;
 use Illuminate\Http\RedirectResponse;
@@ -75,6 +76,10 @@ class BusinessPortfolioController extends Controller
             'hero_image.mimes' => 'The hero image must be a JPG, PNG or WebP file.',
             'hero_image.max' => 'The hero image must not be larger than 10 MB.',
         ]);
+
+        if (array_key_exists('about', $data)) {
+            $data['about'] = BusinessAboutService::sanitize($data['about']);
+        }
 
         $portfolio = BusinessPortfolio::firstOrCreate(['company_id' => $company->cmp_id]);
         $details = $company->details;

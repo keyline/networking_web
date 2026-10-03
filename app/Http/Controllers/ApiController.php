@@ -72,6 +72,21 @@ class ApiController extends Controller
         ];
     }
 
+    private function ownerDisplayName(?object $owner): string
+    {
+        if (!$owner) {
+            return 'NA';
+        }
+
+        $name = collect([
+            $owner->ud_salutation ?? null,
+            $owner->ud_first_name ?? null,
+            $owner->ud_last_name ?? null,
+        ])->map(fn ($part) => trim((string) $part))->filter()->implode(' ');
+
+        return $name !== '' ? $name : 'NA';
+    }
+
 
 
     /* before login screen */
@@ -1110,7 +1125,7 @@ class ApiController extends Controller
                     })
                     ->where('companies_details.cmpd_status', 1)
                     ->select(
-                        DB::raw("CONCAT(COALESCE(user_details.ud_salutation, ''), ' ', user_details.ud_first_name) AS ud_first_name"),
+                        DB::raw("TRIM(CONCAT(COALESCE(user_details.ud_salutation, ''), ' ', COALESCE(user_details.ud_first_name, ''), ' ', COALESCE(user_details.ud_last_name, ''))) AS ud_first_name"),
                         'user_details.ud_profile_image',
                         'companies_details.*',
                         'districts.name as District_Name',
@@ -1245,7 +1260,7 @@ class ApiController extends Controller
                     }
 
                     $hundredYearsCompanies[] = [
-                        "owner_name" => $owner ? $owner->ud_first_name : 'NA',
+                        "owner_name" => $this->ownerDisplayName($owner),
                         "owner_profile_img" => $owner && $owner->ud_profile_image ? env('UPLOADS_URL') . 'user/' . $owner->ud_profile_image :  env('NO_USER_IMAGE'),
                         "cmpd_id" => $company->cmpd_cmp_id,
                         "cmpd_cmp_id" => $company->cmpd_cmp_id,
@@ -1333,7 +1348,7 @@ class ApiController extends Controller
                                 $ratingData = getBusinessRating($company->cmpd_cmp_id);
 
                                 $topCompaniesList[] = [
-                                    "owner_name" => $owner ? $owner->ud_first_name : 'NA',
+                                    "owner_name" => $this->ownerDisplayName($owner),
                                     "owner_profile_img" => $owner && $owner->ud_profile_image ? env('UPLOADS_URL') . 'user/' . $owner->ud_profile_image : env('NO_USER_IMAGE'),
                                     "cmpd_id" => $company->cmpd_cmp_id,
                                     "cmpd_cmp_id" => $company->cmpd_cmp_id,
@@ -1398,7 +1413,7 @@ class ApiController extends Controller
                     ->join('states as st', 'st.id', '=', 'companies_details.cmpd_state')
                     ->join('countries as cu', 'cu.id', '=', 'companies_details.cmpd_country')
                     ->select(
-                        DB::raw("CONCAT(COALESCE(user_details.ud_salutation, ''), ' ', user_details.ud_first_name) AS ud_first_name"),
+                        DB::raw("TRIM(CONCAT(COALESCE(user_details.ud_salutation, ''), ' ', COALESCE(user_details.ud_first_name, ''), ' ', COALESCE(user_details.ud_last_name, ''))) AS ud_first_name"),
                         'user_details.ud_profile_image',
                         'companies_details.*',
                         'districts.name as District_Name',
@@ -2106,7 +2121,7 @@ class ApiController extends Controller
                     'd.name as District_Name',
                     'st.name as State_Name',
                     'cu.name as Country_Name',
-                    DB::raw("CONCAT(COALESCE(ud.ud_salutation, ''), ' ', COALESCE(ud.ud_first_name, '')) AS ud_full_name"),
+                    DB::raw("TRIM(CONCAT(COALESCE(ud.ud_salutation, ''), ' ', COALESCE(ud.ud_first_name, ''), ' ', COALESCE(ud.ud_last_name, ''))) AS ud_full_name"),
                     'ud.ud_profile_image'
                 )
                 ->where('cd.cmpd_cmp_id', $businessId)
@@ -2155,7 +2170,7 @@ class ApiController extends Controller
                 }
 
                 $apiResponse = [
-                    "owner_name" => $business->ud_full_name ?? 'NA',
+                    "owner_name" => trim((string) $business->ud_full_name) ?: 'NA',
                     "owner_profile_img" => (($business->ud_profile_image != '') ? env('UPLOADS_URL') . 'user/' . $business->ud_profile_image : env('NO_USER_IMAGE')),
                     "cmpd_id" => $business->cmpd_cmp_id,
                     "cmpd_cmp_id" => $business->cmpd_cmp_id,

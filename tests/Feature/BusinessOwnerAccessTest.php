@@ -64,12 +64,21 @@ class BusinessOwnerAccessTest extends TestCase
             'public_slug' => 'linked-member-business', 'cmpd_description' => 'A linked business.', 'cmpd_status' => 1,
         ]);
         DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $member->um_id]);
+        UserDetails::create([
+            'ud_um_id' => $member->um_id,
+            'ud_first_name' => 'Linked',
+            'ud_last_name' => 'Owner',
+            'ud_profile_image' => 'linked-owner-photo.jpg',
+        ]);
 
         $editUrl = route('member.portfolio.edit', $company->portfolioRouteToken());
         $this->actingAs($member, 'member')->get(route('dashboard.index'))
             ->assertOk()->assertSee('My businesses')->assertSee('Linked Member Business')
             ->assertSee('<a class="brand" href="'.url('/').'">', false)
             ->assertSee('aria-label="Edit Linked Member Business"', false)->assertSee('Edit →')
+            ->assertSee('class="profile-photo"', false)
+            ->assertSee(env('UPLOADS_URL').'user/linked-owner-photo.jpg', false)
+            ->assertSee('Linked Owner profile photo')
             ->assertSee('business-priority')->assertSeeInOrder(['Edit my business', 'My profile']);
         $this->actingAs($member, 'member')->get($editUrl)->assertOk();
         $this->actingAs($member, 'member')->get(route('member.businesses.create'))->assertForbidden();

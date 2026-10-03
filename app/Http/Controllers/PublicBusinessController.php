@@ -11,6 +11,7 @@ use App\Models\Page;
 use App\Models\User\UserMaster;
 use App\Notifications\BusinessLeadEmailNotification;
 use App\Notifications\BusinessLeadSmsNotification;
+use App\Services\BusinessAboutService;
 use Carbon\Carbon;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\QrCode;
@@ -107,7 +108,7 @@ class PublicBusinessController extends Controller
         $social = DB::table('company_sociallink')->where('cs_cmp_id', $business->cmpd_cmp_id)->first();
         $portfolioModel = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->where('is_published', true)->first();
         $portfolio = $portfolioModel?->published_snapshot;
-        $publishedAbout = trim((string) ($portfolio['about'] ?? $business->cmpd_description));
+        $publishedAbout = BusinessAboutService::sanitize($portfolio['about'] ?? $business->cmpd_description);
         $aboutText = CompaniesDetail::isSetupDescription($publishedAbout) ? null : $publishedAbout;
 
         $signedInMember = $isAdminPreview ? null : Auth::guard('member')->user();
