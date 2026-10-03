@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\BusinessPortfolio;
+use App\Models\BusinessPortfolioItem;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -18,6 +19,43 @@ use Tests\TestCase;
 class PublicBusinessProfileTest extends TestCase
 {
     use DatabaseTransactions;
+
+    public function test_published_offering_uses_its_current_image(): void
+    {
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id,
+            'cmpd_name' => 'Offering Image Business',
+            'public_slug' => 'offering-image-business',
+            'cmpd_description' => 'Image test.',
+            'cmpd_status' => 1,
+        ]);
+        $item = BusinessPortfolioItem::create([
+            'company_id' => $company->cmp_id,
+            'type' => 'service',
+            'title' => 'Web design',
+            'image' => 'uploads/portfolio/example/offerings/web-design.jpg',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        BusinessPortfolio::create([
+            'company_id' => $company->cmp_id,
+            'is_published' => true,
+            'published_snapshot' => [
+                'items' => [[
+                    'id' => $item->id,
+                    'title' => $item->title,
+                    'type' => $item->type,
+                    'image' => null,
+                ]],
+                'media' => [],
+            ],
+        ]);
+
+        $this->get(route('business.show', 'offering-image-business'))
+            ->assertOk()
+            ->assertSee('public/uploads/portfolio/example/offerings/web-design.jpg', false);
+    }
 
     public function test_business_name_generates_a_unique_public_slug(): void
     {

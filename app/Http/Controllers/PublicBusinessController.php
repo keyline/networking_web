@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Enquiries\EnquiryMaster;
 use App\Models\BusinessPortfolio;
+use App\Models\BusinessPortfolioItem;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\GeneralSetting;
 use App\Models\Page;
@@ -108,6 +109,18 @@ class PublicBusinessController extends Controller
         $social = DB::table('company_sociallink')->where('cs_cmp_id', $business->cmpd_cmp_id)->first();
         $portfolioModel = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->where('is_published', true)->first();
         $portfolio = $portfolioModel?->published_snapshot;
+        if (is_array($portfolio) && ! empty($portfolio['items'])) {
+            $publishedItemIds = collect($portfolio['items'])->pluck('id')->filter()->map(fn ($id) => (int) $id);
+            $currentImages = BusinessPortfolioItem::where('company_id', $business->cmpd_cmp_id)
+                ->whereIn('id', $publishedItemIds)
+                ->pluck('image', 'id');
+            $portfolio['items'] = collect($portfolio['items'])->map(function (array $item) use ($currentImages) {
+                if (! empty($item['id']) && $currentImages->has((int) $item['id'])) {
+                    $item['image'] = $currentImages->get((int) $item['id']);
+                }
+                return $item;
+            })->all();
+        }
         $publishedAbout = BusinessAboutService::sanitize($portfolio['about'] ?? $business->cmpd_description);
         $aboutText = CompaniesDetail::isSetupDescription($publishedAbout) ? null : $publishedAbout;
 
