@@ -83,7 +83,7 @@ use App\Helpers\Helper;
   .join-switch input:checked + .join-switch-track::after { transform: translateX(22px); }
   .join-control-form button { height: 42px; border: 0; border-radius: 9px; padding: 0 18px; background: #397cf6; color: #fff; font-weight: 750; }
   .pending-card{margin:0 0 26px;border:1px solid #e3e9f2;border-radius:14px;background:#fff;box-shadow:0 8px 24px rgba(33,55,90,.05);overflow:hidden}.pending-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;border-bottom:1px solid #e8edf4}.pending-head h2{margin:0;color:#17233c;font-size:18px}.pending-head p{margin:4px 0 0;color:#71809a;font-size:12px}.pending-count{padding:6px 10px;border-radius:999px;background:#fff5df;color:#a86700;font-size:11px;font-weight:800}.pending-table-wrap{overflow-x:auto}.pending-table{width:100%;border-collapse:collapse}.pending-table th{padding:11px 14px;background:#f7f9fc;color:#738099;text-align:left;text-transform:uppercase;letter-spacing:.05em;font-size:10px}.pending-table td{padding:13px 14px;border-top:1px solid #edf1f5;color:#34415a;vertical-align:middle;font-size:12px}.pending-name{color:#17233c;font-weight:800}.pending-meta{margin-top:3px;color:#7b8798;font-size:11px}.pending-business{font-weight:700}.pending-badge{display:inline-flex;margin-left:5px;padding:4px 7px;border-radius:999px;background:#fff5df;color:#a86700;font-size:9px;font-weight:800;text-transform:uppercase}.pending-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.pending-actions form{margin:0}.pending-button{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 11px;border:1px solid #b8e2cf;border-radius:8px;background:#e9f8f1;color:#13845b;font:inherit;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}.pending-button.business{border-color:#cbdaf5;background:#f3f7ff;color:#2769df}.pending-button:disabled{border-color:#e1e5eb;background:#f3f4f6;color:#98a2b3;cursor:not-allowed}.pending-empty{padding:32px;text-align:center;color:#71809a}
-  .pending-button.review{justify-content:center;border-color:#cbdaf5;background:#fff;color:#2769df}.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.review-card{padding:15px;border:1px solid #e3e9f2;border-radius:10px;background:#f9fbfd}.review-card.full{grid-column:1/-1}.review-card h3{margin:0 0 12px;color:#17233c;font-size:15px}.review-detail{display:grid;grid-template-columns:125px minmax(0,1fr);gap:7px;padding:7px 0;border-top:1px solid #e8edf4;font-size:12px}.review-detail:first-of-type{border-top:0}.review-detail span{color:#71809a}.review-detail strong{color:#34415a;overflow-wrap:anywhere}.review-description{white-space:pre-line;line-height:1.55}.review-approval{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding-top:14px;margin-top:14px;border-top:1px solid #e3e9f2}.review-sequence{margin-right:auto;color:#71809a;font-size:11px}.review-business+.review-business{margin-top:14px;padding-top:14px;border-top:1px solid #dfe6ef}@media(max-width:700px){.review-grid{grid-template-columns:1fr}.review-card.full{grid-column:auto}.review-detail{grid-template-columns:1fr;gap:2px}}
+  .pending-action-grid{display:grid;gap:8px;min-width:310px}.pending-action-set{display:grid;grid-template-columns:58px repeat(2,minmax(102px,1fr));align-items:center;gap:6px}.pending-action-label{color:#71809a;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.pending-action-set form{margin:0}.pending-action-set .pending-button{width:100%;justify-content:center}.pending-button.review{justify-content:center;border-color:#cbdaf5;background:#fff;color:#2769df}.pending-button.approve-profile{border-color:#b8e2cf;background:#e9f8f1;color:#13845b}.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.review-card{padding:15px;border:1px solid #e3e9f2;border-radius:10px;background:#f9fbfd}.review-card.full{grid-column:1/-1}.review-card h3{margin:0 0 12px;color:#17233c;font-size:15px}.review-detail{display:grid;grid-template-columns:125px minmax(0,1fr);gap:7px;padding:7px 0;border-top:1px solid #e8edf4;font-size:12px}.review-detail:first-of-type{border-top:0}.review-detail span{color:#71809a}.review-detail strong{color:#34415a;overflow-wrap:anywhere}.review-description{white-space:pre-line;line-height:1.55}.review-approval{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding-top:14px;margin-top:14px;border-top:1px solid #e3e9f2}.review-sequence{margin-right:auto;color:#71809a;font-size:11px}.review-business+.review-business{margin-top:14px;padding-top:14px;border-top:1px solid #dfe6ef}@media(max-width:900px){.pending-action-grid{min-width:285px}}@media(max-width:700px){.review-grid{grid-template-columns:1fr}.review-card.full{grid-column:auto}.review-detail{grid-template-columns:1fr;gap:2px}.pending-action-set{grid-template-columns:52px 1fr 1fr}}
   @media(max-width: 900px) { .join-control { align-items: stretch; flex-direction: column; } .join-control-form { align-items: stretch; flex-wrap: wrap; } .join-control-form input[type="text"] { width: 100%; flex-basis: 100%; } }
 </style>
 <!-- Content -->
@@ -319,7 +319,7 @@ use App\Helpers\Helper;
       @if($pendingRegistrations->isEmpty())
         <div class="pending-empty"><i class="fa fa-check-circle me-1"></i> No member or business approvals are pending.</div>
       @else
-        <div class="pending-table-wrap"><table class="pending-table"><thead><tr><th>Member</th><th>Business</th><th>Member status</th><th>Review</th></tr></thead><tbody>
+        <div class="pending-table-wrap"><table class="pending-table"><thead><tr><th>Member</th><th>Business</th><th>Member status</th><th>Actions</th></tr></thead><tbody>
         @foreach($pendingRegistrations as $pendingMember)
           @php
             $pendingDetail = $pendingMember->userDetail;
@@ -327,7 +327,40 @@ use App\Helpers\Helper;
             $memberApproved = (int) $pendingMember->um_status === 2;
             $pendingBusinesses = $pendingMember->companies->filter(fn($company) => $company->details && (int) $company->details->cmpd_status !== 1);
           @endphp
-          <tr><td><div class="pending-name">{{ $pendingName }}</div><div class="pending-meta">{{ $pendingMember->um_email_id }} · {{ $pendingMember->um_mobile_no }}</div></td><td>@forelse($pendingBusinesses as $company)<div class="pending-business">{{ $company->details->cmpd_name }} <span class="pending-badge">Pending</span></div>@empty<span class="pending-meta">No pending business</span>@endforelse</td><td><span class="pending-badge">{{ $memberApproved ? 'Approved' : 'Pending' }}</span></td><td><button class="pending-button review" type="button" data-bs-toggle="modal" data-bs-target="#pending-review-{{ $pendingMember->um_id }}"><i class="fa fa-eye"></i> View details</button></td></tr>
+          <tr>
+            <td><div class="pending-name">{{ $pendingName }}</div><div class="pending-meta">{{ $pendingMember->um_email_id }} · {{ $pendingMember->um_mobile_no }}</div></td>
+            <td>@foreach($pendingMember->companies as $company)@if($company->details)<div class="pending-business">{{ $company->details->cmpd_name }} <span class="pending-badge">{{ (int) $company->details->cmpd_status === 1 ? 'Approved' : 'Pending' }}</span></div>@endif @endforeach</td>
+            <td><span class="pending-badge">{{ $memberApproved ? 'Approved' : 'Pending' }}</span></td>
+            <td>
+              <div class="pending-action-grid">
+                <div class="pending-action-set">
+                  <span class="pending-action-label">Profile</span>
+                  <button class="pending-button review" type="button" data-bs-toggle="modal" data-bs-target="#pending-profile-{{ $pendingMember->um_id }}"><i class="fa fa-eye"></i> View</button>
+                  @if(!$memberApproved)
+                    <form method="post" action="{{ route('admin.registrations.approve-member', $pendingMember) }}" onsubmit="return confirm('Approve this member profile? Business approval will remain separate.');">@csrf<button class="pending-button approve-profile" type="submit"><i class="fa fa-user-check"></i> Approve</button></form>
+                  @else
+                    <button class="pending-button" type="button" disabled><i class="fa fa-check"></i> Approved</button>
+                  @endif
+                </div>
+                @foreach($pendingMember->companies as $company)
+                  @php $business = $company->details; $businessApproved = $business && (int) $business->cmpd_status === 1; @endphp
+                  @if($business)
+                    <div class="pending-action-set">
+                      <span class="pending-action-label">Business</span>
+                      <button class="pending-button review business" type="button" data-bs-toggle="modal" data-bs-target="#pending-business-{{ $pendingMember->um_id }}-{{ $company->cmp_id }}"><i class="fa fa-eye"></i> View</button>
+                      @if($businessApproved)
+                        <button class="pending-button business" type="button" disabled><i class="fa fa-check"></i> Approved</button>
+                      @elseif($memberApproved)
+                        <form method="post" action="{{ route('admin.registrations.approve-business', [$pendingMember, $company]) }}" onsubmit="return confirm('Approve {{ addslashes($business->cmpd_name) }} for the public directory?');">@csrf<button class="pending-button business" type="submit"><i class="fa fa-building-circle-check"></i> Approve</button></form>
+                      @else
+                        <button class="pending-button business" type="button" disabled title="Approve the profile first"><i class="fa fa-lock"></i> Approve</button>
+                      @endif
+                    </div>
+                  @endif
+                @endforeach
+              </div>
+            </td>
+          </tr>
         @endforeach
         </tbody></table></div>
         @foreach($pendingRegistrations as $pendingMember)
@@ -336,37 +369,21 @@ use App\Helpers\Helper;
             $pendingName = trim(($pendingDetail?->ud_salutation ? $pendingDetail->ud_salutation.' ' : '').($pendingDetail?->ud_first_name ?? '').' '.($pendingDetail?->ud_last_name ?? '')) ?: ($pendingMember->um_user_name ?: 'Member #'.$pendingMember->um_id);
             $memberApproved = (int) $pendingMember->um_status === 2;
           @endphp
-          <div class="modal fade" id="pending-review-{{ $pendingMember->um_id }}" tabindex="-1" aria-labelledby="pending-review-title-{{ $pendingMember->um_id }}" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><div><h2 class="modal-title fs-5" id="pending-review-title-{{ $pendingMember->um_id }}">Review member request</h2><div class="pending-meta">Registration {{ $pendingMember->um_user_name ?: '#'.$pendingMember->um_id }}</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="review-grid">
-            <section class="review-card"><h3>Member details</h3><div class="review-detail"><span>Name</span><strong>{{ $pendingName }}</strong></div><div class="review-detail"><span>Email</span><strong>{{ $pendingMember->um_email_id ?: '—' }}</strong></div><div class="review-detail"><span>Mobile</span><strong>{{ $pendingMember->um_mobile_no ?: '—' }}</strong></div><div class="review-detail"><span>WhatsApp</span><strong>{{ $pendingDetail?->ud_whatsapp_no ?: '—' }}</strong></div><div class="review-detail"><span>Joined</span><strong>{{ $pendingMember->um_created_at?->format('d M Y, h:i A') ?: '—' }}</strong></div></section>
-            <section class="review-card"><h3>Registration status</h3><div class="review-detail"><span>Member ID</span><strong>{{ $pendingMember->um_user_name ?: '#'.$pendingMember->um_id }}</strong></div><div class="review-detail"><span>Member status</span><strong>{{ $memberApproved ? 'Approved' : 'Pending approval' }}</strong></div><div class="review-detail"><span>Businesses</span><strong>{{ $pendingMember->companies->count() }}</strong></div><div class="review-detail"><span>Approval order</span><strong>Member first, then business</strong></div></section>
-            <section class="review-card full"><h3>Business details</h3>
-              @foreach($pendingMember->companies as $company)
-                @php
-                  $business = $company->details;
-                  $businessApproved = $business && (int) $business->cmpd_status === 1;
-                  $address = collect([$business?->cmpd_address1, $business?->cmpd_address2, $business?->cmpd_address3, $business?->state?->name, $business?->country?->name, $business?->cmpd_pincode])->filter()->implode(', ');
-                @endphp
-                <div class="review-business"><div class="review-detail"><span>Business name</span><strong>{{ $business?->cmpd_name ?: 'Unnamed business' }}</strong></div><div class="review-detail"><span>Categories</span><strong>{{ $company->categories->pluck('name')->implode(', ') ?: '—' }}</strong></div><div class="review-detail"><span>Email</span><strong>{{ $business?->cmpd_email ?: '—' }}</strong></div><div class="review-detail"><span>Phone</span><strong>{{ $business?->cmpd_phone ?: '—' }}</strong></div><div class="review-detail"><span>WhatsApp</span><strong>{{ $business?->cmpd_whatsapp_no ?: '—' }}</strong></div><div class="review-detail"><span>Address</span><strong>{{ $address ?: '—' }}</strong></div><div class="review-detail"><span>Registration no.</span><strong>{{ $business?->cmpd_company_regn_no ?: '—' }}</strong></div><div class="review-detail"><span>GST / PAN</span><strong>{{ collect([$business?->cmpd_gst_no, $business?->cmpd_pan_no])->filter()->implode(' / ') ?: '—' }}</strong></div><div class="review-detail"><span>Description</span><strong class="review-description">{{ $business?->cmpd_description ?: '—' }}</strong></div><div class="review-approval"><span class="review-sequence">Business status: {{ $businessApproved ? 'Approved' : 'Pending approval' }}</span>
-                  @if(!$memberApproved)
-                    <form method="post" action="{{ route('admin.registrations.approve-member', $pendingMember) }}">
-                      @csrf
-                      <button class="pending-button" type="submit"><i class="fa fa-user-check"></i> Approve member</button>
-                    </form>
-                  @endif
-                  @if(!$businessApproved)
-                    @if($memberApproved)
-                      <form method="post" action="{{ route('admin.registrations.approve-business', [$pendingMember, $company]) }}">
-                        @csrf
-                        <button class="pending-button business" type="submit"><i class="fa fa-building-circle-check"></i> Approve business</button>
-                      </form>
-                    @else
-                      <button class="pending-button business" type="button" disabled title="Approve the member first"><i class="fa fa-lock"></i> Approve business</button>
-                    @endif
-                  @endif
-                </div></div>
-              @endforeach
-            </section>
-          </div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button></div></div></div></div>
+          <div class="modal fade" id="pending-profile-{{ $pendingMember->um_id }}" tabindex="-1" aria-labelledby="pending-profile-title-{{ $pendingMember->um_id }}" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><div><h2 class="modal-title fs-5" id="pending-profile-title-{{ $pendingMember->um_id }}">View member profile</h2><div class="pending-meta">Registration {{ $pendingMember->um_user_name ?: '#'.$pendingMember->um_id }}</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="review-grid">
+            <section class="review-card"><h3>Profile details</h3><div class="review-detail"><span>Name</span><strong>{{ $pendingName }}</strong></div><div class="review-detail"><span>Email</span><strong>{{ $pendingMember->um_email_id ?: '—' }}</strong></div><div class="review-detail"><span>Mobile</span><strong>{{ $pendingMember->um_mobile_no ?: '—' }}</strong></div><div class="review-detail"><span>WhatsApp</span><strong>{{ $pendingDetail?->ud_whatsapp_no ?: '—' }}</strong></div><div class="review-detail"><span>Joined</span><strong>{{ $pendingMember->um_created_at?->format('d M Y, h:i A') ?: '—' }}</strong></div></section>
+            <section class="review-card"><h3>Profile status</h3><div class="review-detail"><span>Member ID</span><strong>{{ $pendingMember->um_user_name ?: '#'.$pendingMember->um_id }}</strong></div><div class="review-detail"><span>Status</span><strong>{{ $memberApproved ? 'Approved' : 'Pending approval' }}</strong></div><div class="review-detail"><span>Linked businesses</span><strong>{{ $pendingMember->companies->count() }}</strong></div><div class="review-detail"><span>Address</span><strong>{{ collect([$pendingDetail?->ud_addr_1, $pendingDetail?->ud_addr_2, $pendingDetail?->ud_pincode])->filter()->implode(', ') ?: '—' }}</strong></div></section>
+          </div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>@if(!$memberApproved)<form method="post" action="{{ route('admin.registrations.approve-member', $pendingMember) }}" onsubmit="return confirm('Approve this member profile? Business approval will remain separate.');">@csrf<button class="pending-button approve-profile" type="submit"><i class="fa fa-user-check"></i> Approve profile</button></form>@else<button class="pending-button" type="button" disabled><i class="fa fa-check"></i> Profile approved</button>@endif</div></div></div></div>
+
+          @foreach($pendingMember->companies as $company)
+            @php
+              $business = $company->details;
+              $businessApproved = $business && (int) $business->cmpd_status === 1;
+              $address = collect([$business?->cmpd_address1, $business?->cmpd_address2, $business?->cmpd_address3, $business?->state?->name, $business?->country?->name, $business?->cmpd_pincode])->filter()->implode(', ');
+            @endphp
+            @if($business)
+              <div class="modal fade" id="pending-business-{{ $pendingMember->um_id }}-{{ $company->cmp_id }}" tabindex="-1" aria-labelledby="pending-business-title-{{ $pendingMember->um_id }}-{{ $company->cmp_id }}" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><div><h2 class="modal-title fs-5" id="pending-business-title-{{ $pendingMember->um_id }}-{{ $company->cmp_id }}">View business</h2><div class="pending-meta">{{ $business->cmpd_name ?: 'Unnamed business' }}</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><section class="review-card"><h3>Business details</h3><div class="review-detail"><span>Business name</span><strong>{{ $business->cmpd_name ?: 'Unnamed business' }}</strong></div><div class="review-detail"><span>Owner</span><strong>{{ $pendingName }}</strong></div><div class="review-detail"><span>Categories</span><strong>{{ $company->categories->pluck('name')->implode(', ') ?: '—' }}</strong></div><div class="review-detail"><span>Email</span><strong>{{ $business->cmpd_email ?: '—' }}</strong></div><div class="review-detail"><span>Phone</span><strong>{{ $business->cmpd_phone ?: '—' }}</strong></div><div class="review-detail"><span>WhatsApp</span><strong>{{ $business->cmpd_whatsapp_no ?: '—' }}</strong></div><div class="review-detail"><span>Address</span><strong>{{ $address ?: '—' }}</strong></div><div class="review-detail"><span>Registration no.</span><strong>{{ $business->cmpd_company_regn_no ?: '—' }}</strong></div><div class="review-detail"><span>GST / PAN</span><strong>{{ collect([$business->cmpd_gst_no, $business->cmpd_pan_no])->filter()->implode(' / ') ?: '—' }}</strong></div><div class="review-detail"><span>Description</span><strong class="review-description">{{ $business->cmpd_description ?: '—' }}</strong></div><div class="review-detail"><span>Status</span><strong>{{ $businessApproved ? 'Approved' : 'Pending approval' }}</strong></div></section></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>@if($businessApproved)<button class="pending-button business" type="button" disabled><i class="fa fa-check"></i> Business approved</button>@elseif($memberApproved)<form method="post" action="{{ route('admin.registrations.approve-business', [$pendingMember, $company]) }}" onsubmit="return confirm('Approve {{ addslashes($business->cmpd_name) }} for the public directory?');">@csrf<button class="pending-button business" type="submit"><i class="fa fa-building-circle-check"></i> Approve business</button></form>@else<button class="pending-button business" type="button" disabled title="Approve the profile first"><i class="fa fa-lock"></i> Approve profile first</button>@endif</div></div></div></div>
+            @endif
+          @endforeach
         @endforeach
       @endif
     </section>

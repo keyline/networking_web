@@ -184,13 +184,16 @@ class AdminRegisteredUsersTest extends TestCase
         $this->assertStringContainsString('Pending member requests', $html);
         $this->assertStringContainsString('dashboard-pending@example.test', $html);
         $this->assertStringContainsString('Dashboard Pending Business', $html);
-        $this->assertStringContainsString('View details', $html);
-        $this->assertStringContainsString('data-bs-target="#pending-review-'.$member->um_id.'"', $html);
-        $this->assertStringContainsString('Review member request', $html);
-        $this->assertStringContainsString('Member details', $html);
+        $this->assertStringContainsString('Profile', $html);
+        $this->assertStringContainsString('Business', $html);
+        $this->assertStringContainsString('data-bs-target="#pending-profile-'.$member->um_id.'"', $html);
+        $this->assertStringContainsString('data-bs-target="#pending-business-'.$member->um_id.'-'.$company->cmp_id.'"', $html);
+        $this->assertStringContainsString('View member profile', $html);
+        $this->assertStringContainsString('Profile details', $html);
         $this->assertStringContainsString('Business details', $html);
         $this->assertStringContainsString(route('admin.registrations.approve-member', $member), $html);
-        $this->assertStringContainsString('Approve business', $html);
+        $this->assertStringContainsString('Approve profile', $html);
+        $this->assertStringContainsString('Approve profile first', $html);
         $this->assertStringContainsString('disabled', $html);
     }
 
