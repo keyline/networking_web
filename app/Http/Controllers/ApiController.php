@@ -3418,6 +3418,114 @@ class ApiController extends Controller
         $this->response_to_json($apiStatus, $apiMessage, $apiResponse);
     }
 
+    public function profilePhotoUpdate(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'profile_image' => ['required', 'array', 'size:1'],
+            'profile_image.0.type' => ['required', 'in:image/jpeg,image/jpg,image/png'],
+            'profile_image.0.base64' => ['required', 'string'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $validator->errors()->first(),
+                'data' => ['errors' => $validator->errors()],
+            ], 422);
+        }
+
+        if ($request->header('key') !== env('PROJECT_KEY')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticate Request !!!',
+                'data' => [],
+            ], 401);
+        }
+
+        $token = $this->tokenAuth((string) $request->header('authorization'));
+        if (! $token['status']) {
+            return response()->json([
+                'status' => false,
+                'message' => $token['data'],
+                'data' => [],
+            ], 401);
+        }
+
+        $user = UserMaster::with('userDetail')->find($token['data'][1]);
+        if (! $user || ! $user->userDetail || (int) $user->um_status !== 2) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User Not Available !!!',
+                'data' => [],
+            ], 404);
+        }
+
+        $encoded = $request->input('profile_image.0.base64');
+        $binary = base64_decode($encoded, true);
+        $dimensions = $binary === false ? false : @getimagesizefromstring($binary);
+        if ($dimensions === false || $dimensions[0] !== 150 || $dimensions[1] !== 150) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Profile photo must be exactly 150 x 150 pixels.',
+                'data' => [],
+            ], 422);
+        }
+
+        if (strlen($binary) > 500 * 1024) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Profile photo must be smaller than 500 KB.',
+                'data' => [],
+            ], 422);
+        }
+
+        $mime = $dimensions['mime'] ?? '';
+        $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+        if (! isset($extensions[$mime])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Profile photo must be a JPG or PNG image.',
+                'data' => [],
+            ], 422);
+        }
+
+        $directory = public_path('uploads/user');
+        if (! File::isDirectory($directory)) {
+            File::makeDirectory($directory, 0755, true);
+        }
+
+        $fileName = uniqid('member_', true).'.'.$extensions[$mime];
+        $path = $directory.DIRECTORY_SEPARATOR.$fileName;
+        if (file_put_contents($path, $binary) === false) {
+            return response()->json([
+                'status' => false,
+                'message' => 'The profile photo could not be saved.',
+                'data' => [],
+            ], 500);
+        }
+
+        $oldImage = $user->userDetail->ud_profile_image;
+        $user->userDetail->update([
+            'ud_profile_image' => $fileName,
+            'ud_updated_at' => now(),
+        ]);
+
+        if ($oldImage && $oldImage !== $fileName) {
+            $oldPath = $directory.DIRECTORY_SEPARATOR.basename($oldImage);
+            if (File::exists($oldPath)) {
+                File::delete($oldPath);
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Profile photo updated successfully.',
+            'data' => [
+                'profile_image' => env('UPLOADS_URL').'user/'.$fileName,
+            ],
+        ]);
+    }
+
 
     public function referralEnquiryToBusiness(Request $request)
     {

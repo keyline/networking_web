@@ -67,6 +67,7 @@ Route::prefix('v1')->group(function () {
     Route::get('user/profile', [AuthController::class, 'getProfile']);
     Route::post('user/profile/change-password', [ApiController::class, 'changePassword']);
     Route::post('user/profile/edit', [ApiController::class, 'profileEdit']);
+    Route::post('user/profile/photo', [ApiController::class, 'profilePhotoUpdate']);
     Route::get('user/business-list', [AuthController::class, 'businessList']);
     Route::post('user/business/add', [ApiController::class, 'businessAdd']);
     Route::post('user/business/edit', [ApiController::class, 'businessEdit']);
