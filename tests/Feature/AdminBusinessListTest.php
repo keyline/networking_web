@@ -99,6 +99,7 @@ class AdminBusinessListTest extends TestCase
         $template = file_get_contents(resource_path('views/admin/maincontents/client/business-add-edit.blade.php'));
         $this->assertStringContainsString('admin-business-editor', $template);
         $this->assertStringContainsString('Business profile', $template);
+        $this->assertStringContainsString('Products / services', $template);
         $this->assertStringContainsString('Business visibility', $template);
         $this->assertStringContainsString('Search categories', $template);
         $this->assertStringContainsString('name="status"', $template);
@@ -124,7 +125,20 @@ class AdminBusinessListTest extends TestCase
             'district' => '',
             'pincode' => '',
             'status' => 0,
-        ])->assertRedirect('/admin/clients/business/list');
+        ])->assertRedirect($url);
+
+        $this->withSession($session)->actingAs($admin, 'admin')->post(route('admin.clients.business.offerings.store', $company->cmp_id), [
+            'type' => 'service',
+            'title' => 'Admin managed service',
+            'description' => 'Created from the admin business editor.',
+            'price_label' => 'Ask for price',
+        ])->assertRedirect($url.'?tab=offerings#offerings');
+
+        $this->assertDatabaseHas('business_portfolio_items', [
+            'company_id' => $company->cmp_id,
+            'title' => 'Admin managed service',
+            'type' => 'service',
+        ]);
 
         $this->assertDatabaseHas('companies_details', [
             'cmpd_id' => $details->cmpd_id,

@@ -352,6 +352,10 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         Route::get('clients/business/list', 'ClientController@businessList');
         Route::post('clients/business/{company}/sponsored', 'ClientController@updateBusinessSponsored')
             ->whereNumber('company')->name('admin.clients.business.sponsored');
+        Route::post('clients/business/{company}/offerings', 'ClientController@storeBusinessOffering')->whereNumber('company')->name('admin.clients.business.offerings.store');
+        Route::put('clients/business/{company}/offerings/{item}', 'ClientController@updateBusinessOffering')->whereNumber('company')->whereNumber('item')->name('admin.clients.business.offerings.update');
+        Route::patch('clients/business/{company}/offerings/{item}/status', 'ClientController@toggleBusinessOffering')->whereNumber('company')->whereNumber('item')->name('admin.clients.business.offerings.toggle');
+        Route::delete('clients/business/{company}/offerings/{item}', 'ClientController@destroyBusinessOffering')->whereNumber('company')->whereNumber('item')->name('admin.clients.business.offerings.destroy');
         Route::get('clients/registered-users', 'ClientController@registeredUsers')
             ->name('admin.clients.registered-users');
         Route::get('clients/registered-members', 'ClientController@registeredMembers')

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\BusinessPortfolio;
+use App\Models\BusinessPortfolioItem;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
@@ -38,6 +39,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Services\MemberDataDeletionService;
+use App\Services\PortfolioImageService;
 
 class ClientController extends Controller
 {
@@ -406,6 +408,7 @@ class ClientController extends Controller
         $data['module']                 = $this->data;
         $data['slug']                   = $slug;
         $id                             = $id ? Helper::decoded($id) : $id;
+        $data['companyId']              = $id;
         $title                          = $id ? 'Edit business' : 'Add business';
 
         $page_name                      = 'client.business-add-edit';
@@ -414,6 +417,7 @@ class ClientController extends Controller
 
         $data['row']                    = CompaniesDetail::where('cmpd_cmp_id', $id)->first();
         $data['portfolio']              = $id ? BusinessPortfolio::where('company_id', $id)->first() : null;
+        $data['offerings']              = $id ? BusinessPortfolioItem::where('company_id', $id)->orderBy('sort_order')->get() : collect();
 
         $data['selectedCategories'] = CategoryToCompany::where('ctc_cmp_id', $id)
             ->pluck('ctc_bcm_id')->map(fn ($categoryId) => (int) $categoryId)->all();
@@ -558,12 +562,56 @@ class ClientController extends Controller
 
 
 
-                return redirect("admin/" . $this->data['controller_route'] . "/" . $data['slug'] . "/list")->with('success_message', $this->data['title'] . "/" . $data['slug'] . 'data save successful.');
+                return redirect()->to($request->url())->with('success_message', 'Business saved successfully.');
             }
         }
         echo $this->admin_after_login_layout($title, $page_name, $data);
     }
     /* edit */
+
+    public function storeBusinessOffering(Request $request, int $company, PortfolioImageService $images)
+    {
+        abort_unless(CompaniesMaster::where('cmp_id', $company)->exists(), 404);
+        abort_if(BusinessPortfolioItem::where('company_id', $company)->count() >= 30, 422, 'A maximum of 30 products and services is allowed.');
+        $data = $this->validateBusinessOffering($request);
+        if ($request->hasFile('image')) $data['image'] = $images->store($request->file('image'), $company, 'offerings');
+        $data += ['company_id' => $company, 'is_active' => true, 'sort_order' => (int) BusinessPortfolioItem::where('company_id', $company)->max('sort_order') + 1];
+        BusinessPortfolioItem::create($data);
+        return $this->businessOfferingRedirect($company, 'Product / service added.');
+    }
+
+    public function updateBusinessOffering(Request $request, int $company, BusinessPortfolioItem $item, PortfolioImageService $images)
+    {
+        abort_unless((int) $item->company_id === $company, 404);
+        $data = $this->validateBusinessOffering($request);
+        if ($request->hasFile('image')) { $data['image'] = $images->store($request->file('image'), $company, 'offerings'); $images->delete($item->image); }
+        $item->update($data);
+        return $this->businessOfferingRedirect($company, 'Product / service updated.');
+    }
+
+    public function toggleBusinessOffering(int $company, BusinessPortfolioItem $item)
+    {
+        abort_unless((int) $item->company_id === $company, 404);
+        $item->update(['is_active' => ! $item->is_active]);
+        return $this->businessOfferingRedirect($company, 'Product / service status updated.');
+    }
+
+    public function destroyBusinessOffering(int $company, BusinessPortfolioItem $item, PortfolioImageService $images)
+    {
+        abort_unless((int) $item->company_id === $company, 404);
+        $images->delete($item->image); $item->delete();
+        return $this->businessOfferingRedirect($company, 'Product / service removed.');
+    }
+
+    private function validateBusinessOffering(Request $request): array
+    {
+        return $request->validate(['type' => ['required', Rule::in(['product', 'service'])], 'title' => ['required', 'string', 'max:150'], 'description' => ['nullable', 'string', 'max:1500'], 'price_label' => ['nullable', 'string', 'max:100'], 'external_url' => ['nullable', 'url:http,https', 'max:255'], 'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240']]);
+    }
+
+    private function businessOfferingRedirect(int $company, string $message)
+    {
+        return redirect('admin/clients/business/info-edit/'.Helper::encoded($company).'?tab=offerings#offerings')->with('success_message', $message);
+    }
 
 
 
