@@ -110,7 +110,7 @@ class PublicBusinessProfileTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('A useful company.')->assertSee('Register to connect')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Register as guest')->assertSee('Share this page')->assertSee('data:image/svg+xml;base64,', false)->assertSee('data-url="'.route('business.show', 'example-business').'"', false)->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
+        $this->get(route('business.show', 'example-business'))->assertOk()->assertSee('Example Business')->assertSee('A useful company.')->assertSee('Register / login for details')->assertSee('Tax consulting')->assertSee('Customer reviews')->assertSee('4.5')->assertSee('Professional service and a quick response.')->assertSee('Share this page')->assertSee('data:image/svg+xml;base64,', false)->assertSee('data-url="'.route('business.show', 'example-business').'"', false)->assertDontSee('business@example.test')->assertDontSee('9876501234')->assertDontSee('Private business address')->assertDontSee('wa.me/919876543210', false);
 
         $visitor = UserMaster::create(['um_utm_id' => 1, 'um_user_name' => 'visitor', 'um_email_id' => 'visitor@example.test', 'um_mobile_no' => '9123409876', 'um_status' => 2]);
         $this->actingAs($visitor, 'member')->get(route('business.show', 'example-business'))

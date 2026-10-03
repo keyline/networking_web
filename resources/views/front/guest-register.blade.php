@@ -3,12 +3,12 @@
 @include('front.partials.cms-header')
 <main class="guest-page"><div class="guest-shell"><header class="guest-head"><h1>Register as a guest</h1><p>Verify your mobile number, then complete your profile. Registered guests can view business contact details and connect with listed businesses.</p></header>
 @if(session('success'))<div class="alert success">{{session('success')}}</div>@endif @if($errors->any())<div class="alert danger">{{$errors->first()}}</div>@endif
-<div class="steps"><div class="step {{!$guestMobile?'active':''}}">1. Mobile</div><div class="step {{$guestMobile&&!$guestVerified?'active':''}}">2. Verify OTP</div><div class="step {{$guestVerified?'active':''}}">3. Profile</div></div>
+<div class="steps"><div class="step {{!$guestMobile&&!$guestLoginMode?'active':''}}">1. Mobile / email</div><div class="step {{($guestMobile||$guestLoginMode)&&!$guestVerified?'active':''}}">2. Verify OTP</div><div class="step {{$guestVerified?'active':''}}">3. Profile</div></div>
 <section class="guest-card"><div class="guest-section">
-@if(!$guestMobile)
-<form method="post" action="{{route('guest.register.send-otp')}}">@csrf<div class="field"><label>Mobile number *</label><input class="input" name="mobile" inputmode="numeric" maxlength="10" value="{{old('mobile')}}" placeholder="10-digit mobile number" required></div><button class="button">Send OTP</button></form>
+@if(!$guestMobile&&!$guestLoginMode)
+<form method="post" action="{{route('guest.register.send-otp')}}">@csrf<div class="field"><label>Mobile number or email *</label><input class="input" name="identifier" value="{{old('identifier')}}" placeholder="10-digit mobile number or email address" required></div><button class="button">Send OTP</button></form>
 @elseif(!$guestVerified)
-<div class="mobile-note">OTP sent to mobile number ending in {{substr($guestMobile,-4)}}.</div><form method="post" action="{{route('guest.register.verify-otp')}}">@csrf<div class="field" style="margin-top:18px"><label>4-digit OTP *</label><input class="input" name="otp" inputmode="numeric" maxlength="4" autocomplete="one-time-code" required></div><button class="button">Verify mobile</button></form>
+<div class="mobile-note">OTP sent to {{$guestLoginMode?$guestLoginDestination:'mobile number ending in '.substr($guestMobile,-4)}}.</div><form method="post" action="{{route('guest.register.verify-otp')}}">@csrf<div class="field" style="margin-top:18px"><label>4-digit OTP *</label><input class="input" name="otp" inputmode="numeric" maxlength="4" autocomplete="one-time-code" required></div><button class="button">{{$guestLoginMode?'Verify and log in':'Verify mobile'}}</button></form>
 @else
 <form method="post" action="{{route('guest.register.complete')}}">@csrf<div class="grid">
 <div class="field"><label>Title</label><select class="input" name="salutation"><option value="">Select title</option>@foreach(['Mr.','Mrs.','Ms.','Miss','Dr.','Prof.','Mx.'] as $title)<option value="{{$title}}" @selected(old('salutation')===$title)>{{$title}}</option>@endforeach</select></div><div class="field"><label>First name *</label><input class="input" name="first_name" value="{{old('first_name')}}" required></div><div class="field"><label>Last name</label><input class="input" name="last_name" value="{{old('last_name')}}"></div>

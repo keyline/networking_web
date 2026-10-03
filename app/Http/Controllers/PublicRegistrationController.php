@@ -12,6 +12,7 @@ use App\Models\PublicRegistrationSetting;
 use App\Models\User\UserDetails;
 use App\Models\User\UserMaster;
 use App\Services\DigitalSmsOtpService;
+use App\Services\LoginOTPService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 
 class PublicRegistrationController extends Controller
 {
-    public function __construct(private DigitalSmsOtpService $sms)
+    public function __construct(private DigitalSmsOtpService $sms, private LoginOTPService $loginOtp)
     {
     }
 
@@ -152,16 +153,55 @@ class PublicRegistrationController extends Controller
         return view('front.guest-register', array_merge($this->viewData(), [
             'title' => 'Guest registration · Net-Works',
             'guestMobile' => $request->session()->get('guest_registration_mobile'),
+            'guestLoginMode' => $request->session()->get('guest_login_mode'),
+            'guestLoginDestination' => $request->session()->get('guest_login_destination'),
             'guestVerified' => (bool) $request->session()->get('guest_registration_verified'),
         ]));
     }
 
     public function guestSendOtp(Request $request)
     {
-        $data = $request->validate([
-            'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'unique:user_master,um_mobile_no'],
-        ]);
-        $key = 'guest-registration:send:'.$data['mobile'].'|'.$request->ip();
+        $data = $request->validate(['identifier' => ['required', 'string', 'max:255']]);
+        $identifier = trim($data['identifier']);
+        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL) !== false;
+        $mobile = preg_replace('/\D+/', '', $identifier);
+        if (! $isEmail && ! preg_match('/^[6-9][0-9]{9}$/', $mobile)) {
+            throw ValidationException::withMessages(['identifier' => 'Enter a valid 10-digit mobile number or email address.']);
+        }
+
+        $user = $isEmail
+            ? UserMaster::whereRaw('LOWER(um_email_id) = ?', [strtolower($identifier)])->first()
+            : UserMaster::whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(um_mobile_no, '+', ''), ' ', ''), '-', ''), '(', ''), ')', ''), 10) = ?", [$mobile])->first();
+        if ($user) {
+            if ((int) $user->um_status !== 2) {
+                throw ValidationException::withMessages(['identifier' => 'This account is not active yet. Please contact the administrator.']);
+            }
+            $key = 'guest-login:send:'.$user->um_id.'|'.$request->ip();
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                throw ValidationException::withMessages(['identifier' => 'Too many attempts. Please try again later.']);
+            }
+            $this->loginOtp->generateOTP($user->um_id);
+            if (app()->environment('testing')) {
+                $request->session()->put('testing_guest_login_otp', $user->fresh()->um_otp);
+            } elseif ($isEmail) {
+                $this->loginOtp->sendEmailOTP($user->um_id);
+            } else {
+                $this->sms->send($user->um_mobile_no, (string) $user->fresh()->um_otp);
+            }
+            $request->session()->forget(['guest_registration_mobile', 'guest_registration_verified']);
+            $request->session()->put([
+                'guest_login_user_id' => $user->um_id,
+                'guest_login_mode' => $isEmail ? 'email' : 'mobile',
+                'guest_login_destination' => $isEmail ? $user->um_email_id : 'mobile ending in '.substr($mobile, -4),
+            ]);
+            RateLimiter::hit($key, 60);
+            return redirect()->route('guest.register')->with('success', 'Account found. We sent you a login OTP.');
+        }
+        if ($isEmail) {
+            throw ValidationException::withMessages(['identifier' => 'No account was found for this email. Enter your mobile number to register as a guest.']);
+        }
+
+        $key = 'guest-registration:send:'.$mobile.'|'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 3)) {
             throw ValidationException::withMessages(['mobile' => 'Too many attempts. Please try again later.']);
         }
@@ -169,14 +209,14 @@ class PublicRegistrationController extends Controller
         $otp = (string) random_int(1000, 9999);
         if (!app()->environment('testing')) {
             try {
-                $this->sms->send($data['mobile'], $otp);
+                $this->sms->send($mobile, $otp);
             } catch (\Throwable $exception) {
                 throw ValidationException::withMessages(['mobile' => 'We could not send the OTP right now. Please try again.']);
             }
         }
 
         $request->session()->put([
-            'guest_registration_mobile' => $data['mobile'],
+            'guest_registration_mobile' => $mobile,
             'guest_registration_otp_hash' => Hash::make($otp),
             'guest_registration_otp_expires_at' => now()->addMinutes(10)->timestamp,
             'guest_registration_verified' => false,
@@ -192,6 +232,18 @@ class PublicRegistrationController extends Controller
     public function guestVerifyOtp(Request $request)
     {
         $data = $request->validate(['otp' => ['required', 'digits:4']]);
+        $loginUserId = $request->session()->get('guest_login_user_id');
+        if ($loginUserId) {
+            $user = UserMaster::where('um_id', $loginUserId)->where('um_status', 2)->first();
+            if (! $user || ! $this->loginOtp->verifyOTP($user->um_id, $data['otp'])) {
+                throw ValidationException::withMessages(['otp' => 'The OTP is invalid or has expired.']);
+            }
+            Auth::guard('member')->login($user);
+            $intended = $request->session()->pull('guest_registration_intended', route('dashboard.index'));
+            $request->session()->forget(['guest_login_user_id', 'guest_login_mode', 'guest_login_destination', 'testing_guest_login_otp']);
+            $request->session()->regenerate();
+            return redirect()->to($intended)->with('success', 'You are now logged in.');
+        }
         $hash = $request->session()->get('guest_registration_otp_hash');
         $expiresAt = (int) $request->session()->get('guest_registration_otp_expires_at');
         if (!$hash || !$expiresAt || Carbon::createFromTimestamp($expiresAt)->isPast() || !Hash::check($data['otp'], $hash)) {

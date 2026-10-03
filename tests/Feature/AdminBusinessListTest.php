@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\BusinessPortfolio;
+use App\Models\BusinessPortfolioItem;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\Country;
@@ -101,6 +102,19 @@ class AdminBusinessListTest extends TestCase
             'is_published' => true,
             'published_snapshot' => ['items' => []],
         ]);
+        BusinessPortfolioItem::create([
+            'company_id' => $company->cmp_id,
+            'type' => 'service',
+            'title' => 'Existing active service',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->withSession($session)->actingAs($admin, 'admin')->get($url)->assertOk();
+        $this->assertSame(
+            ['Existing active service'],
+            collect(BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail()->published_snapshot['items'])->pluck('title')->all()
+        );
 
         $template = file_get_contents(resource_path('views/admin/maincontents/client/business-add-edit.blade.php'));
         $this->assertStringContainsString('admin-business-editor', $template);
@@ -145,9 +159,9 @@ class AdminBusinessListTest extends TestCase
             'title' => 'Admin managed service',
             'type' => 'service',
         ]);
-        $this->assertSame(
+        $this->assertContains(
             'Admin managed service',
-            BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail()->published_snapshot['items'][0]['title']
+            collect(BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail()->published_snapshot['items'])->pluck('title')->all()
         );
 
         $this->assertDatabaseHas('companies_details', [

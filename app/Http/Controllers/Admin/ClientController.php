@@ -418,6 +418,9 @@ class ClientController extends Controller
         $data['row']                    = CompaniesDetail::where('cmpd_cmp_id', $id)->first();
         $data['portfolio']              = $id ? BusinessPortfolio::where('company_id', $id)->first() : null;
         $data['offerings']              = $id ? BusinessPortfolioItem::where('company_id', $id)->orderBy('sort_order')->get() : collect();
+        if ($id && $request->isMethod('get')) {
+            $this->syncPublishedBusinessOfferings($id);
+        }
 
         $data['selectedCategories'] = CategoryToCompany::where('ctc_cmp_id', $id)
             ->pluck('ctc_bcm_id')->map(fn ($categoryId) => (int) $categoryId)->all();

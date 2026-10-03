@@ -86,7 +86,7 @@ class PublicRegistrationTest extends TestCase
         $country = Country::findOrFail($state->country_id);
 
         $this->post(route('guest.register.complete'), [])->assertForbidden();
-        $this->post(route('guest.register.send-otp'), ['mobile' => '9876543299'])
+        $this->post(route('guest.register.send-otp'), ['identifier' => '9876543299'])
             ->assertRedirect(route('guest.register'));
         $otp = session('testing_guest_registration_otp');
         $this->post(route('guest.register.verify-otp'), ['otp' => $otp])
@@ -105,6 +105,46 @@ class PublicRegistrationTest extends TestCase
         $this->assertNull($guest->userDetail->ud_addr_2);
         $this->assertNull($guest->userDetail->ud_pincode);
         $this->assertAuthenticatedAs($guest, 'member');
+    }
+
+    public function test_existing_mobile_receives_otp_and_logs_in_from_guest_registration(): void
+    {
+        $user = UserMaster::create([
+            'um_utm_id' => 1,
+            'um_user_name' => 'EXISTING-GUEST-MOBILE',
+            'um_email_id' => 'existing-mobile@example.test',
+            'um_mobile_no' => '9876543288',
+            'um_status' => 2,
+        ]);
+        $intended = route('members.index');
+
+        $this->get(route('guest.register', ['redirect' => $intended]))->assertOk();
+        $this->post(route('guest.register.send-otp'), ['identifier' => '9876543288'])
+            ->assertRedirect(route('guest.register'))
+            ->assertSessionHas('guest_login_mode', 'mobile');
+        $otp = session('testing_guest_login_otp');
+        $this->post(route('guest.register.verify-otp'), ['otp' => $otp])->assertRedirect($intended);
+
+        $this->assertAuthenticatedAs($user, 'member');
+    }
+
+    public function test_existing_email_receives_otp_and_logs_in_from_guest_registration(): void
+    {
+        $user = UserMaster::create([
+            'um_utm_id' => 2,
+            'um_user_name' => 'EXISTING-MEMBER-EMAIL',
+            'um_email_id' => 'existing-email@example.test',
+            'um_mobile_no' => '9876543277',
+            'um_status' => 2,
+        ]);
+
+        $this->post(route('guest.register.send-otp'), ['identifier' => 'EXISTING-EMAIL@example.test'])
+            ->assertRedirect(route('guest.register'))
+            ->assertSessionHas('guest_login_mode', 'email');
+        $otp = session('testing_guest_login_otp');
+        $this->post(route('guest.register.verify-otp'), ['otp' => $otp])->assertRedirect(route('dashboard.index'));
+
+        $this->assertAuthenticatedAs($user, 'member');
     }
 
     public function test_join_form_labels_address_as_business_information_only(): void
