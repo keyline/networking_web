@@ -1,7 +1,7 @@
 <main id="content" role="main" class="main">
   <div class="position-fixed top-0 end-0 start-0 bg-img-start" style="height:32rem;background-image:url(<?=env('ADMIN_ASSETS_URL')?>assets/svg/components/card-6.svg)"><div class="shape shape-bottom zi-1"><svg preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1921 273"><polygon fill="#fff" points="0,273 1921,273 1921,100"/></svg></div></div>
   <div class="container py-5 py-sm-7">
-    <a class="d-flex justify-content-center mb-5" href="<?=url('/admin')?>"><img class="zi-2" src="<?=env('UPLOADS_URL').$generalSetting->site_logo?>" alt="Net-Works" style="width:9rem;max-height:70px;object-fit:contain"></a>
+    <a class="d-flex justify-content-center mb-5" href="<?=url('/')?>"><img class="zi-2" src="<?=env('UPLOADS_URL').$generalSetting->site_logo?>" alt="Net-Works" style="width:9rem;max-height:70px;object-fit:contain"></a>
     <div class="mx-auto" style="max-width:31rem"><div class="card card-lg mb-5 border-0 shadow-sm"><div class="card-body p-4 p-sm-5">
       @if(session('success_message'))<div class="alert alert-success border-0">{{session('success_message')}}</div>@endif
       @if(session('error_message'))<div class="alert alert-danger border-0">{{session('error_message')}}</div>@endif

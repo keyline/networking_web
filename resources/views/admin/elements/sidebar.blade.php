@@ -38,7 +38,7 @@ if ($pageSegment == 'orders') {
 <div class="navbar-vertical-container">
     <div class="navbar-vertical-footer-offset">
         <!-- Logo -->
-        <a class="navbar-brand" href="<?= url('admin/dashboard') ?>" aria-label="Front">
+        <a class="navbar-brand" href="<?= url('/') ?>" aria-label="Home">
             <img class="navbar-brand-logo" src="<?= env('UPLOADS_URL') . $generalSetting->site_logo ?>"
                 alt="<?= $generalSetting->site_name ?>" data-hs-theme-appearance="default" style="margin: 0 auto;">
             <img class="navbar-brand-logo" src="<?= env('UPLOADS_URL') . $generalSetting->site_logo ?>"

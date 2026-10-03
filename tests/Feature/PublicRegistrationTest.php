@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\Handler;
 use App\Models\Admin;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\PublicRegistrationSetting;
@@ -9,6 +10,8 @@ use App\Models\Country;
 use App\Models\State;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Exceptions\PostTooLargeException;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
@@ -128,6 +131,9 @@ class PublicRegistrationTest extends TestCase
             ->assertSee('Upload your photo')
             ->assertSee('(optional)')
             ->assertSee('Recommended: 600 × 600 px square.')
+            ->assertSee('automatically optimized')
+            ->assertSee('id="join-registration-form"', false)
+            ->assertSee('id="profile-photo"', false)
             ->assertSee('name="profile_photo"', false);
 
         $this->post(route('join.store'), array_merge($this->registrationData(), [
@@ -141,6 +147,16 @@ class PublicRegistrationTest extends TestCase
         $this->assertNotNull($photo);
         $this->assertFileExists(public_path('uploads/user/'.$photo));
         @unlink(public_path('uploads/user/'.$photo));
+    }
+
+    public function test_oversized_join_request_has_a_friendly_error_page(): void
+    {
+        $request = Request::create('/join', 'POST');
+        $response = app(Handler::class)->render($request, new PostTooLargeException());
+
+        $this->assertSame(413, $response->getStatusCode());
+        $this->assertStringContainsString('That upload is too large', $response->getContent());
+        $this->assertStringContainsString('Return to registration', $response->getContent());
     }
 
     private function registrationData(): array

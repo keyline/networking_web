@@ -25,7 +25,7 @@
 @endphp
 <div class="shell">
     <header class="topbar">
-        <a class="brand" href="{{ route('dashboard.index') }}">@include('Member.partials.site-logo')</a>
+        <a class="brand" href="{{ url('/') }}">@include('Member.partials.site-logo')</a>
         <div class="top-actions">
             @if($adminAccess)<form class="admin-dashboard-form" method="post" action="{{route('member.admin-dashboard')}}" target="_blank">@csrf<button class="admin-dashboard-link" type="submit">Admin dashboard</button></form>@endif
             <div class="identity"><strong>{{ $displayName }}</strong><span>{{ $isBusinessOwner ? 'Registered Member' : 'Registered Guest' }}</span></div>

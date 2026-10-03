@@ -32,6 +32,7 @@ class OpenEventRegistrationTest extends TestCase
 
         $this->get(route('events.show', $event))
             ->assertOk()
+            ->assertSee('data-portal-home-logo', false)
             ->assertSee('Choose admission')
             ->assertSee('name="ticket_id"', false)
             ->assertSee('1 attendee')

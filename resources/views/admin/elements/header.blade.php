@@ -6,7 +6,7 @@
     <img class="navbar-brand-logo-mini" src="<?=env('ADMIN_ASSETS_URL')?>assets/svg/logos/logo-short.svg" alt="Logo" data-hs-theme-appearance="default">
     <img class="navbar-brand-logo-mini" src="<?=env('ADMIN_ASSETS_URL')?>assets/svg/logos-light/logo-short.svg" alt="Logo" data-hs-theme-appearance="dark">
   </a> -->
-  <a class="navbar-brand" href="index.html" aria-label="Front">
+  <a class="navbar-brand" href="<?=url('/')?>" aria-label="Home">
     <img class="navbar-brand-logo" src="<?=env('UPLOADS_URL').$generalSetting->site_logo?>" alt="<?=$generalSetting->site_name?>" data-hs-theme-appearance="default">
     <img class="navbar-brand-logo" src="<?=env('UPLOADS_URL').$generalSetting->site_logo?>" alt="<?=$generalSetting->site_name?>" data-hs-theme-appearance="dark">
     <img class="navbar-brand-logo-mini" src="<?=env('UPLOADS_URL').$generalSetting->site_logo?>" alt="<?=$generalSetting->site_name?>" data-hs-theme-appearance="default">

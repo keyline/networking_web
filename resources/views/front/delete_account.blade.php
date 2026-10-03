@@ -72,8 +72,8 @@
     <div class="container mt-4">
 
         <h3 class="text-center">
-            <img src="{{ env('UPLOADS_URL') . $generalSetting->site_logo }}" alt="Net-Works"
-                style="width: 100;height:100px">
+            <a href="{{ url('/') }}" aria-label="Home"><img src="{{ env('UPLOADS_URL') . $generalSetting->site_logo }}" alt="Net-Works"
+                style="width: 100;height:100px"></a>
             <p class="mt-3">Delete Account Request</p>
         </h3>
         <div class=" justify-content-center d-flex">

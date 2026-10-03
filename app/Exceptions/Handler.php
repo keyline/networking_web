@@ -3,6 +3,8 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Exceptions\PostTooLargeException;
+use Illuminate\Http\Request;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -23,6 +25,12 @@ class Handler extends ExceptionHandler
      */
     public function register(): void
     {
+        $this->renderable(function (PostTooLargeException $exception, Request $request) {
+            return response()->view('errors.413', [
+                'joinRequest' => $request->is('join'),
+            ], 413);
+        });
+
         $this->reportable(function (Throwable $e) {
             //
         });

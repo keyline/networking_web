@@ -14,7 +14,7 @@ use App\Helpers\Helper;
     </div>
     <!-- Content -->
     <div class="container py-5 py-sm-7">
-      <a class="d-flex justify-content-center mb-5" href="<?=url('/admin')?>">
+      <a class="d-flex justify-content-center mb-5" href="<?=url('/')?>">
         <img class="zi-2" src="<?=env('UPLOADS_URL').$generalSetting->site_logo?>" alt="Image Description" style="width: 8rem;">
       </a>
       <div class="mx-auto" style="max-width: 30rem;">
