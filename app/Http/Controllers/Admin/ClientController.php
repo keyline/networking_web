@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business\BusinessCategoryMaster;
+use App\Models\BusinessPortfolio;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
@@ -412,6 +413,7 @@ class ClientController extends Controller
         $data['countries']              = Country::where('status', 1)->orderBy('name')->get(['id', 'name']);
 
         $data['row']                    = CompaniesDetail::where('cmpd_cmp_id', $id)->first();
+        $data['portfolio']              = $id ? BusinessPortfolio::where('company_id', $id)->first() : null;
 
         $data['selectedCategories'] = CategoryToCompany::where('ctc_cmp_id', $id)
             ->pluck('ctc_bcm_id')->map(fn ($categoryId) => (int) $categoryId)->all();
@@ -429,6 +431,7 @@ class ClientController extends Controller
                 'alternate_email' => 'nullable|email|max:255',
                 'phone' => 'nullable|string|regex:/^\d{10}$/',
                 'whatsapp_no' => 'nullable|string|regex:/^\d{10}$/',
+                'website' => 'nullable|url:http,https|max:255',
                 'address1' => 'nullable|string|max:255',
                 'address2' => 'nullable|string|max:255',
                 'address3' => 'nullable|string|max:255',
@@ -454,6 +457,7 @@ class ClientController extends Controller
             if ($validator->fails()) {
                 return back()->withErrors($validator)->withInput();
             } else {
+                $validated = $validator->validated();
 
                 $details_id = $request->input('id');
 
@@ -530,6 +534,15 @@ class ClientController extends Controller
                                 'ud_updated_at' => now(),
                             ]);
                         }
+
+                        $portfolio = BusinessPortfolio::firstOrCreate(['company_id' => $cmpId]);
+                        $portfolio->website = $validated['website'] ?? null;
+                        if ($portfolio->is_published && is_array($portfolio->published_snapshot)) {
+                            $snapshot = $portfolio->published_snapshot;
+                            $snapshot['website'] = $portfolio->website;
+                            $portfolio->published_snapshot = $snapshot;
+                        }
+                        $portfolio->save();
                         DB::commit();
                         // Successful update
 

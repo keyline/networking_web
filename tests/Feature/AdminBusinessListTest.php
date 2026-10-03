@@ -102,6 +102,7 @@ class AdminBusinessListTest extends TestCase
         $this->assertStringContainsString('Business visibility', $template);
         $this->assertStringContainsString('Search categories', $template);
         $this->assertStringContainsString('name="status"', $template);
+        $this->assertStringContainsString('name="website"', $template);
 
         $this->withSession($session)->actingAs($admin, 'admin')->post($url, [
             'id' => $details->cmpd_id,
@@ -113,6 +114,7 @@ class AdminBusinessListTest extends TestCase
             'alternate_email' => '',
             'phone' => '9876500021',
             'whatsapp_no' => '',
+            'website' => 'https://admin-editor.example.test',
             'address1' => '',
             'address2' => '',
             'address3' => '',
@@ -127,6 +129,10 @@ class AdminBusinessListTest extends TestCase
         $this->assertDatabaseHas('companies_details', [
             'cmpd_id' => $details->cmpd_id,
             'cmpd_status' => 0,
+        ]);
+        $this->assertDatabaseHas('business_portfolios', [
+            'company_id' => $company->cmp_id,
+            'website' => 'https://admin-editor.example.test',
         ]);
     }
 }

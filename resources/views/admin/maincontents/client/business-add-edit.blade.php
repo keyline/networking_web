@@ -56,6 +56,7 @@
                             <div class="abe-field"><label for="alternate_email">Alternate email</label><input class="abe-input" type="email" id="alternate_email" name="alternate_email" value="{{ old('alternate_email',$row?->cmpd_alternate_email) }}"></div>
                             <div class="abe-field"><label for="phone">Business phone</label><input class="abe-input" id="phone" name="phone" inputmode="numeric" maxlength="10" value="{{ old('phone',$row?->cmpd_phone) }}"></div>
                             <div class="abe-field"><label for="whatsapp_no">Business WhatsApp</label><input class="abe-input" id="whatsapp_no" name="whatsapp_no" inputmode="numeric" maxlength="10" value="{{ old('whatsapp_no',$row?->cmpd_whatsapp_no) }}"></div>
+                            <div class="abe-field full"><label for="website">Business website</label><input class="abe-input" type="url" id="website" name="website" value="{{ old('website',$portfolio?->website) }}" placeholder="https://example.com"><small class="abe-help">Enter the complete website address, including https://</small></div>
 
                             <h3 class="abe-section-title">Business address</h3>
                             <div class="abe-field full"><label for="address1">Address line 1</label><input class="abe-input" id="address1" name="address1" value="{{ old('address1',$row?->cmpd_address1) }}"></div>
