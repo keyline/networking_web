@@ -21,7 +21,6 @@
    </div>
   @else
    <a href="{{route('join.create')}}">Join as member</a>
-   <a href="{{route('guest.register')}}">Register as guest</a>
    <a class="cms-login" href="{{url('member')}}">Login</a>
   @endif
  </nav>

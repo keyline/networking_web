@@ -1,8 +1,9 @@
 -- Net-Works: reset all member and business data
 --
 -- DESTRUCTIVE AND IRREVERSIBLE. Take a database backup before running this file.
--- This preserves super-admin accounts, lookup/configuration tables, chapters,
--- membership plans, events, CMS pages, homepage content, and application settings.
+-- This preserves super-admin accounts, the mobile app's shared guest account
+-- (guest@keylines.net), lookup/configuration tables, chapters, membership plans,
+-- events, CMS pages, homepage content, and application settings.
 --
 -- Run from a MySQL client after selecting the correct live database:
 --   mysql -u YOUR_USER -p YOUR_DATABASE < database/scripts/reset_member_business_data.sql
@@ -76,10 +77,12 @@ BEGIN
 
     -- Remove member-to-business ownership before deleting the root records.
     DELETE FROM user_companies_map;
-    DELETE FROM user_details;
+    -- The mobile app signs in as the guest account on launch; keep it.
+    DELETE FROM user_details
+    WHERE ud_um_id NOT IN (SELECT um_id FROM user_master WHERE um_email_id = 'guest@keylines.net');
     DELETE FROM companies_details;
     DELETE FROM companies_master;
-    DELETE FROM user_master;
+    DELETE FROM user_master WHERE um_email_id <> 'guest@keylines.net' OR um_email_id IS NULL;
 
     SET FOREIGN_KEY_CHECKS = 1;
     COMMIT;
@@ -90,7 +93,8 @@ DELIMITER ;
 CALL reset_network_member_business_data();
 DROP PROCEDURE reset_network_member_business_data;
 
--- Verification: all values returned below should be zero.
+-- Verification: users_remaining and user_details_remaining should be 1 (the guest
+-- account); all other values should be zero.
 SELECT
     (SELECT COUNT(*) FROM user_master) AS users_remaining,
     (SELECT COUNT(*) FROM user_details) AS user_details_remaining,

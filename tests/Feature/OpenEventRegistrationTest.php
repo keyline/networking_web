@@ -20,6 +20,7 @@ class OpenEventRegistrationTest extends TestCase
             'ends_at' => now()->addWeek()->addHours(2),
             'status' => 'published',
             'currency' => 'INR',
+            'cover_image' => 'uploads/events/open-community-banner.jpg',
             'requires_login' => false,
             'collect_attendee_details' => true,
         ]);
@@ -30,9 +31,16 @@ class OpenEventRegistrationTest extends TestCase
             'is_active' => true,
         ]);
 
+        $this->get(route('events.index'))
+            ->assertOk()
+            ->assertSee(url('public/'.$event->cover_image), false)
+            ->assertSee($event->title.' event banner');
+
         $this->get(route('events.show', $event))
             ->assertOk()
             ->assertSee('data-portal-home-logo', false)
+            ->assertSee('class="portal-brand" href="'.url('/').'"', false)
+            ->assertSee('class="all-events" href="'.route('events.index').'">All Events</a>', false)
             ->assertSee('Choose admission')
             ->assertSee('name="ticket_id"', false)
             ->assertSee('1 attendee')

@@ -68,6 +68,7 @@ class HomepageCmsTest extends TestCase
             ->assertOk()
             ->assertSee('Trusted by local businesses')
             ->assertSee('A clean and useful community experience.')
+            ->assertDontSee('Register as guest')
             ->assertDontSee('This must stay hidden');
     }
 

@@ -1152,6 +1152,36 @@ class AuthController extends Controller
         $this->response_to_json($apiStatus, $apiMessage, $apiResponse, $apiExtraField, $apiExtraData);
     }
 
+    /*
+    Shared account the mobile app signs into on launch so unregistered visitors
+    land on the business list (Constants.guestUserid / guestPassword in the app).
+    */
+    private const GUEST_EMAIL       = 'guest@keylines.net';
+    private const GUEST_PASSWORD    = '123456';
+
+    /*
+    Re-create the guest account if it was removed (e.g. by a data reset);
+    without it the app falls back to the Register / Login screen.
+    */
+    private function ensureGuestAccount(): void
+    {
+        $guest = UserMaster::firstOrCreate(
+            ['um_email_id' => self::GUEST_EMAIL],
+            [
+                'um_utm_id'         => 3,
+                'um_user_name'      => 'GU001988',
+                'um_mobile_no'      => '0000000000',
+                'um_password'       => Hash::make(self::GUEST_PASSWORD),
+                'um_status'         => 2,
+                'um_profile_type'   => 'O',
+            ]
+        );
+        UserDetails::firstOrCreate(
+            ['ud_um_id' => $guest->um_id],
+            ['ud_first_name' => 'Guest User']
+        );
+    }
+
     public function signIn(Request $request)
     {
         $apiStatus          = true;
@@ -1172,6 +1202,9 @@ class AuthController extends Controller
             $device_type                = $headerData['source'][0];
             $device_token               = $requestData['device_token'];
             $fcm_token                  = $requestData['fcm_token'];
+            if ($email === self::GUEST_EMAIL && $password === self::GUEST_PASSWORD) {
+                $this->ensureGuestAccount();
+            }
             $checkUser                  = UserMaster::where('um_email_id', '=', $email)->orWhere('um_user_name', $email)->where('um_status', '=', 2)->first();
             if ($checkUser) {
                 if (Hash::check($password, $checkUser->um_password)) {

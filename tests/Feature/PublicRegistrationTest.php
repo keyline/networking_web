@@ -130,10 +130,12 @@ class PublicRegistrationTest extends TestCase
             ->assertOk()
             ->assertSee('Upload your photo')
             ->assertSee('(optional)')
+            ->assertSee('Maximum final upload size: 900 KB.')
             ->assertSee('Recommended: 600 × 600 px square.')
-            ->assertSee('automatically optimized')
+            ->assertSee('compressed automatically before upload')
             ->assertSee('id="join-registration-form"', false)
             ->assertSee('id="profile-photo"', false)
+            ->assertSee('id="upload-error-popup"', false)
             ->assertSee('name="profile_photo"', false);
 
         $this->post(route('join.store'), array_merge($this->registrationData(), [
