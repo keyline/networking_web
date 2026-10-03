@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Admin;
 use App\Models\Business\BusinessCategoryMaster;
+use App\Models\BusinessPortfolio;
 use App\Models\Companies\CompaniesDetail;
 use App\Models\Companies\CompaniesMaster;
 use App\Models\Country;
@@ -95,6 +96,11 @@ class AdminBusinessListTest extends TestCase
             'is_admin_login' => 1,
         ];
         $url = '/admin/clients/business/info-edit/'.Helper::encoded($company->cmp_id);
+        BusinessPortfolio::create([
+            'company_id' => $company->cmp_id,
+            'is_published' => true,
+            'published_snapshot' => ['items' => []],
+        ]);
 
         $template = file_get_contents(resource_path('views/admin/maincontents/client/business-add-edit.blade.php'));
         $this->assertStringContainsString('admin-business-editor', $template);
@@ -139,6 +145,10 @@ class AdminBusinessListTest extends TestCase
             'title' => 'Admin managed service',
             'type' => 'service',
         ]);
+        $this->assertSame(
+            'Admin managed service',
+            BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail()->published_snapshot['items'][0]['title']
+        );
 
         $this->assertDatabaseHas('companies_details', [
             'cmpd_id' => $details->cmpd_id,

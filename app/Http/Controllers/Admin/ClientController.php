@@ -577,6 +577,7 @@ class ClientController extends Controller
         if ($request->hasFile('image')) $data['image'] = $images->store($request->file('image'), $company, 'offerings');
         $data += ['company_id' => $company, 'is_active' => true, 'sort_order' => (int) BusinessPortfolioItem::where('company_id', $company)->max('sort_order') + 1];
         BusinessPortfolioItem::create($data);
+        $this->syncPublishedBusinessOfferings($company);
         return $this->businessOfferingRedirect($company, 'Product / service added.');
     }
 
@@ -586,6 +587,7 @@ class ClientController extends Controller
         $data = $this->validateBusinessOffering($request);
         if ($request->hasFile('image')) { $data['image'] = $images->store($request->file('image'), $company, 'offerings'); $images->delete($item->image); }
         $item->update($data);
+        $this->syncPublishedBusinessOfferings($company);
         return $this->businessOfferingRedirect($company, 'Product / service updated.');
     }
 
@@ -593,6 +595,7 @@ class ClientController extends Controller
     {
         abort_unless((int) $item->company_id === $company, 404);
         $item->update(['is_active' => ! $item->is_active]);
+        $this->syncPublishedBusinessOfferings($company);
         return $this->businessOfferingRedirect($company, 'Product / service status updated.');
     }
 
@@ -600,6 +603,7 @@ class ClientController extends Controller
     {
         abort_unless((int) $item->company_id === $company, 404);
         $images->delete($item->image); $item->delete();
+        $this->syncPublishedBusinessOfferings($company);
         return $this->businessOfferingRedirect($company, 'Product / service removed.');
     }
 
@@ -611,6 +615,23 @@ class ClientController extends Controller
     private function businessOfferingRedirect(int $company, string $message)
     {
         return redirect('admin/clients/business/info-edit/'.Helper::encoded($company).'?tab=offerings#offerings')->with('success_message', $message);
+    }
+
+    private function syncPublishedBusinessOfferings(int $company): void
+    {
+        $portfolio = BusinessPortfolio::where('company_id', $company)->where('is_published', true)->first();
+        if (! $portfolio || ! is_array($portfolio->published_snapshot)) {
+            return;
+        }
+
+        $snapshot = $portfolio->published_snapshot;
+        $snapshot['items'] = BusinessPortfolioItem::where('company_id', $company)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get()
+            ->values()
+            ->toArray();
+        $portfolio->update(['published_snapshot' => $snapshot]);
     }
 
 
