@@ -124,6 +124,7 @@ class AdminBusinessListTest extends TestCase
         $this->assertStringContainsString('Search categories', $template);
         $this->assertStringContainsString('name="status"', $template);
         $this->assertStringContainsString('name="website"', $template);
+        $this->assertStringContainsString(':business_id="$companyId"', $template);
 
         $this->withSession($session)->actingAs($admin, 'admin')->post($url, [
             'id' => $details->cmpd_id,

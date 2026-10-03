@@ -622,19 +622,16 @@ class ClientController extends Controller
 
     private function syncPublishedBusinessOfferings(int $company): void
     {
-        $portfolio = BusinessPortfolio::where('company_id', $company)->where('is_published', true)->first();
-        if (! $portfolio || ! is_array($portfolio->published_snapshot)) {
-            return;
-        }
+        $portfolio = BusinessPortfolio::firstOrCreate(['company_id' => $company]);
 
-        $snapshot = $portfolio->published_snapshot;
+        $snapshot = is_array($portfolio->published_snapshot) ? $portfolio->published_snapshot : [];
         $snapshot['items'] = BusinessPortfolioItem::where('company_id', $company)
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get()
             ->values()
             ->toArray();
-        $portfolio->update(['published_snapshot' => $snapshot]);
+        $portfolio->update(['is_published' => true, 'published_at' => now(), 'published_snapshot' => $snapshot]);
     }
 
 

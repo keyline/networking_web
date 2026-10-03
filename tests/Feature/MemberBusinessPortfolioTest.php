@@ -53,8 +53,6 @@ class MemberBusinessPortfolioTest extends TestCase
         $this->actingAs($owner, 'member')->post(route('member.portfolio.videos.store', $token), [
             'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'title' => 'Introduction',
         ])->assertRedirect(route('member.portfolio.edit', $token).'#videos');
-        $this->actingAs($owner, 'member')->post(route('member.portfolio.publish', $token))->assertRedirect();
-
         $portfolio = BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail();
         $this->assertTrue($portfolio->is_published);
         $this->assertNotNull($portfolio->published_at);
@@ -131,13 +129,11 @@ class MemberBusinessPortfolioTest extends TestCase
             ->assertRedirect(route('member.portfolio.edit', $token).'#offerings');
         $this->assertDatabaseHas('business_portfolio_items', ['id' => $item->id, 'is_active' => 0]);
 
-        $this->actingAs($owner, 'member')->post(route('member.portfolio.publish', $token))->assertRedirect();
         $portfolio = BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail();
         $this->assertSame([], $portfolio->published_snapshot['items']);
         $this->get(route('business.show', 'editable-offering'))->assertOk()->assertDontSee('Updated product');
 
         $this->actingAs($owner, 'member')->patch(route('member.portfolio.items.toggle', [$token, $item]));
-        $this->actingAs($owner, 'member')->post(route('member.portfolio.publish', $token));
         $this->get(route('business.show', 'editable-offering'))->assertOk()->assertSee('Updated product');
     }
 
@@ -151,6 +147,8 @@ class MemberBusinessPortfolioTest extends TestCase
         $response->assertRedirect(route('member.portfolio.edit', $token).'#gallery');
         $path = DB::table('business_portfolio_media')->where('company_id', $company->cmp_id)->value('path');
         $this->assertNotNull($path);
+        $this->assertSame('Completed project', BusinessPortfolio::where('company_id', $company->cmp_id)->firstOrFail()->published_snapshot['media'][0]['title']);
+        $this->get(route('business.show', 'compressed-gallery'))->assertOk()->assertSee('Completed project');
         $this->assertLessThanOrEqual(204800, filesize(public_path($path)));
         @unlink(public_path($path));
     }

@@ -127,8 +127,9 @@ class BusinessPortfolioController extends Controller
                 'contact_form_enabled' => request()->boolean('contact_form_enabled'),
             ])->all());
         });
+        $this->syncPublicPortfolio($company->cmp_id);
 
-        return $this->redirectToTab($companyToken, 'profile')->with('success', 'Changes saved as draft.');
+        return $this->redirectToTab($companyToken, 'profile')->with('success', 'Changes saved and published.');
     }
 
     public function storeItem(Request $request, string $companyToken, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -151,8 +152,9 @@ class BusinessPortfolioController extends Controller
         $data['is_active'] = true;
         $data['sort_order'] = (int) BusinessPortfolioItem::where('company_id', $company->cmp_id)->max('sort_order') + 1;
         BusinessPortfolioItem::create($data);
+        $this->syncPublicPortfolio($company->cmp_id);
 
-        return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering added. Publish when you are ready.');
+        return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering added and published.');
     }
 
     public function updateItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -177,8 +179,9 @@ class BusinessPortfolioController extends Controller
         }
 
         $item->update($data);
+        $this->syncPublicPortfolio($company->cmp_id);
 
-        return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering updated. Publish when you are ready.');
+        return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering updated and published.');
     }
 
     public function toggleItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioRouteToken $tokens): RedirectResponse
@@ -188,10 +191,11 @@ class BusinessPortfolioController extends Controller
         abort_unless((int) $item->company_id === (int) $company->cmp_id, 404);
 
         $item->update(['is_active' => !$item->is_active]);
+        $this->syncPublicPortfolio($company->cmp_id);
         $status = $item->is_active ? 'active' : 'inactive';
 
         return $this->redirectToTab($companyToken, 'offerings')
-            ->with('success', "Offering marked {$status}. Publish to update the public page.");
+            ->with('success', "Offering marked {$status} on the public page.");
     }
 
     public function destroyItem(Request $request, string $companyToken, BusinessPortfolioItem $item, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -201,6 +205,7 @@ class BusinessPortfolioController extends Controller
         abort_unless((int) $item->company_id === (int) $company->cmp_id, 404);
         $images->delete($item->image);
         $item->delete();
+        $this->syncPublicPortfolio($company->cmp_id);
         return $this->redirectToTab($companyToken, 'offerings')->with('success', 'Offering removed.');
     }
 
@@ -221,7 +226,8 @@ class BusinessPortfolioController extends Controller
             'caption' => $data['caption'] ?? null,
             'sort_order' => (int) BusinessPortfolioMedia::where('company_id', $company->cmp_id)->max('sort_order') + 1,
         ]);
-        return $this->redirectToTab($companyToken, 'gallery')->with('success', 'Photo compressed and added.');
+        $this->syncPublicPortfolio($company->cmp_id);
+        return $this->redirectToTab($companyToken, 'gallery')->with('success', 'Photo compressed, added and published.');
     }
 
     public function storeVideo(Request $request, string $companyToken, PortfolioRouteToken $tokens): RedirectResponse
@@ -239,7 +245,8 @@ class BusinessPortfolioController extends Controller
             'title' => $data['title'] ?? null,
             'sort_order' => (int) BusinessPortfolioMedia::where('company_id', $company->cmp_id)->max('sort_order') + 1,
         ]);
-        return $this->redirectToTab($companyToken, 'videos')->with('success', 'YouTube video added.');
+        $this->syncPublicPortfolio($company->cmp_id);
+        return $this->redirectToTab($companyToken, 'videos')->with('success', 'YouTube video added and published.');
     }
 
     public function destroyMedia(Request $request, string $companyToken, BusinessPortfolioMedia $medium, PortfolioImageService $images, PortfolioRouteToken $tokens): RedirectResponse
@@ -250,6 +257,7 @@ class BusinessPortfolioController extends Controller
         $tab = $medium->type === 'image' ? 'gallery' : 'videos';
         $images->delete($medium->path);
         $medium->delete();
+        $this->syncPublicPortfolio($company->cmp_id);
         return $this->redirectToTab($companyToken, $tab)->with('success', 'Media removed.');
     }
 
@@ -257,13 +265,19 @@ class BusinessPortfolioController extends Controller
     {
         $company = $this->companyFromToken($companyToken, $tokens);
         $this->authorizeOwner($request, $company);
-        $portfolio = BusinessPortfolio::with(['items', 'media'])->firstOrCreate(['company_id' => $company->cmp_id]);
+        $this->syncPublicPortfolio($company->cmp_id);
+        $company->details?->ensurePublicSlug();
+        return back()->with('success', 'Your business page is live.');
+    }
+
+    private function syncPublicPortfolio(int $companyId): void
+    {
+        $portfolio = BusinessPortfolio::with(['items', 'media'])->firstOrCreate(['company_id' => $companyId]);
         $snapshot = $portfolio->only(['tagline', 'about', 'hero_image', 'website', 'whatsapp_number', 'whatsapp_message', 'whatsapp_enabled', 'contact_form_enabled']);
         $snapshot['items'] = $portfolio->items->where('is_active', true)->values()->toArray();
         $snapshot['media'] = $portfolio->media->where('is_active', true)->values()->toArray();
         $portfolio->update(['is_published' => true, 'published_at' => now(), 'published_snapshot' => $snapshot]);
-        $company->details?->ensurePublicSlug();
-        return back()->with('success', 'Your business page is live.');
+        CompaniesMaster::find($companyId)?->details?->ensurePublicSlug();
     }
 
     private function authorizeOwner(Request $request, CompaniesMaster $company): void

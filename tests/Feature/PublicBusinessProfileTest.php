@@ -9,6 +9,7 @@ use App\Models\BusinessPortfolio;
 use App\Models\BusinessPortfolioItem;
 use App\Models\Business\BusinessCategoryMaster;
 use App\Models\User\UserMaster;
+use App\Models\User\UserDetails;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -88,6 +89,7 @@ class PublicBusinessProfileTest extends TestCase
     {
         Notification::fake();
         $owner = UserMaster::create(['um_utm_id' => 2, 'um_user_name' => 'EN000001', 'um_email_id' => 'owner@example.test', 'um_mobile_no' => '9876543210', 'um_status' => 2]);
+        UserDetails::create(['ud_um_id' => $owner->um_id, 'ud_first_name' => 'Ada', 'ud_last_name' => 'Owner', 'ud_profile_image' => 'ada-owner.jpg']);
         $company = CompaniesMaster::create([]);
         CompaniesDetail::create(['cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Example Business', 'public_slug' => 'example-business', 'cmpd_description' => 'A useful company.', 'cmpd_email' => 'business@example.test', 'cmpd_phone' => '9876501234', 'cmpd_whatsapp_no' => '9876543210', 'cmpd_address1' => 'Private business address', 'cmpd_status' => 1, 'cmpd_is_document_valid' => '1']);
         DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $owner->um_id]);
@@ -116,6 +118,9 @@ class PublicBusinessProfileTest extends TestCase
         $this->actingAs($visitor, 'member')->get(route('business.show', 'example-business'))
             ->assertOk()
             ->assertSee('business@example.test')
+            ->assertSee('Business owner')
+            ->assertSee('Ada Owner')
+            ->assertSee('user/ada-owner.jpg', false)
             ->assertSee('9876501234')
             ->assertSee('Private business address')
             ->assertSee('productPreviewDialog', false)
