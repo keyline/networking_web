@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Models\Events\Event;
 use App\Models\HomepageSection;
+use App\Models\Companies\CompaniesDetail;
+use App\Models\Companies\CompaniesMaster;
 use App\Models\User\UserDetails;
 use App\Models\User\UserMaster;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -114,6 +116,34 @@ class HomepageCmsTest extends TestCase
             ->assertSee('Register')
             ->assertSee(route('events.show', $open), false)
             ->assertDontSee('Registration Opens Later');
+    }
+
+    public function test_homepage_slider_shows_only_active_sponsored_businesses(): void
+    {
+        $sponsoredCompany = CompaniesMaster::create([]);
+        $sponsored = CompaniesDetail::create([
+            'cmpd_cmp_id' => $sponsoredCompany->cmp_id,
+            'cmpd_name' => 'Featured Network Business',
+            'cmpd_description' => 'A sponsored business shown in the homepage carousel.',
+            'cmpd_status' => 1,
+            'cmpd_is_sponsored' => 1,
+        ]);
+        $ordinaryCompany = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $ordinaryCompany->cmp_id,
+            'cmpd_name' => 'Ordinary Network Business',
+            'cmpd_description' => 'A regular business that is not sponsored.',
+            'cmpd_status' => 1,
+            'cmpd_is_sponsored' => 0,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Sponsored members')
+            ->assertSee('Featured Network Business')
+            ->assertSee(route('business.show', $sponsored->public_slug), false)
+            ->assertSee('id="sponsoredTrack"', false)
+            ->assertDontSee('Ordinary Network Business');
     }
 
     public function test_authenticated_member_header_replaces_join_actions_with_account_controls(): void

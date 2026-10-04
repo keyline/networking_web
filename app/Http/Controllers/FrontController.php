@@ -37,6 +37,7 @@ use App\Models\Notification;
 use App\Models\NotificationTemplate;
 use App\Models\UserDevice;
 use App\Models\User\UserMaster;
+use App\Models\Companies\CompaniesDetail;
 
 use Auth;
 use Session;
@@ -88,6 +89,13 @@ class FrontController extends Controller
             'businesses' => DB::table('companies_master')->count(),
             'events' => $data['openEventCount'],
         ];
+        $data['sponsoredBusinesses'] = CompaniesDetail::with(['companies.categories', 'district'])
+            ->where('cmpd_status', 1)
+            ->where('cmpd_is_sponsored', 1)
+            ->whereNotNull('public_slug')
+            ->orderBy('cmpd_name')
+            ->limit(12)
+            ->get();
 
         return view('front.cms-home', $data);
     }

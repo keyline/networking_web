@@ -277,6 +277,40 @@ class PublicBusinessProfileTest extends TestCase
             ->assertDontSee('directory-owner@example.test');
     }
 
+    public function test_members_directory_lists_sponsored_businesses_first(): void
+    {
+        $owner = UserMaster::create([
+            'um_utm_id' => 2,
+            'um_user_name' => 'priority-directory-owner',
+            'um_email_id' => 'priority-directory@example.test',
+            'um_mobile_no' => '9876512399',
+            'um_status' => 2,
+        ]);
+
+        foreach ([
+            ['name' => 'Priority Listing Ordinary', 'sponsored' => 0],
+            ['name' => 'Priority Listing Sponsored', 'sponsored' => 1],
+        ] as $listing) {
+            $company = CompaniesMaster::create([]);
+            CompaniesDetail::create([
+                'cmpd_cmp_id' => $company->cmp_id,
+                'cmpd_name' => $listing['name'],
+                'cmpd_description' => 'Priority directory ordering test.',
+                'cmpd_status' => 1,
+                'cmpd_is_sponsored' => $listing['sponsored'],
+            ]);
+            DB::table('user_companies_map')->insert([
+                'ucm_cmp_id' => $company->cmp_id,
+                'ucm_um_id' => $owner->um_id,
+            ]);
+        }
+
+        $this->get(route('members.index', ['search' => 'Priority Listing']))
+            ->assertOk()
+            ->assertSeeInOrder(['Priority Listing Sponsored', 'Priority Listing Ordinary'])
+            ->assertSee('<span class="sponsored-badge">Sponsored</span>', false);
+    }
+
     public function test_inactive_business_page_shows_warning_and_disables_contact_actions(): void
     {
         $owner = UserMaster::create(['um_utm_id' => 2, 'um_user_name' => 'inactive-owner', 'um_email_id' => 'inactive-owner@example.test', 'um_mobile_no' => '9765401234', 'um_status' => 2]);

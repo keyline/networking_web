@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Chapter;
 use App\Models\ChapterMember;
-use App\Models\Companies\CompaniesMaster;
 use App\Models\User\UserMaster;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -40,10 +39,9 @@ class ChapterController extends Controller
     public function show(Chapter $chapter)
     {
         $chapter->loadCount(['members', 'activeMembers']);
-        $members = $chapter->members()->with(['user.userDetail', 'company.details'])->orderByRaw("FIELD(status, 'active', 'invited', 'inactive', 'left')")->orderBy('role')->paginate(30);
+        $members = $chapter->members()->with(['user.userDetail', 'user.companies.details'])->orderByRaw("FIELD(status, 'active', 'invited', 'inactive', 'left')")->orderBy('role')->paginate(30);
         $availableUsers = UserMaster::with('userDetail')->whereNotIn('um_id', $chapter->members()->pluck('user_id'))->orderBy('um_user_name')->get();
-        $companies = CompaniesMaster::with('details')->get()->sortBy('cmp_name');
-        echo $this->admin_after_login_layout($chapter->name, 'chapters.show', compact('chapter', 'members', 'availableUsers', 'companies'));
+        echo $this->admin_after_login_layout($chapter->name, 'chapters.show', compact('chapter', 'members', 'availableUsers'));
     }
 
     public function edit(Chapter $chapter)
@@ -68,21 +66,19 @@ class ChapterController extends Controller
     {
         $data = $request->validate([
             'user_id' => ['required', 'exists:user_master,um_id', Rule::unique('chapter_members')->where('chapter_id', $chapter->id)],
-            'company_id' => ['nullable', 'exists:companies_master,cmp_id'],
             'role' => ['required', Rule::in($this->roles())],
             'status' => ['required', Rule::in(['invited', 'active', 'inactive', 'left'])],
             'joined_on' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
-        $chapter->members()->create($data);
-        return back()->with('success', 'Member added to chapter.');
+        $chapter->members()->create(array_merge($data, ['company_id' => null]));
+        return back()->with('success', 'Member and all linked businesses added to chapter.');
     }
 
     public function updateMember(Request $request, Chapter $chapter, ChapterMember $member)
     {
         abort_unless($member->chapter_id === $chapter->id, 404);
         $data = $request->validate([
-            'company_id' => ['nullable', 'exists:companies_master,cmp_id'],
             'role' => ['required', Rule::in($this->roles())],
             'status' => ['required', Rule::in(['invited', 'active', 'inactive', 'left'])],
             'joined_on' => ['required', 'date'],
@@ -104,17 +100,35 @@ class ChapterController extends Controller
 
     private function validatedChapter(Request $request, ?Chapter $chapter = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'code' => ['required', 'alpha_dash', 'max:30', Rule::unique('chapters')->ignore($chapter?->id)],
             'city' => ['nullable', 'string', 'max:120'],
-            'venue' => ['nullable', 'string', 'max:255'],
-            'meeting_day' => ['nullable', Rule::in(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'])],
-            'meeting_time' => ['nullable', 'date_format:H:i'],
+            'meeting_frequency' => ['required', Rule::in(['not_scheduled', 'weekly', 'monthly', 'twice_monthly'])],
+            'meeting_day' => ['nullable', Rule::requiredIf($request->meeting_frequency === 'weekly'), Rule::in(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'])],
+            'meeting_day_of_month' => ['nullable', Rule::requiredIf(in_array($request->meeting_frequency, ['monthly', 'twice_monthly'], true)), 'integer', 'between:1,31'],
+            'meeting_second_day_of_month' => ['nullable', Rule::requiredIf($request->meeting_frequency === 'twice_monthly'), 'integer', 'between:1,31', 'different:meeting_day_of_month'],
+            'meeting_time' => ['nullable', Rule::requiredIf($request->meeting_frequency !== 'not_scheduled'), 'date_format:H:i'],
+            'meeting_mode' => ['nullable', Rule::requiredIf($request->meeting_frequency !== 'not_scheduled'), Rule::in(['offline', 'online'])],
+            'meeting_link' => ['nullable', Rule::requiredIf($request->meeting_frequency !== 'not_scheduled' && $request->meeting_mode === 'online'), 'url:http,https', 'max:1000'],
+            'meeting_address' => ['nullable', Rule::requiredIf($request->meeting_frequency !== 'not_scheduled' && $request->meeting_mode === 'offline'), 'string', 'max:1000'],
             'established_on' => ['nullable', 'date'],
             'description' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', Rule::in(['forming', 'active', 'paused', 'closed'])],
         ]);
+
+        if ($data['meeting_frequency'] === 'not_scheduled') {
+            $data = array_merge($data, ['meeting_day' => null, 'meeting_day_of_month' => null, 'meeting_second_day_of_month' => null, 'meeting_time' => null, 'meeting_mode' => null, 'meeting_link' => null, 'meeting_address' => null, 'venue' => null]);
+        } else {
+            if ($data['meeting_frequency'] !== 'weekly') $data['meeting_day'] = null;
+            if ($data['meeting_frequency'] === 'weekly') $data['meeting_day_of_month'] = null;
+            if ($data['meeting_frequency'] !== 'twice_monthly') $data['meeting_second_day_of_month'] = null;
+            if ($data['meeting_mode'] === 'online') $data['meeting_address'] = null;
+            if ($data['meeting_mode'] === 'offline') $data['meeting_link'] = null;
+            $data['venue'] = $data['meeting_address'] ?? null;
+        }
+
+        return $data;
     }
 
     private function roles(): array

@@ -80,6 +80,7 @@ class PublicBusinessController extends Controller
                 'companies.categories',
                 fn ($categories) => $categories->where('business_category_master.bcm_id', $categoryId)
             ))
+            ->orderByDesc('companies_details.cmpd_is_sponsored')
             ->orderBy('companies_details.cmpd_name')
             ->paginate(12)
             ->withQueryString();
