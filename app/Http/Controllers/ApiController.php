@@ -3682,6 +3682,8 @@ class ApiController extends Controller
             'description_text'    => 'required|string|max:1000',
             'enquiry_title'       => 'required|string|max:255',
             'enquiry_self'        => 'required|integer|in:0,1',
+            'recipient_type'      => 'nullable|in:open_all,member',
+            'recipient_user_id'   => 'nullable|required_if:recipient_type,member|integer|exists:user_master,um_id',
         ];
 
         // If enquiry_self is NOT 1, validate the rest of the fields
@@ -3739,10 +3741,28 @@ class ApiController extends Controller
                         DB::beginTransaction();
                         $postParam = [];
                         $user = UserMaster::find($uId);
+                        $recipientType = $requestData['recipient_type'] ?? 'open_all';
+                        $recipientCompanyId = 0;
+
+                        if ($recipientType === 'member') {
+                            $recipient = UserMaster::query()
+                                ->where('um_id', $requestData['recipient_user_id'])
+                                ->where('um_utm_id', 2)
+                                ->where('um_status', 2)
+                                ->whereHas('companies.companiesDetail', fn ($query) => $query->where('cmpd_status', 1))
+                                ->with(['companies' => fn ($query) => $query->whereHas('companiesDetail', fn ($details) => $details->where('cmpd_status', 1))])
+                                ->first();
+
+                            if (!$recipient || !$recipient->companies->first()) {
+                                throw new \RuntimeException('The selected member does not have an active business.');
+                            }
+
+                            $recipientCompanyId = (int) $recipient->companies->first()->cmp_id;
+                        }
 
                         $postParam['enm_subject'] =  $requestData['enquiry_title'];
                         $postParam['enm_description'] = $requestData['description_text'];
-                        $postParam['enm_type'] = 2; // public
+                        $postParam['enm_type'] = $recipientType === 'member' ? 1 : 2;
                         $postParam['enm_is_myself'] = $requestData['enquiry_self'];
 
 
@@ -3769,7 +3789,7 @@ class ApiController extends Controller
                         // Attaching (sending enquiry)
 
                         $user->enquiries()->attach($enquiry->enm_id, [
-                            'etu_cmp_id' => 0, // Reference to the company
+                            'etu_cmp_id' => $recipientCompanyId,
                             'etu_um_id' => $user->um_id, // Reference to the user
                             'etu_created_at' => date('Y-m-d h:i:s')
                         ]);

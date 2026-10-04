@@ -1674,6 +1674,7 @@ class AuthController extends Controller
                                     'country_id'                => $company->details->cmpd_country,
                                     'category_id'               => $category->bcm_id ?? 23,
                                     'category_name'             => $category->name ?? 'Unclassified',
+                                    'categories'                => $categories->pluck('name')->filter()->values()->all(),
                                     'cmpd_pan_no'               => $company->details->cmpd_pan_no ?? '',
                                     'cmpd_gst_no'               => $company->details->cmpd_gst_no ?? '',
                                     "avg_rating"                => (float) $ratingData->avg_rating,

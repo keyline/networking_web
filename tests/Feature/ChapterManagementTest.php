@@ -82,6 +82,11 @@ class ChapterManagementTest extends TestCase
         $this->assertSame('https://meet.example.com/flexible-chapter', $chapter->meeting_link);
         $this->assertNull($chapter->meeting_address);
         $this->assertNull($chapter->venue);
+
+        $form = view('admin.maincontents.chapters.form', ['chapter' => $chapter])->render();
+        $this->assertStringContainsString('<select class="form-select" name="meeting_day_of_month">', $form);
+        $this->assertStringContainsString('<select class="form-select" name="meeting_second_day_of_month">', $form);
+        $this->assertStringContainsString('<option value="12" selected>Day 12</option>', $form);
     }
 
     public function test_chapter_membership_is_user_based_and_displays_all_linked_businesses(): void
