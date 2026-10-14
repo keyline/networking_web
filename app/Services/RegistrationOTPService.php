@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Models\UserRegistrationOtps;
-use App\Notifications\SMSNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class RegistrationOTPService
 {
+    public function __construct(private DigitalSmsOtpService $digitalSms)
+    {
+    }
+
     protected $otp;
     protected $otpHash;
     public function generateOTP(int $userId): string
@@ -93,7 +96,11 @@ class RegistrationOTPService
                 return false;
             }
 
-            $user->update(['otp' => null, 'otp_expiry' => null]); // Clear OTP after verification
+            $user->update([
+                'uro_otp' => null,
+                'uro_otp_secret' => null,
+                'uro_expires_at' => null,
+            ]); // Clear OTP after verification
             return true;
 
 
@@ -124,12 +131,12 @@ class RegistrationOTPService
 
             $user = UserRegistrationOtps::findOrFail($userId); //Throws exception if user not found.
 
-            if (!$this->isOtpExpired($user)) {
+            if (!$this->isOtpExpired($user->uro_id)) {
                 return false; // OTP is not yet expired
             }
 
-            $this->generateOTP($user);
-            $this->sendOTP($user);
+            $this->generateOTP($user->uro_id);
+            $this->sendOTP($user->uro_id);
             return true;
 
 
@@ -146,7 +153,9 @@ class RegistrationOTPService
 
             $user = UserRegistrationOtps::findOrFail($userId); //Throws exception if user not found.
 
-            $user->notify(new SMSNotification());
+            // Send synchronously through the DLT-approved API so OTP delivery
+            // never depends on a queue worker or legacy gateway settings.
+            $this->digitalSms->send($user->uro_mobileno, (string) $user->uro_otp);
 
 
         } catch (\Throwable $th) {

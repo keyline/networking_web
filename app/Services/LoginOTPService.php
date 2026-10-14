@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Models\GeneralSetting;
 use App\Models\User\UserMaster;
-use App\Notifications\LoginSMSNotification;
-use App\Notifications\SMSNotification;
 use App\Notifications\UserOtpEmailNotify;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +11,10 @@ use Illuminate\Support\Facades\Mail;
 
 class LoginOTPService
 {
+    public function __construct(private DigitalSmsOtpService $digitalSms)
+    {
+    }
+
     protected $otp;
     protected $otpHash;
     public function generateOTP(int $userId): string
@@ -156,12 +158,12 @@ class LoginOTPService
 
             $user = UserMaster::findOrFail($userId); //Throws exception if user not found.
 
-            if (!$this->isOtpExpired($user)) {
+            if (!$this->isOtpExpired($user->um_id)) {
                 return false; // OTP is not yet expired
             }
 
-            $this->generateOTP($user);
-            $this->sendOTP($user);
+            $this->generateOTP($user->um_id);
+            $this->sendOTP($user->um_id);
             return true;
 
 
@@ -178,7 +180,10 @@ class LoginOTPService
 
             $user = UserMaster::findOrFail($userId); //Throws exception if user not found.
 
-            $user->notify(new LoginSMSNotification());
+            // OTP delivery is authentication-critical and must happen during
+            // this request. Use the same DLT-approved DigitalSMS request as
+            // the working Effortrak flow instead of a queued notification.
+            $this->digitalSms->send($user->um_mobile_no, (string) $user->um_otp);
 
 
         } catch (\Throwable $th) {

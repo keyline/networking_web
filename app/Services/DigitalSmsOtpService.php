@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use RuntimeException;
+use Illuminate\Support\Facades\Log;
 
 class DigitalSmsOtpService
 {
@@ -26,6 +27,11 @@ class DigitalSmsOtpService
         if (!is_array($data) || strtolower((string) ($data['status'] ?? '')) !== 'success') {
             throw new RuntimeException((string) ($data['message'] ?? 'DigitalSMS rejected the OTP request.'));
         }
+
+        Log::info('DigitalSMS OTP accepted', [
+            'recipient' => substr($payload['recipient'], -4),
+            'http_status' => $response['http_status'],
+        ]);
 
         return $data;
     }
@@ -54,12 +60,17 @@ class DigitalSmsOtpService
 
         $body = curl_exec($curl);
         if ($body === false) {
-            throw new RuntimeException('DigitalSMS connection failed: '.curl_error($curl));
+            $error = curl_error($curl);
+            curl_close($curl);
+            throw new RuntimeException('DigitalSMS connection failed: '.$error);
         }
 
-        return [
+        $result = [
             'http_status' => (int) curl_getinfo($curl, CURLINFO_HTTP_CODE),
             'body' => (string) $body,
         ];
+        curl_close($curl);
+
+        return $result;
     }
 }
