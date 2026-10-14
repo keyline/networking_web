@@ -9,12 +9,17 @@ class DigitalSmsOtpService
 {
     public function send(string $recipient, string $otp): array
     {
+        $recipient = preg_replace('/\D+/', '', $recipient);
+        if (strlen($recipient) === 10) {
+            $recipient = '91'.$recipient;
+        }
+
         $payload = [
-            'recipient' => preg_replace('/\D+/', '', $recipient),
+            'recipient' => $recipient,
             'entity_id' => config('services.digital_sms.entity_id'),
             'sender_id' => config('services.digital_sms.sender_id'),
             'type' => 'transactional',
-            'message' => "Dear user, {$otp} is you verification OTP for registration at KEYLINE",
+            'message' => "Dear User, {$otp} is you verification OTP for registration at KEYLINE",
             'dlt_template_id' => config('services.digital_sms.template_id'),
         ];
 
