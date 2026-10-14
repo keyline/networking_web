@@ -46,11 +46,14 @@ return [
 
     // Matches the DLT-approved OTP request used by the mobile application.
     'digital_sms' => [
-        'url' => env('DIGITAL_SMS_URL', 'https://sms.digitalsms.net/api/v3/sendsms'),
-        'token' => env('DIGITAL_SMS_TOKEN', '198|td0aaBizzgjMwRgKcQfn8VTYguWUXCs2fo6hSsYIabc9f13f'),
-        'entity_id' => env('DIGITAL_SMS_ENTITY_ID', '1201159375531154788'),
-        'sender_id' => env('DIGITAL_SMS_SENDER_ID', 'KEYLNS'),
-        'template_id' => env('DIGITAL_SMS_TEMPLATE_ID', '1307162333099680070'),
+        // Accept Effortrak's existing variable names during migration so the
+        // same deployed SMS credentials can be shared with Networx.
+        'url' => env('DIGITAL_SMS_URL', env('sms.digitalUrl', 'https://sms.digitalsms.net/api/v3/sendsms')),
+        'token' => env('DIGITAL_SMS_TOKEN', env('sms.digitalBearerToken')),
+        'entity_id' => env('DIGITAL_SMS_ENTITY_ID', env('sms.digitalEntityId')),
+        'sender_id' => env('DIGITAL_SMS_SENDER_ID', env('sms.digitalSenderId')),
+        'template_id' => env('DIGITAL_SMS_TEMPLATE_ID', env('sms.digitalDltTemplateId')),
+        'type' => env('DIGITAL_SMS_TYPE', env('sms.digitalType', 'transactional')),
     ],
 
 ];

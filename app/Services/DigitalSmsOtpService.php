@@ -13,12 +13,21 @@ class DigitalSmsOtpService
         if (strlen($recipient) === 10) {
             $recipient = '91'.$recipient;
         }
+        if (!preg_match('/^91[6-9][0-9]{9}$/', $recipient)) {
+            throw new RuntimeException('The SMS recipient must be a valid Indian mobile number.');
+        }
+
+        foreach (['token', 'entity_id', 'sender_id', 'template_id'] as $key) {
+            if (trim((string) config('services.digital_sms.'.$key)) === '') {
+                throw new RuntimeException('DigitalSMS '.$key.' is not configured.');
+            }
+        }
 
         $payload = [
             'recipient' => $recipient,
             'entity_id' => config('services.digital_sms.entity_id'),
             'sender_id' => config('services.digital_sms.sender_id'),
-            'type' => 'transactional',
+            'type' => config('services.digital_sms.type', 'transactional'),
             'message' => "Dear User, {$otp} is you verification OTP for registration at KEYLINE",
             'dlt_template_id' => config('services.digital_sms.template_id'),
         ];

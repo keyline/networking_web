@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\DigitalSmsOtpService;
+use RuntimeException;
 use Tests\TestCase;
 
 class DigitalSmsOtpServiceTest extends TestCase
@@ -10,6 +11,7 @@ class DigitalSmsOtpServiceTest extends TestCase
     public function test_it_matches_the_mobile_apps_dlt_payload(): void
     {
         config([
+            'services.digital_sms.token' => 'test-token',
             'services.digital_sms.entity_id' => 'entity',
             'services.digital_sms.sender_id' => 'KEYLNS',
             'services.digital_sms.template_id' => 'template',
@@ -38,6 +40,7 @@ class DigitalSmsOtpServiceTest extends TestCase
     public function test_it_adds_the_indian_country_code_to_a_ten_digit_mobile_number(): void
     {
         config([
+            'services.digital_sms.token' => 'test-token',
             'services.digital_sms.entity_id' => 'entity',
             'services.digital_sms.sender_id' => 'KEYLNS',
             'services.digital_sms.template_id' => 'template',
@@ -55,5 +58,13 @@ class DigitalSmsOtpServiceTest extends TestCase
         $service->send('9330109091', '5678');
 
         $this->assertSame('919330109091', $service->payload['recipient']);
+    }
+
+    public function test_it_rejects_an_invalid_mobile_number_before_contacting_the_provider(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('valid Indian mobile number');
+
+        (new DigitalSmsOtpService())->send('12345', '5678');
     }
 }

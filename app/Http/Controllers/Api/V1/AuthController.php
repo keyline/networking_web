@@ -734,7 +734,7 @@ class AuthController extends Controller
 
                 // $transactionId = uniqid();
                 // Log::info("Transaction ID: {$transactionId} | Sending SMS to {$phone} with OTP: {$otp}");
-                $this->sendSmsNew($phone, $otp);
+                $smsSent = $this->sendSmsNew($phone, $otp);
                 // Log::info("Transaction ID: {$transactionId} | SMS sent");
 
 
@@ -748,8 +748,10 @@ class AuthController extends Controller
                     // mobile client sends this value back during verification.
                     'phone' => $checkUser->um_mobile_no,
                 ];
-                $apiStatus                          = true;
-                $apiMessage                         = 'OTP Sent To Email & Phone Validation !!!';
+                $apiStatus = $smsSent;
+                $apiMessage = $smsSent
+                    ? 'OTP sent to email and phone.'
+                    : 'Email OTP was generated, but SMS delivery failed. Please contact support or try again.';
             } else {
                 $apiStatus                              = false;
                 $apiMessage                             = 'Your mobile number not registered with us !!!';
