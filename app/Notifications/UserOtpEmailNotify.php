@@ -34,11 +34,14 @@ class UserOtpEmailNotify extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $name = trim(($notifiable->userDetail?->ud_first_name ?? '').' '.($notifiable->userDetail?->ud_last_name ?? '')) ?: 'Member';
+
         return (new MailMessage())
                     ->subject('Your Net-Works login OTP')
-                    ->line("Dear $notifiable->um_user_name, $notifiable->um_otp is your verification OTP for Net-Works at KEYLINE.")
-                    ->line('This OTP expires in 10 minutes.')
-                    ->line("Do not share this OTP with anyone for security reasons.");
+                    ->view('email-templates.login-otp', [
+                        'name' => $name,
+                        'otp' => $notifiable->um_otp,
+                    ]);
     }
 
     /**
