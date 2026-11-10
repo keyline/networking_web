@@ -69,7 +69,8 @@ class DigitalSmsOtpService
             ],
             CURLOPT_POSTFIELDS => json_encode($payload, JSON_THROW_ON_ERROR),
             CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 20,
+            // Effortrak allows this provider more than 20 seconds to respond.
+            CURLOPT_TIMEOUT => 60,
         ]);
 
         $body = curl_exec($curl);
