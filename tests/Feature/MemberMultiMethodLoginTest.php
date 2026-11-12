@@ -45,6 +45,36 @@ class MemberMultiMethodLoginTest extends TestCase
         $this->assertAuthenticatedAs($user, 'member');
     }
 
+    public function test_local_member_email_and_mobile_login_use_the_fixed_development_otp(): void
+    {
+        $originalEnvironment = $this->app->environment();
+        $this->app->instance('env', 'local');
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+
+        try {
+            $user = $this->activeUser();
+
+            $this->post(route('member.send-otp'), ['email' => $user->um_email_id])
+                ->assertRedirect(route('member.index'));
+            $this->assertSame('123456', $user->fresh()->um_otp);
+
+            $this->post(route('member.verify-otp'), ['email' => $user->um_email_id, 'otp' => '123456'])
+                ->assertRedirect(route('dashboard.index'));
+            $this->assertAuthenticatedAs($user, 'member');
+
+            auth('member')->logout();
+            $this->post(route('member.send-mobile-otp'), ['mobile' => $user->um_mobile_no])
+                ->assertRedirect(route('member.index'));
+            $this->assertSame('123456', $user->fresh()->um_otp);
+
+            $this->post(route('member.verify-mobile-otp'), ['user_id' => $user->um_id, 'otp' => '123456'])
+                ->assertRedirect(route('dashboard.index'));
+            $this->assertAuthenticatedAs($user, 'member');
+        } finally {
+            $this->app->instance('env', $originalEnvironment);
+        }
+    }
+
     public function test_google_callback_logs_in_matching_active_member(): void
     {
         $user = $this->activeUser();

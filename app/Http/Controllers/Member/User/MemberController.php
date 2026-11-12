@@ -62,7 +62,7 @@ class MemberController extends Controller
         $request->session()->put('member_otp_email', $user->um_email_id);
 
         return redirect()->route('member.index')
-            ->with('success', 'A 4-digit OTP has been sent to your email address.');
+            ->with('success', 'A '.$this->otpDigits().'-digit OTP has been sent to your email address.');
     }
 
     public function sendMobileOtp(Request $request)
@@ -73,7 +73,7 @@ class MemberController extends Controller
             'member_otp_mobile' => $this->maskMobile($user->um_mobile_no),
             'member_otp_mobile_value' => $user->um_mobile_no,
         ]);
-        return redirect()->route('member.index')->with('success', 'A 4-digit OTP has been sent to your mobile number.');
+        return redirect()->route('member.index')->with('success', 'A '.$this->otpDigits().'-digit OTP has been sent to your mobile number.');
     }
 
     public function verifyMobileOtp(Request $request)
@@ -230,5 +230,10 @@ class MemberController extends Controller
     {
         $digits = preg_replace('/\D+/', '', (string) $mobile);
         return $digits ? str_repeat('•', max(strlen($digits) - 4, 0)).substr($digits, -4) : 'your registered mobile';
+    }
+
+    private function otpDigits(): int
+    {
+        return \App\Services\Member\MemberLoginService::usesTestOtp() ? 6 : 4;
     }
 }

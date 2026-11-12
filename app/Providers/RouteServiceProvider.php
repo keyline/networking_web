@@ -33,6 +33,10 @@ class RouteServiceProvider extends ServiceProvider
 
         });
 
+        RateLimiter::for('guest-otp-send', fn (Request $request) => Limit::perMinute(6)->by('guest-otp-send:'.$request->ip()));
+        RateLimiter::for('guest-otp-verify', fn (Request $request) => Limit::perMinute(10)->by('guest-otp-verify:'.$request->ip()));
+        RateLimiter::for('guest-registration-complete', fn (Request $request) => Limit::perMinute(10)->by('guest-registration-complete:'.$request->ip()));
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')

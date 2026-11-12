@@ -13,6 +13,7 @@ use App\Models\User\UserDetails;
 use App\Models\User\UserMaster;
 use App\Services\DigitalSmsOtpService;
 use App\Services\LoginOTPService;
+use App\Services\Member\MemberLoginService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -156,6 +157,7 @@ class PublicRegistrationController extends Controller
             'guestLoginMode' => $request->session()->get('guest_login_mode'),
             'guestLoginDestination' => $request->session()->get('guest_login_destination'),
             'guestVerified' => (bool) $request->session()->get('guest_registration_verified'),
+            'guestOtpDigits' => $this->guestOtpDigits(),
         ]));
     }
 
@@ -180,8 +182,10 @@ class PublicRegistrationController extends Controller
             if (RateLimiter::tooManyAttempts($key, 3)) {
                 throw ValidationException::withMessages(['identifier' => 'Too many attempts. Please try again later.']);
             }
-            $this->loginOtp->generateOTP($user->um_id);
-            if (app()->environment('testing')) {
+            $this->loginOtp->generateOTP($user->um_id, MemberLoginService::usesTestOtp() ? '123456' : null);
+            if (MemberLoginService::usesTestOtp()) {
+                // Localhost uses the fixed OTP without contacting email or SMS providers.
+            } elseif (app()->environment('testing')) {
                 $request->session()->put('testing_guest_login_otp', $user->fresh()->um_otp);
             } elseif ($isEmail) {
                 $this->loginOtp->sendEmailOTP($user->um_id);
@@ -206,8 +210,8 @@ class PublicRegistrationController extends Controller
             throw ValidationException::withMessages(['mobile' => 'Too many attempts. Please try again later.']);
         }
 
-        $otp = (string) random_int(1000, 9999);
-        if (!app()->environment('testing')) {
+        $otp = MemberLoginService::usesTestOtp() ? '123456' : (string) random_int(1000, 9999);
+        if (!MemberLoginService::usesTestOtp() && !app()->environment('testing')) {
             try {
                 $this->sms->send($mobile, $otp);
             } catch (\Throwable $exception) {
@@ -231,7 +235,7 @@ class PublicRegistrationController extends Controller
 
     public function guestVerifyOtp(Request $request)
     {
-        $data = $request->validate(['otp' => ['required', 'digits:4']]);
+        $data = $request->validate(['otp' => ['required', 'digits:'.$this->guestOtpDigits()]]);
         $loginUserId = $request->session()->get('guest_login_user_id');
         if ($loginUserId) {
             $user = UserMaster::where('um_id', $loginUserId)->where('um_status', 2)->first();
@@ -253,6 +257,11 @@ class PublicRegistrationController extends Controller
         $request->session()->put('guest_registration_verified', true);
         $request->session()->forget(['guest_registration_otp_hash', 'guest_registration_otp_expires_at', 'testing_guest_registration_otp']);
         return redirect()->route('guest.register')->with('success', 'Mobile number verified. Complete your profile.');
+    }
+
+    private function guestOtpDigits(): int
+    {
+        return MemberLoginService::usesTestOtp() ? 6 : 4;
     }
 
     public function guestStore(Request $request)

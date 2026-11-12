@@ -47,18 +47,20 @@ class MemberLoginService
             ]);
         }
 
-        $this->otpService->generateOTP($user->um_id);
-        try {
-            $this->otpService->sendEmailOTP($user->um_id);
-        } catch (\Throwable $exception) {
-            Log::error('Member login email OTP could not be sent', [
-                'user_id' => $user->um_id,
-                'message' => $exception->getMessage(),
-            ]);
-            $this->clearOtp($user);
-            throw ValidationException::withMessages([
-                'email' => ['We could not send an email OTP right now. Please check the mail settings, use mobile OTP or password, or try again later.'],
-            ]);
+        $this->otpService->generateOTP($user->um_id, $this->localOtp());
+        if (!self::usesTestOtp()) {
+            try {
+                $this->otpService->sendEmailOTP($user->um_id);
+            } catch (\Throwable $exception) {
+                Log::error('Member login email OTP could not be sent', [
+                    'user_id' => $user->um_id,
+                    'message' => $exception->getMessage(),
+                ]);
+                $this->clearOtp($user);
+                throw ValidationException::withMessages([
+                    'email' => ['We could not send an email OTP right now. Please check the mail settings, use mobile OTP or password, or try again later.'],
+                ]);
+            }
         }
         RateLimiter::hit($key, $this->decaySeconds);
 
@@ -86,8 +88,10 @@ class MemberLoginService
             throw ValidationException::withMessages(['mobile' => ['No active account was found for this mobile number.']]);
         }
 
-        $this->otpService->generateOTP($user->um_id);
-        if (app()->environment('testing')) {
+        $this->otpService->generateOTP($user->um_id, $this->localOtp());
+        if (self::usesTestOtp()) {
+            // Local development uses the fixed OTP without contacting the SMS provider.
+        } elseif (app()->environment('testing')) {
             $request->session()->put('testing_member_mobile_otp', $user->fresh()->um_otp);
         } else {
             try {
@@ -132,7 +136,7 @@ class MemberLoginService
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
-            'otp' => ['required', 'digits:4'],
+            'otp' => ['required', 'digits:'.$this->otpDigits()],
         ]);
         $email = strtolower(trim($data['email']));
         $key = $this->throttleKey($email, $request->ip(), 'verify');
@@ -161,7 +165,7 @@ class MemberLoginService
     {
         $data = $request->validate([
             'user_id' => ['required', 'integer'],
-            'otp' => ['required', 'digits:4'],
+            'otp' => ['required', 'digits:'.$this->otpDigits()],
         ]);
         $key = $this->throttleKey((string) $data['user_id'], $request->ip(), 'verify-mobile');
         $this->ensureIsNotRateLimited($key, $this->maxAttempts, 'otp');
@@ -205,6 +209,27 @@ class MemberLoginService
     private function clearOtp(UserMaster $user): void
     {
         $user->update(['um_otp' => null, 'um_otp_secret' => null, 'um_otp_expires_at' => null]);
+    }
+
+    /**
+     * Fixed test OTP (123456) is only used when the app runs in the local
+     * environment AND the request is served from localhost, so a live server
+     * accidentally left on APP_ENV=local never accepts the test code.
+     */
+    public static function usesTestOtp(): bool
+    {
+        return app()->isLocal()
+            && in_array(request()->getHost(), ['localhost', '127.0.0.1', '::1'], true);
+    }
+
+    private function localOtp(): ?string
+    {
+        return self::usesTestOtp() ? '123456' : null;
+    }
+
+    private function otpDigits(): int
+    {
+        return self::usesTestOtp() ? 6 : 4;
     }
 
 

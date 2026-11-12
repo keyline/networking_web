@@ -17,7 +17,7 @@ class LoginOTPService
 
     protected $otp;
     protected $otpHash;
-    public function generateOTP(int $userId): string
+    public function generateOTP(int $userId, ?string $fixedOtp = null): string
     {
         try {
 
@@ -25,11 +25,13 @@ class LoginOTPService
 
 
             $otpLength = 4;
-            $this->otp = '';
+            $this->otp = $fixedOtp ?? '';
             $this->otpHash = '';
 
-            for ($i = 1; $i <= $otpLength; $i++) {
-                $this->otp .= (string) random_int(0, 9);
+            if ($fixedOtp === null) {
+                for ($i = 1; $i <= $otpLength; $i++) {
+                    $this->otp .= (string) random_int(0, 9);
+                }
             }
 
 

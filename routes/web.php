@@ -46,10 +46,11 @@ Route::match(['get', 'post'], '/contact-us', 'App\Http\Controllers\FrontControll
 Route::get('/join', [PublicRegistrationController::class, 'create'])->name('join.create');
 Route::post('/join', [PublicRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('join.store');
 Route::get('/guest/register', [PublicRegistrationController::class, 'guestCreate'])->name('guest.register');
-Route::post('/guest/register/send-otp', [PublicRegistrationController::class, 'guestSendOtp'])->middleware('throttle:6,1')->name('guest.register.send-otp');
-Route::post('/guest/register/verify-otp', [PublicRegistrationController::class, 'guestVerifyOtp'])->middleware('throttle:10,1')->name('guest.register.verify-otp');
-Route::post('/guest/register/complete', [PublicRegistrationController::class, 'guestStore'])->middleware('throttle:10,1')->name('guest.register.complete');
+Route::post('/guest/register/send-otp', [PublicRegistrationController::class, 'guestSendOtp'])->middleware('throttle:guest-otp-send')->name('guest.register.send-otp');
+Route::post('/guest/register/verify-otp', [PublicRegistrationController::class, 'guestVerifyOtp'])->middleware('throttle:guest-otp-verify')->name('guest.register.verify-otp');
+Route::post('/guest/register/complete', [PublicRegistrationController::class, 'guestStore'])->middleware('throttle:guest-registration-complete')->name('guest.register.complete');
 Route::get('/members', [PublicBusinessController::class, 'index'])->name('members.index');
+Route::get('/members/suggest', [PublicBusinessController::class, 'suggest'])->middleware('throttle:90,1')->name('members.suggest');
 Route::get('/business/{slug}', [PublicBusinessController::class, 'show'])->name('business.show');
 Route::post('/business/{slug}/interaction', [PublicBusinessController::class, 'track'])->middleware('throttle:30,1')->name('business.track');
 Route::get('/business/{slug}/contact/{type}', [PublicBusinessController::class, 'contact'])->middleware(['auth:member', 'member.active', 'throttle:30,1'])->name('business.contact');
@@ -85,6 +86,7 @@ Route::middleware('member.guest')->group(function () {
 
 Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(function () {
     Route::resource('dashboard', DashboardController::class);
+    Route::get('members', [DashboardController::class, 'members'])->name('member.members.index');
     Route::post('admin-dashboard', [DashboardController::class, 'openAdminDashboard'])->name('member.admin-dashboard');
     Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');
     Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');

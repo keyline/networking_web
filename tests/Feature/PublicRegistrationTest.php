@@ -107,6 +107,42 @@ class PublicRegistrationTest extends TestCase
         $this->assertAuthenticatedAs($guest, 'member');
     }
 
+    public function test_guest_registration_uses_fixed_six_digit_otp_only_on_localhost(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $previousEnvironment = $this->app->environment();
+        $this->app['env'] = 'local';
+
+        try {
+            $this->post(route('guest.register.send-otp'), ['identifier' => '9876543201'])
+                ->assertRedirect(route('guest.register'));
+            $this->get(route('guest.register'))
+                ->assertOk()
+                ->assertSee('6-digit OTP')
+                ->assertSee('maxlength="6"', false);
+            $this->post(route('guest.register.verify-otp'), ['otp' => '123456'])
+                ->assertRedirect(route('guest.register'))
+                ->assertSessionHas('guest_registration_verified', true);
+        } finally {
+            $this->app['env'] = $previousEnvironment;
+        }
+    }
+
+    public function test_otp_attempts_do_not_throttle_the_profile_completion_route(): void
+    {
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->post(route('guest.register.verify-otp'), ['otp' => '0000'])
+                ->assertRedirect();
+        }
+
+        $this->withSession([
+            'guest_registration_verified' => true,
+            'guest_registration_mobile' => '9876543202',
+        ])->post(route('guest.register.complete'), [])
+            ->assertRedirect()
+            ->assertSessionHasErrors(['first_name', 'email', 'country', 'state', 'consent']);
+    }
+
     public function test_existing_mobile_receives_otp_and_logs_in_from_guest_registration(): void
     {
         $user = UserMaster::create([

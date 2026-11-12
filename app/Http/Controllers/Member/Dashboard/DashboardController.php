@@ -19,6 +19,83 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    public function members(Request $request): View
+    {
+        $search = trim((string) $request->query('search'));
+        $members = UserMaster::activeMembers()
+            ->with([
+                'userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
+                'companies.details:cmpd_id,cmpd_cmp_id,cmpd_name,cmpd_status,public_slug',
+            ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('um_user_name', 'like', "%{$search}%")
+                        ->orWhere('um_mobile_no', 'like', "%{$search}%")
+                        ->orWhereHas('userDetail', fn ($details) => $details
+                            ->where('ud_first_name', 'like', "%{$search}%")
+                            ->orWhere('ud_last_name', 'like', "%{$search}%"))
+                        ->orWhereHas('companies.details', fn ($details) => $details
+                            ->where('cmpd_name', 'like', "%{$search}%"));
+                });
+            })
+            ->orderByDesc('um_id')
+            ->paginate(20)
+            ->withQueryString();
+
+        $memberIds = $members->getCollection()->pluck('um_id');
+        $since = now()->subDays(30);
+        $meetingCounts = collect();
+        foreach (['reported_by_um_id', 'counterpart_um_id'] as $memberColumn) {
+            DB::table('member_meetings')
+                ->whereIn($memberColumn, $memberIds)
+                ->selectRaw("{$memberColumn} as member_id, COUNT(*) as all_time, SUM(CASE WHEN meeting_at >= ? THEN 1 ELSE 0 END) as recent", [$since])
+                ->groupBy($memberColumn)
+                ->get()
+                ->each(function ($row) use ($meetingCounts) {
+                    $counts = $meetingCounts[$row->member_id] ?? ['recent' => 0, 'all_time' => 0];
+                    $counts['recent'] += (int) $row->recent;
+                    $counts['all_time'] += (int) $row->all_time;
+                    $meetingCounts[$row->member_id] = $counts;
+                });
+        }
+        $referenceCounts = DB::table('enquiry_to_user as etu')
+            ->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
+            ->whereIn('etu.etu_um_id', $memberIds)
+            ->where('em.enm_is_myself', 0)
+            ->selectRaw('etu.etu_um_id as member_id, COUNT(*) as all_time, SUM(CASE WHEN em.enm_created_at >= ? THEN 1 ELSE 0 END) as recent', [$since])
+            ->groupBy('etu.etu_um_id')
+            ->get()->keyBy('member_id');
+        $activityCounts = DB::table('business_analytics_events')
+            ->whereIn('bae_um_id', $memberIds)
+            ->selectRaw('bae_um_id as member_id, COUNT(*) as all_time, SUM(CASE WHEN bae_created_at >= ? THEN 1 ELSE 0 END) as recent', [$since])
+            ->groupBy('bae_um_id')
+            ->get()->keyBy('member_id');
+        $reviewCounts = DB::table('reviews')
+            ->whereIn('rev_um_id', $memberIds)
+            ->selectRaw('rev_um_id as member_id, COUNT(*) as all_time, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as recent', [$since])
+            ->groupBy('rev_um_id')
+            ->get()->keyBy('member_id');
+
+        $members->getCollection()->each(function (UserMaster $member) use ($meetingCounts, $referenceCounts, $activityCounts, $reviewCounts) {
+            $meetings = $meetingCounts[$member->um_id] ?? ['recent' => 0, 'all_time' => 0];
+            $references = $referenceCounts[$member->um_id] ?? null;
+            $activity = $activityCounts[$member->um_id] ?? null;
+            $reviews = $reviewCounts[$member->um_id] ?? null;
+            $member->setAttribute('activity_stats', [
+                'recent' => [
+                    'meetings' => (int) $meetings['recent'], 'references' => (int) ($references->recent ?? 0),
+                    'activity' => (int) ($activity->recent ?? 0), 'reviews' => (int) ($reviews->recent ?? 0),
+                ],
+                'all_time' => [
+                    'meetings' => (int) $meetings['all_time'], 'references' => (int) ($references->all_time ?? 0),
+                    'activity' => (int) ($activity->all_time ?? 0), 'reviews' => (int) ($reviews->all_time ?? 0),
+                ],
+            ]);
+        });
+
+        return view('Member.Members.index', compact('members', 'search'));
+    }
+
     public function index(Request $request): View
     {
         /** @var UserMaster $member */
@@ -31,7 +108,36 @@ class DashboardController extends Controller
             ->first();
         $ownedBusinessIds = $member->companies->pluck('cmp_id');
         $recentInteractions = collect();
+        $businessAnalytics = null;
         if ($ownedBusinessIds->isNotEmpty()) {
+            $analyticsSince = now()->subDays(30);
+            $eventTotals = DB::table('business_analytics_events')
+                ->whereIn('bae_cmp_id', $ownedBusinessIds)
+                ->where('bae_created_at', '>=', $analyticsSince)
+                ->selectRaw("SUM(CASE WHEN bae_event_type = 'view' THEN 1 ELSE 0 END) as page_views")
+                ->selectRaw("SUM(CASE WHEN bae_event_type IN ('call', 'whatsapp', 'email', 'share') THEN 1 ELSE 0 END) as contact_clicks")
+                ->first();
+            $uniqueVisitors = DB::table('business_analytics_events')
+                ->whereIn('bae_cmp_id', $ownedBusinessIds)
+                ->where('bae_event_type', 'view')
+                ->where('bae_created_at', '>=', $analyticsSince)
+                ->select(['bae_um_id', 'bae_device_id'])
+                ->get()
+                ->map(fn ($event) => $event->bae_um_id ? 'member:'.$event->bae_um_id : 'device:'.($event->bae_device_id ?: 'anonymous'))
+                ->unique()
+                ->count();
+            $enquiries = DB::table('enquiry_to_user as etu')
+                ->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
+                ->whereIn('etu.etu_cmp_id', $ownedBusinessIds)
+                ->where('em.enm_created_at', '>=', $analyticsSince)
+                ->count();
+            $businessAnalytics = [
+                'page_views' => (int) ($eventTotals->page_views ?? 0),
+                'unique_visitors' => $uniqueVisitors,
+                'contact_clicks' => (int) ($eventTotals->contact_clicks ?? 0),
+                'enquiries' => $enquiries,
+            ];
+
             $recentInteractions = DB::table('business_analytics_events as bae')
                 ->join('companies_details as cd', 'cd.cmpd_cmp_id', '=', 'bae.bae_cmp_id')
                 ->leftJoin('user_master as um', 'um.um_id', '=', 'bae.bae_um_id')
@@ -114,7 +220,7 @@ class DashboardController extends Controller
             ->with('details')
             ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
             ->whereDoesntHave('users', fn ($query) => $query->where('user_master.um_id', $member->um_id))
-            ->orderByDesc('cmp_id')->limit(4)->get();
+            ->orderByDesc('cmp_id')->limit(5)->get();
 
         $recentBusinesses->each(fn (CompaniesMaster $business) => $business->details?->ensurePublicSlug());
 
@@ -202,7 +308,7 @@ class DashboardController extends Controller
             ->get();
 
         return view('Member.Dashboard.index', compact(
-            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'reviewBusinessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
+            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'businessAnalytics', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'reviewBusinessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
         ));
     }
 

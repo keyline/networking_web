@@ -73,7 +73,7 @@ class BusinessOwnerAccessTest extends TestCase
 
         $editUrl = route('member.portfolio.edit', $company->portfolioRouteToken());
         $this->actingAs($member, 'member')->get(route('dashboard.index'))
-            ->assertOk()->assertSee('My businesses')->assertSee('Linked Member Business')
+            ->assertOk()->assertSee('Edit my business')->assertSee('Linked Member Business')
             ->assertSee('<a class="brand" href="'.url('/').'">', false)
             ->assertSee('aria-label="Edit Linked Member Business"', false)->assertSee('Edit →')
             ->assertSee('class="profile-photo"', false)
@@ -107,5 +107,107 @@ class BusinessOwnerAccessTest extends TestCase
         $this->actingAs($owner, 'member')->get(route('dashboard.index'))
             ->assertOk()->assertSee('Recent business interactions')
             ->assertSee('Interested Guest')->assertSee('Whatsapp')->assertSee('Interaction Business');
+    }
+
+    public function test_business_owner_is_sent_from_home_to_dashboard_with_page_analytics(): void
+    {
+        $owner = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'analytics-owner',
+            'um_email_id' => 'analytics-owner@example.test', 'um_mobile_no' => '9876502297', 'um_status' => 2,
+        ]);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Analytics Business',
+            'cmpd_description' => 'Analytics test business.', 'cmpd_status' => 1,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $owner->um_id]);
+        DB::table('business_analytics_events')->insert([
+            [
+                'bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'view',
+                'bae_device_id' => 'visitor-one', 'bae_source' => 'WEB', 'bae_created_at' => now(),
+            ],
+            [
+                'bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'view',
+                'bae_device_id' => 'visitor-two', 'bae_source' => 'WEB', 'bae_created_at' => now(),
+            ],
+            [
+                'bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'whatsapp',
+                'bae_device_id' => 'visitor-two', 'bae_source' => 'WEB', 'bae_created_at' => now(),
+            ],
+        ]);
+
+        $this->actingAs($owner, 'member')->get('/')
+            ->assertRedirect(route('dashboard.index'));
+        $this->actingAs($owner, 'member')->get(route('dashboard.index'))
+            ->assertOk()
+            ->assertSee('aria-label="Quick actions"', false)
+            ->assertSee('Your page analytics')
+            ->assertSee('Last 30 days')
+            ->assertSeeInOrder(['2', 'Page views', '2', 'Unique visitors', '1', 'Contact clicks', '0', 'Enquiries']);
+    }
+
+    public function test_logged_in_guest_can_still_view_homepage(): void
+    {
+        $guest = UserMaster::create([
+            'um_utm_id' => 1, 'um_user_name' => 'homepage-guest',
+            'um_email_id' => 'homepage-guest@example.test', 'um_mobile_no' => '9876502296', 'um_status' => 2,
+        ]);
+
+        $this->actingAs($guest, 'member')->get('/')->assertOk();
+    }
+
+    public function test_active_member_can_search_the_authenticated_member_directory(): void
+    {
+        $viewer = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'directory-viewer',
+            'um_email_id' => 'directory-viewer@example.test', 'um_mobile_no' => '9876502391', 'um_status' => 2,
+        ]);
+        $listed = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'directory-member',
+            'um_email_id' => 'directory-member@example.test', 'um_mobile_no' => '9876502392', 'um_status' => 2,
+        ]);
+        UserDetails::create(['ud_um_id' => $listed->um_id, 'ud_first_name' => 'Asha', 'ud_last_name' => 'Sen']);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Compact Design Studio',
+            'cmpd_description' => 'Directory test business.', 'cmpd_status' => 1,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $listed->um_id]);
+        DB::table('member_meetings')->insert([
+            'reported_by_um_id' => $viewer->um_id, 'counterpart_um_id' => $listed->um_id,
+            'invited_by_um_id' => $listed->um_id, 'meeting_at' => now(), 'mode' => 'online',
+            'details' => 'Directory activity test.', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $reference = \App\Models\Enquiries\EnquiryMaster::create([
+            'enm_name' => 'Referral contact', 'enm_subject' => 'Member referral',
+            'enm_description' => 'Directory activity test.', 'enm_type' => 2,
+            'enm_is_myself' => 0, 'enm_status' => 1,
+        ]);
+        DB::table('enquiry_to_user')->insert([
+            'etu_cmp_id' => 0, 'etu_enm_id' => $reference->enm_id,
+            'etu_um_id' => $listed->um_id, 'etu_created_at' => now(),
+        ]);
+        DB::table('business_analytics_events')->insert([
+            'bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'view',
+            'bae_um_id' => $listed->um_id, 'bae_source' => 'WEB', 'bae_created_at' => now(),
+        ]);
+        \App\Models\Review\ReviewMaster::create([
+            'rev_um_id' => $listed->um_id, 'rev_cmp_id' => $company->cmp_id,
+            'rev_rating' => 5, 'rev_comment' => 'Excellent collaboration.', 'status' => 1,
+        ]);
+
+        $this->get(route('member.members.index'))->assertRedirect();
+        $this->actingAs($viewer, 'member')
+            ->get(route('member.members.index', ['search' => 'Compact Design']))
+            ->assertOk()
+            ->assertSee('Members')
+            ->assertSee('Asha Sen')
+            ->assertSee('9876502392')
+            ->assertSee('Compact Design Studio')
+            ->assertSee('View activity')
+            ->assertSee('Last 30 days')
+            ->assertSee('All time')
+            ->assertSee('Reviews')
+            ->assertSee('"recent":{"meetings":1,"references":1,"activity":1,"reviews":1}', false);
     }
 }

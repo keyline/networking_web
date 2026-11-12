@@ -50,6 +50,11 @@ class FrontController extends Controller
     /* home */
     public function home()
     {
+        $member = Auth::guard('member')->user();
+        if ($member && $member->companies()->exists()) {
+            return redirect()->route('dashboard.index');
+        }
+
         $data['generalSetting'] = GeneralSetting::find(1);
         $data['title'] = $data['generalSetting']->site_name ?? 'Net-Works';
         $data['headerNavigation'] = $this->navigationFor('header');
