@@ -37,9 +37,18 @@ class MemberController extends Controller
         if ($request->boolean('reset')) {
             $request->session()->forget(['member_otp_email', 'member_otp_user_id', 'member_otp_mobile', 'member_otp_mobile_value', 'testing_member_mobile_otp']);
         }
-        return view(self::VIEW_PATH . 'login', [
+        // no-store: the browser must not reuse an old copy (Back button / restored tab)
+        // whose CSRF token no longer matches the session.
+        return response()->view(self::VIEW_PATH . 'login', [
             'title' => 'Login',
-        ]);
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    }
+
+    /** Fresh CSRF token for the login forms, fetched just before they submit. */
+    public function csrfToken(Request $request)
+    {
+        return response()->json(['token' => csrf_token()])
+            ->header('Cache-Control', 'no-store, private');
     }
 
     public function show(string $id)

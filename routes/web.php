@@ -72,6 +72,7 @@ Route::prefix('events')->name('events.')->group(function () {
 
 
 /* Member panel */
+Route::get('member/csrf-token', [MemberController::class, 'csrfToken'])->middleware('throttle:60,1')->name('member.csrf-token');
 Route::middleware('member.guest')->group(function () {
     Route::get('member', [MemberController::class, 'index'])->name('member.index');
     Route::post('member/send-otp', [MemberController::class, 'sendOtp'])->name('member.send-otp');

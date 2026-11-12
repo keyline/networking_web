@@ -9,7 +9,8 @@
  <a class="cms-brand" href="{{url('/')}}"><img src="{{env('UPLOADS_URL').$generalSetting->site_logo}}" alt="{{$generalSetting->site_name??'Networx'}}"></a>
  <nav class="cms-nav" id="cmsNav" aria-label="Primary navigation">
   <a href="{{url('/')}}">Home</a>
-  <a href="{{route('members.index')}}">Members</a>
+  <a href="{{route('members.index')}}">Business</a>
+  <a href="{{route('member.members.index')}}">Members</a>
   @foreach($headerNavigation as $item)<div class="cms-nav-item"><a href="{{url('page/'.$item->page_slug)}}">{{$item->nav_label?:$item->page_name}}@if($item->children->isNotEmpty()) <span class="caret">⌄</span>@endif</a>@if($item->children->isNotEmpty())<div class="cms-dropdown">@foreach($item->children as $child)<a href="{{url('page/'.$child->page_slug)}}">{{$child->nav_label?:$child->page_name}}</a>@endforeach</div>@endif</div>@endforeach
   <a href="{{url('events')}}">Events</a>
   @if($headerMember)
