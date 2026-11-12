@@ -51,7 +51,7 @@
 <header class="topbar"><a class="brand" href="{{ route('dashboard.index') }}">@include('Member.partials.site-logo')</a><a class="back" href="{{ route('dashboard.index') }}">← Dashboard</a></header>
 <main class="page">
     <section class="directory-intro"><div class="heading"><div><h1>Members</h1></div><span class="count">{{ $members->total() }} {{ Str::plural('member', $members->total()) }}</span></div>
-    <form class="search" method="GET" action="{{ route('member.members.index') }}"><input name="search" value="{{ $search }}" placeholder="Name, phone or business" aria-label="Search members"><button type="submit">Search</button></form></section>
+    <form class="search" method="GET" action="{{ route('member.members.index') }}"><input name="search" data-clearable value="{{ $search }}" placeholder="Name, phone or business" aria-label="Search members"><button type="submit">Search</button></form></section>
     <section class="members" aria-label="Member directory">
         @forelse($members as $networkMember)
             @php
@@ -76,5 +76,5 @@ document.querySelectorAll('.activity-button').forEach(button=>button.addEventLis
 document.querySelectorAll('.period-tab').forEach(tab=>tab.addEventListener('click',()=>{selectedPeriod=tab.dataset.period;document.querySelectorAll('.period-tab').forEach(item=>item.classList.toggle('active',item===tab));renderActivity()}));
 document.querySelector('.drawer-close').addEventListener('click',()=>activityDrawer.close());activityDrawer.addEventListener('click',event=>{if(event.target===activityDrawer)activityDrawer.close()});
 </script>
-</body>
+@include('partials.search-clear')</body>
 </html>

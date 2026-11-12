@@ -5,5 +5,6 @@
     <span data-portal-home-logo>{{ $siteBrand?->site_name ?: 'Networx' }}</span>
 @endif
 @once
+<style>header:has([data-portal-home-logo]){background:#f7f7f7!important}</style>
 <script>document.querySelectorAll('[data-portal-home-logo]').forEach(logo=>{const link=logo.closest('a');if(link)link.href=@json(url('/'))})</script>
 @endonce
