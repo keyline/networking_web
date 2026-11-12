@@ -82,8 +82,9 @@ Route::middleware('member.guest')->group(function () {
     Route::post('member/verify-mobile-otp', [MemberController::class, 'verifyMobileOtp'])->name('member.verify-mobile-otp');
     Route::post('member/login-password', [MemberController::class, 'loginWithPassword'])->name('member.login-password');
     Route::post('member/resend-otp', [MemberController::class, 'resendOtp'])->name('member.resend-otp');
-    Route::get('member/google', [MemberController::class, 'googleRedirect'])->name('member.google.redirect');
-    Route::get('member/google/callback', [MemberController::class, 'googleCallback'])->name('member.google.callback');
+    // Google sign-in switched off; uncomment to re-enable.
+    // Route::get('member/google', [MemberController::class, 'googleRedirect'])->name('member.google.redirect');
+    // Route::get('member/google/callback', [MemberController::class, 'googleCallback'])->name('member.google.callback');
 });
 
 Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(function () {
@@ -94,6 +95,9 @@ Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(fun
     Route::post('profile/contact/send-otp', [ProfileController::class, 'sendContactOtp'])->middleware('throttle:3,1')->name('member.profile.contact.send-otp');
     Route::post('profile/contact/verify-otp', [ProfileController::class, 'verifyContactOtp'])->middleware('throttle:5,1')->name('member.profile.contact.verify-otp');
     Route::get('members', [DashboardController::class, 'members'])->name('member.members.index');
+    Route::get('business-activity', [DashboardController::class, 'businessActivity'])->name('member.business-activity.index');
+    Route::get('references-given', [DashboardController::class, 'referencesGiven'])->middleware('throttle:60,1')->name('member.references-given');
+    Route::get('my-list/{type}', [DashboardController::class, 'myList'])->whereIn('type', ['enquiries', 'reviews'])->middleware('throttle:60,1')->name('member.my-list');
     Route::post('admin-dashboard', [DashboardController::class, 'openAdminDashboard'])->name('member.admin-dashboard');
     Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');
     Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');
@@ -105,6 +109,7 @@ Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(fun
         Route::get('businesses/create', [MemberBusinessController::class, 'create'])->name('member.businesses.create');
         Route::post('businesses', [MemberBusinessController::class, 'store'])->name('member.businesses.store');
     });
+    Route::get('businesses', [BusinessPortfolioController::class, 'index'])->name('member.businesses.index');
     Route::get('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'edit'])->name('member.portfolio.edit');
     Route::put('businesses/{companyToken}/portfolio', [BusinessPortfolioController::class, 'update'])->name('member.portfolio.update');
     Route::post('businesses/{companyToken}/portfolio/publish', [BusinessPortfolioController::class, 'publish'])->name('member.portfolio.publish');
@@ -361,6 +366,8 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
         Route::get('clients/business/list', 'ClientController@businessList');
         Route::post('clients/business/{company}/sponsored', 'ClientController@updateBusinessSponsored')
             ->whereNumber('company')->name('admin.clients.business.sponsored');
+        Route::delete('clients/business/{company}', 'ClientController@deleteBusiness')
+            ->whereNumber('company')->name('admin.clients.business.destroy');
         Route::post('clients/business/{company}/offerings', 'ClientController@storeBusinessOffering')->whereNumber('company')->name('admin.clients.business.offerings.store');
         Route::put('clients/business/{company}/offerings/{item}', 'ClientController@updateBusinessOffering')->whereNumber('company')->whereNumber('item')->name('admin.clients.business.offerings.update');
         Route::patch('clients/business/{company}/offerings/{item}/status', 'ClientController@toggleBusinessOffering')->whereNumber('company')->whereNumber('item')->name('admin.clients.business.offerings.toggle');

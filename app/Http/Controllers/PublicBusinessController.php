@@ -225,6 +225,14 @@ class PublicBusinessController extends Controller
 
         abort_unless(Auth::guard('member')->check(), 403, 'Register or sign in to contact this business.');
 
+        $isOwnBusiness = DB::table('user_companies_map')
+            ->where('ucm_cmp_id', $business->cmpd_cmp_id)
+            ->where('ucm_um_id', Auth::guard('member')->id())
+            ->exists();
+        if ($isOwnBusiness) {
+            return back()->withErrors(['lead' => 'This is your own business, so you cannot send it an enquiry.']);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'email' => ['nullable', 'email:rfc', 'max:250', 'required_without:phone'],
@@ -249,7 +257,12 @@ class PublicBusinessController extends Controller
             return back()->withInput()->withErrors(['lead' => 'This business cannot receive enquiries yet. Please use its listed contact details.']);
         }
 
-        $lead = DB::transaction(function () use ($data, $business, $ownerId) {
+        // The signed-in member who submits this form is the referrer: storing them in etu_um_id
+        // (enm_is_myself = 0) makes the enquiry a normal reference — it counts as a reference
+        // received for the business and a reference given by the sender, on web and in the app.
+        $senderId = (int) Auth::guard('member')->id();
+
+        $lead = DB::transaction(function () use ($data, $business, $senderId) {
             $lead = EnquiryMaster::create([
                 'enm_name' => $data['name'],
                 'enm_email' => $data['email'] ?? null,
@@ -266,14 +279,18 @@ class PublicBusinessController extends Controller
             DB::table('enquiry_to_user')->insert([
                 'etu_cmp_id' => $business->cmpd_cmp_id,
                 'etu_enm_id' => $lead->enm_id,
-                'etu_um_id' => $ownerId,
+                'etu_um_id' => $senderId,
                 'etu_created_at' => now(),
             ]);
             return $lead;
         });
 
         $owner = UserMaster::find($ownerId);
-        if ($owner) {
+        $businessName = (string) $business->cmpd_name;
+        $companyId = (int) $business->cmpd_cmp_id;
+        // Email + SMS the owner after the response is sent, so a slow SMS gateway never delays the visitor.
+        if ($owner) app()->terminating(function () use ($owner, $lead, $businessName, $companyId) {
+            $business = (object) ['cmpd_name' => $businessName, 'cmpd_cmp_id' => $companyId];
             $portfolio = BusinessPortfolio::where('company_id', $business->cmpd_cmp_id)->first();
             try {
                 $email = $portfolio?->notification_email ?: $owner->um_email_id;
@@ -290,7 +307,7 @@ class PublicBusinessController extends Controller
             } catch (\Throwable $exception) {
                 Log::warning('Business lead SMS alert failed', ['lead_id' => $lead->enm_id, 'error' => $exception->getMessage()]);
             }
-        }
+        });
 
         return redirect()->route('business.show', $business->public_slug)->with('lead_success', true);
     }

@@ -15,6 +15,27 @@ class MemberReferenceAudienceTest extends TestCase
 {
     use DatabaseTransactions;
 
+    public function test_own_requirement_uses_one_text_field_and_member_contact_details(): void
+    {
+        $member = UserMaster::create([
+            'um_utm_id' => 1, 'um_user_name' => 'requirement-owner',
+            'um_email_id' => 'requirement-owner@example.test', 'um_mobile_no' => '9100000300', 'um_status' => 2,
+        ]);
+
+        $this->actingAs($member, 'member')->post(route('member.enquiries.store'), [
+            'visibility' => 'public',
+            'requirement' => 'Need an accountant for annual tax filing.',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertDatabaseHas('enquiry_master', [
+            'enm_email' => 'requirement-owner@example.test',
+            'enm_phone' => '9100000300',
+            'enm_subject' => 'Need an accountant for annual tax filing.',
+            'enm_description' => 'Need an accountant for annual tax filing.',
+            'enm_is_myself' => 1,
+        ]);
+    }
+
     public function test_reference_can_be_shared_with_all_members_or_an_individual_business(): void
     {
         $sender = UserMaster::create([
@@ -40,16 +61,16 @@ class MemberReferenceAudienceTest extends TestCase
 
         $this->actingAs($sender, 'member')->get(route('dashboard.index'))
             ->assertOk()
-            ->assertSee('Who should receive this reference?')
+            ->assertSee('Share a requirement')
+            ->assertSee('I know someone who needs this')
             ->assertSee('All members')
-            ->assertSee('An individual business')
             ->assertSee('Reference Advisory, Reference Logistics');
 
         $this->actingAs($sender, 'member')->post(route('member.referrals.store'), [
             'audience' => 'all_members',
             'name' => 'All Member Lead',
             'phone' => '9100000302',
-            'note' => 'A useful connection for all members.',
+            'requirement' => 'A useful connection for all members.',
         ])->assertRedirect()->assertSessionHas('success');
 
         $allMembersReference = EnquiryMaster::where('enm_description', 'A useful connection for all members.')->firstOrFail();
@@ -65,7 +86,7 @@ class MemberReferenceAudienceTest extends TestCase
             'referral_company_id' => $business->cmp_id,
             'name' => 'Individual Lead',
             'phone' => '9100000303',
-            'note' => 'A useful connection for one business.',
+            'requirement' => 'A useful connection for one business.',
         ])->assertRedirect()->assertSessionHas('success');
 
         $individualReference = EnquiryMaster::where('enm_description', 'A useful connection for one business.')->firstOrFail();
@@ -91,7 +112,8 @@ class MemberReferenceAudienceTest extends TestCase
             'note' => 'This reference should not be stored.',
         ])->assertRedirect()
             ->assertSessionHasErrors('referral_company_id')
-            ->assertSessionHas('open_dialog', 'referralModal');
+            ->assertSessionHas('open_dialog', 'requirementModal')
+            ->assertSessionHas('requirement_tab', 'someone');
 
         $this->assertDatabaseMissing('enquiry_master', [
             'enm_description' => 'This reference should not be stored.',

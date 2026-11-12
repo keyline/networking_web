@@ -5,7 +5,7 @@ $generalSetting             = GeneralSetting::find('1');
 <!doctype html>
 <html lang="en">
   <head>
-    <title><?=$generalSetting->site_name?></title>
+    <title>Networx</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   </head>
   <body style="padding: 0; margin: 0; box-sizing: border-box;">
@@ -27,7 +27,7 @@ $generalSetting             = GeneralSetting::find('1');
           </div>
         </div>
         <div style="border-top: 2px solid #ccc; margin-top: 50px; text-align: center; font-family: sans-serif;">
-          <div style="text-align: center; margin: 15px 0 10px;"><?=$generalSetting->site_name?></div>
+          <div style="text-align: center; margin: 15px 0 10px;">Networx</div>
           <div style="text-align: center; margin: 15px 0 10px;">Phone: <?=$generalSetting->site_phone?></div>
           <div style="text-align: center; margin: 15px 0 10px;">Email: <?=$generalSetting->site_mail?></div>
         </div>

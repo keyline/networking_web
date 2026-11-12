@@ -94,7 +94,12 @@ class FrontController extends Controller
             'businesses' => DB::table('companies_master')->count(),
             'events' => $data['openEventCount'],
         ];
-        $data['sponsoredBusinesses'] = CompaniesDetail::with(['companies.categories', 'district'])
+        $data['sponsoredBusinesses'] = CompaniesDetail::with([
+                'companies.categories',
+                'district',
+                // active owners, for the owner name on the sponsored cards
+                'companies.users' => fn ($query) => $query->where('um_status', 2)->with('userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name'),
+            ])
             ->where('cmpd_status', 1)
             ->where('cmpd_is_sponsored', 1)
             ->whereNotNull('public_slug')

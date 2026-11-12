@@ -110,6 +110,21 @@ $controllerRoute = $module['controller_route'];
                                                     class="btn btn-outline-primary btn-sm" title="Edit Business">
                                                     <i class="fa fa-edit"></i>
                                                 </a>
+                                                @php
+                                                    $act = $row['activity'] ?? [];
+                                                    $blockers = collect(['references' => 'reference/enquiry', 'reviews' => 'review', 'meetings' => 'owner meeting', 'chapters' => 'chapter membership'])
+                                                        ->filter(fn ($label, $key) => ($act[$key] ?? 0) > 0)
+                                                        ->map(fn ($label, $key) => $act[$key].' '.\Illuminate\Support\Str::plural($label, $act[$key]))->values();
+                                                @endphp
+                                                @if($blockers->isEmpty())
+                                                    <form method="post" action="{{ route('admin.clients.business.destroy', $row['cmp_id']) }}" class="d-inline" onsubmit="return confirm('Delete {{ addslashes($row['name']) }}? Its page, products, photos and categories will be removed. The owner keeps their account and becomes a guest if this is their only business.');">@csrf @method('DELETE')
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete business"><i class="fa fa-trash"></i></button>
+                                                    </form>
+                                                @else
+                                                    <span class="d-inline-block" tabindex="0" title="Can't delete: has {{ $blockers->implode(', ') }}">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled style="pointer-events:none" aria-label="Delete unavailable"><i class="fa fa-trash"></i></button>
+                                                    </span>
+                                                @endif
                                             </td>
 
                                         </tr>

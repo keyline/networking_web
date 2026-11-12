@@ -13,8 +13,10 @@ use App\Models\User\UserMaster;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -26,6 +28,7 @@ class DashboardController extends Controller
             ->with([
                 'userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
                 'companies.details:cmpd_id,cmpd_cmp_id,cmpd_name,cmpd_status,public_slug',
+                'companies.categories:bcm_id,name',
             ])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
@@ -107,20 +110,35 @@ class DashboardController extends Controller
             ->where('status', 1)
             ->first();
         $ownedBusinessIds = $member->companies->pluck('cmp_id');
-        $recentInteractions = collect();
         $businessAnalytics = null;
+        $analyticsPeriod = 'last_30';
+        $analyticsPeriods = [];
         if ($ownedBusinessIds->isNotEmpty()) {
-            $analyticsSince = now()->subDays(30);
+            // Reporting period chosen in the dashboard dropdown (?period=...).
+            $periods = [
+                'this_month' => ['This month', now()->startOfMonth(), now()],
+                'last_month' => ['Last month', now()->subMonthNoOverflow()->startOfMonth(), now()->subMonthNoOverflow()->endOfMonth()],
+                'last_30' => ['Last 30 days', now()->subDays(30), now()],
+                'last_90' => ['Last 3 months', now()->subMonthsNoOverflow(3), now()],
+                'all' => ['All time', null, now()],
+            ];
+            $analyticsPeriod = array_key_exists($request->query('period'), $periods) ? $request->query('period') : 'last_30';
+            [, $analyticsFrom, $analyticsTo] = $periods[$analyticsPeriod];
+            $inPeriod = function ($query, string $column) use ($analyticsFrom, $analyticsTo) {
+                return $query->when($analyticsFrom, fn ($q) => $q->where($column, '>=', $analyticsFrom))
+                    ->where($column, '<=', $analyticsTo);
+            };
+            $analyticsPeriods = collect($periods)->map(fn ($period) => $period[0])->all();
             $eventTotals = DB::table('business_analytics_events')
                 ->whereIn('bae_cmp_id', $ownedBusinessIds)
-                ->where('bae_created_at', '>=', $analyticsSince)
+                ->tap(fn ($q) => $inPeriod($q, 'bae_created_at'))
                 ->selectRaw("SUM(CASE WHEN bae_event_type = 'view' THEN 1 ELSE 0 END) as page_views")
                 ->selectRaw("SUM(CASE WHEN bae_event_type IN ('call', 'whatsapp', 'email', 'share') THEN 1 ELSE 0 END) as contact_clicks")
                 ->first();
             $uniqueVisitors = DB::table('business_analytics_events')
                 ->whereIn('bae_cmp_id', $ownedBusinessIds)
                 ->where('bae_event_type', 'view')
-                ->where('bae_created_at', '>=', $analyticsSince)
+                ->tap(fn ($q) => $inPeriod($q, 'bae_created_at'))
                 ->select(['bae_um_id', 'bae_device_id'])
                 ->get()
                 ->map(fn ($event) => $event->bae_um_id ? 'member:'.$event->bae_um_id : 'device:'.($event->bae_device_id ?: 'anonymous'))
@@ -129,27 +147,28 @@ class DashboardController extends Controller
             $enquiries = DB::table('enquiry_to_user as etu')
                 ->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
                 ->whereIn('etu.etu_cmp_id', $ownedBusinessIds)
-                ->where('em.enm_created_at', '>=', $analyticsSince)
+                ->tap(fn ($q) => $inPeriod($q, 'em.enm_created_at'))
+                ->count();
+            // References given is a lifetime member total, independent of the page analytics period.
+            $referencesGiven = DB::table('enquiry_to_user as etu')
+                ->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
+                ->where('etu.etu_um_id', $member->um_id)
+                ->where('em.enm_is_myself', 0)
+                ->distinct()->count('etu.etu_enm_id');
+            // Meetings done is a lifetime member total, independent of the page analytics period.
+            $meetingsDone = DB::table('member_meetings')
+                ->where(fn ($query) => $query->where('reported_by_um_id', $member->um_id)->orWhere('counterpart_um_id', $member->um_id))
+                ->where('meeting_at', '<=', now())
                 ->count();
             $businessAnalytics = [
                 'page_views' => (int) ($eventTotals->page_views ?? 0),
                 'unique_visitors' => $uniqueVisitors,
                 'contact_clicks' => (int) ($eventTotals->contact_clicks ?? 0),
                 'enquiries' => $enquiries,
+                'references_given' => $referencesGiven,
+                'meetings_done' => $meetingsDone,
             ];
 
-            $recentInteractions = DB::table('business_analytics_events as bae')
-                ->join('companies_details as cd', 'cd.cmpd_cmp_id', '=', 'bae.bae_cmp_id')
-                ->leftJoin('user_master as um', 'um.um_id', '=', 'bae.bae_um_id')
-                ->leftJoin('user_details as ud', 'ud.ud_um_id', '=', 'bae.bae_um_id')
-                ->whereIn('bae.bae_cmp_id', $ownedBusinessIds)
-                ->whereIn('bae.bae_event_type', ['view', 'call', 'whatsapp', 'email', 'share'])
-                ->orderByDesc('bae.bae_created_at')->limit(15)
-                ->get([
-                    'bae.bae_event_type', 'bae.bae_created_at', 'bae.bae_source',
-                    'cd.cmpd_name', 'um.um_email_id', 'um.um_mobile_no',
-                    'ud.ud_first_name', 'ud.ud_last_name',
-                ]);
         }
 
         $search = trim((string) $request->query('search'));
@@ -215,18 +234,17 @@ class DashboardController extends Controller
         $communityEnquiries = EnquiryMaster::query()
             ->where('enm_type', 2)->where('enm_status', 1)
             ->latest('enm_created_at')->limit(5)->get();
-
-        $recentBusinesses = CompaniesMaster::query()
-            ->with('details')
-            ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
-            ->whereDoesntHave('users', fn ($query) => $query->where('user_master.um_id', $member->um_id))
-            ->orderByDesc('cmp_id')->limit(5)->get();
-
-        $recentBusinesses->each(fn (CompaniesMaster $business) => $business->details?->ensurePublicSlug());
+        // Which of these requests were posted by the signed-in member (shown as "(myself)").
+        $ownCommunityIds = DB::table('enquiry_to_user')
+            ->whereIn('etu_enm_id', $communityEnquiries->pluck('enm_id'))
+            ->where('etu_um_id', $member->um_id)
+            ->pluck('etu_enm_id')->map(fn ($id) => (int) $id)->all();
 
         $businessOptions = CompaniesMaster::query()
             ->with('details:cmpd_id,cmpd_cmp_id,cmpd_name')
             ->whereHas('details', fn ($query) => $query->where('cmpd_status', 1))
+            // a member cannot send a direct enquiry to their own business
+            ->whereDoesntHave('users', fn ($query) => $query->where('user_master.um_id', $member->um_id))
             ->orderBy('cmp_id')->get();
 
         $reviewedBusinessIds = ReviewMaster::query()
@@ -304,12 +322,183 @@ class DashboardController extends Controller
             ->where(fn ($query) => $query->where('reported_by_um_id', $member->um_id)
                 ->orWhere('counterpart_um_id', $member->um_id))
             ->latest('meeting_at')
-            ->limit(5)
             ->get();
 
+        // Lifetime totals shown as big numbers on the quick-action cards (4 small indexed counts).
+        $quickCounts = [
+            'references' => DB::table('enquiry_to_user as etu')->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
+                ->where('etu.etu_um_id', $member->um_id)->where('em.enm_is_myself', 0)->distinct()->count('etu.etu_enm_id'),
+            'enquiries' => DB::table('enquiry_to_user as etu')->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
+                ->where('etu.etu_um_id', $member->um_id)->where('em.enm_is_myself', 1)->distinct()->count('etu.etu_enm_id'),
+            'reviews' => DB::table('reviews')->where('rev_um_id', $member->um_id)->count(),
+            'meetings' => DB::table('member_meetings')
+                ->where(fn ($query) => $query->where('reported_by_um_id', $member->um_id)->orWhere('counterpart_um_id', $member->um_id))
+                ->where('meeting_at', '<=', now())->count(),
+        ];
+
         return view('Member.Dashboard.index', compact(
-            'member', 'adminAccess', 'canManageBusinesses', 'recentInteractions', 'businessAnalytics', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'recentBusinesses', 'businessOptions', 'reviewBusinessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
+            'ownCommunityIds',
+            'quickCounts',
+            'member', 'adminAccess', 'canManageBusinesses', 'businessAnalytics', 'analyticsPeriod', 'analyticsPeriods', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'businessOptions', 'reviewBusinessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
         ));
+    }
+
+    /** "My enquiries" / "My reviews" lists for the dashboard eye buttons, 10 at a time (JSON). */
+    public function myList(Request $request, string $type)
+    {
+        abort_unless(in_array($type, ['enquiries', 'reviews'], true), 404);
+        $member = $request->user('member');
+
+        if ($type === 'enquiries') {
+            $items = DB::table('enquiry_to_user as etu')
+                ->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
+                ->where('etu.etu_um_id', $member->um_id)->where('em.enm_is_myself', 1)
+                ->orderByDesc('em.enm_created_at')->orderByDesc('em.enm_id')
+                ->simplePaginate(10, ['em.enm_id', 'em.enm_subject', 'em.enm_description', 'em.enm_status', 'em.enm_created_at as created_at', 'etu.etu_cmp_id']);
+            $names = DB::table('companies_details')->whereIn('cmpd_cmp_id', $items->getCollection()->pluck('etu_cmp_id')->filter()->unique())->pluck('cmpd_name', 'cmpd_cmp_id');
+            $items->setCollection($items->getCollection()->map(function ($row) use ($names) {
+                $row->to_label = (int) $row->etu_cmp_id === 0 ? 'all members' : ($names[$row->etu_cmp_id] ?? 'a business');
+                return $row;
+            }));
+        } else {
+            $items = DB::table('reviews as r')
+                ->leftJoin('companies_details as cd', 'cd.cmpd_cmp_id', '=', 'r.rev_cmp_id')
+                ->where('r.rev_um_id', $member->um_id)
+                ->orderByDesc('r.created_at')->orderByDesc('r.rev_id')
+                ->simplePaginate(10, ['r.rev_id', 'r.rev_rating', 'r.rev_comment', 'r.created_at', 'cd.cmpd_name as business_name']);
+        }
+
+        return response()->json([
+            'html' => view('Member.Dashboard.partials.my-list', compact('items', 'type'))->render(),
+            'next' => $items->hasMorePages() ? $items->nextPageUrl() : null,
+            'empty' => $items->isEmpty() && $items->onFirstPage(),
+        ]);
+    }
+
+    /** References this member has given, 10 at a time, for the dashboard pop-up (JSON). */
+    public function referencesGiven(Request $request)
+    {
+        $member = $request->user('member');
+        $references = DB::table('enquiry_to_user as etu')
+            ->join('enquiry_master as em', 'em.enm_id', '=', 'etu.etu_enm_id')
+            ->where('etu.etu_um_id', $member->um_id)
+            ->where('em.enm_is_myself', 0)
+            ->orderByDesc('em.enm_created_at')->orderByDesc('em.enm_id')
+            ->simplePaginate(10, ['em.enm_id', 'em.enm_subject', 'em.enm_name', 'em.enm_phone', 'em.enm_email', 'em.enm_description', 'em.enm_created_at', 'etu.etu_cmp_id']);
+
+        // Recipient labels for just this batch: "Owner - Business (Category)".
+        $rows = $references->getCollection();
+        $companyIds = $rows->pluck('etu_cmp_id')->filter()->unique()->values();
+        $names = DB::table('companies_details')->whereIn('cmpd_cmp_id', $companyIds)->pluck('cmpd_name', 'cmpd_cmp_id');
+        $owners = DB::table('user_companies_map as ucm')->leftJoin('user_details as ud', 'ud.ud_um_id', '=', 'ucm.ucm_um_id')
+            ->whereIn('ucm.ucm_cmp_id', $companyIds)->get(['ucm.ucm_cmp_id', 'ud.ud_first_name', 'ud.ud_last_name'])->keyBy('ucm_cmp_id');
+        $categories = DB::table('categories_to_companies as ctc')->join('business_category_master as bcm', 'bcm.bcm_id', '=', 'ctc.ctc_bcm_id')
+            ->whereIn('ctc.ctc_cmp_id', $companyIds)->get(['ctc.ctc_cmp_id', 'bcm.name'])->groupBy('ctc_cmp_id');
+        $references->setCollection($rows->map(function ($row) use ($names, $owners, $categories) {
+            if ((int) $row->etu_cmp_id === 0) {
+                $row->recipient_label = 'All members';
+                return $row;
+            }
+            $owner = $owners[$row->etu_cmp_id] ?? null;
+            $ownerName = trim(($owner->ud_first_name ?? '').' '.($owner->ud_last_name ?? ''));
+            $category = optional($categories->get($row->etu_cmp_id))->first()?->name;
+            $row->recipient_label = trim(($ownerName ? $ownerName.' - ' : '').($names[$row->etu_cmp_id] ?? 'Business #'.$row->etu_cmp_id).($category ? " ({$category})" : ''));
+            $row->recipient_business = $names[$row->etu_cmp_id] ?? 'Business #'.$row->etu_cmp_id;
+            $row->recipient_owner = $ownerName;
+            $row->recipient_category = $category;
+            return $row;
+        }));
+
+        return response()->json([
+            'html' => view('Member.Dashboard.partials.references-given', compact('references'))->render(),
+            'next' => $references->hasMorePages() ? $references->nextPageUrl() : null,
+            'empty' => $references->isEmpty() && $references->onFirstPage(),
+        ]);
+    }
+
+    public function businessActivity(Request $request)
+    {
+        $member = $request->user('member');
+        // The owner's businesses (id => name, logo); the page shows one business at a time.
+        $ownedBusinesses = DB::table('user_companies_map as ucm')
+            ->join('companies_details as cd', 'cd.cmpd_cmp_id', '=', 'ucm.ucm_cmp_id')
+            ->where('ucm.ucm_um_id', $member->um_id)
+            ->orderBy('cd.cmpd_name')
+            ->get(['cd.cmpd_cmp_id as id', 'cd.cmpd_name as name', 'cd.cmpd_logo as logo']);
+        $selectedBusiness = $ownedBusinesses->firstWhere('id', (int) $request->query('business')) ?? $ownedBusinesses->first();
+        $businessIds = collect($selectedBusiness ? [$selectedBusiness->id] : []);
+        $since = now()->subDays(30)->startOfDay();
+        $types = ['view', 'call', 'whatsapp', 'email', 'share'];
+
+        // Feed: last 30 days only, served by the (bae_cmp_id, bae_event_type, bae_created_at) index;
+        // simplePaginate avoids a COUNT(*) over the whole history. 20 rows per lazy-loaded batch.
+        $interactions = DB::table('business_analytics_events')
+            ->whereIn('bae_cmp_id', $businessIds)
+            ->whereIn('bae_event_type', $types)
+            ->where('bae_created_at', '>=', $since)
+            ->orderByDesc('bae_created_at')
+            ->orderByDesc('bae_id')
+            ->simplePaginate(20, ['bae_id', 'bae_cmp_id', 'bae_um_id', 'bae_event_type', 'bae_created_at', 'bae_source'])
+            ->appends(['business' => $selectedBusiness?->id]);
+
+        // Names/contacts only for the rows in this batch.
+        $rows = $interactions->getCollection();
+        $userIds = $rows->pluck('bae_um_id')->filter()->unique()->values();
+        $businessNames = DB::table('companies_details')->whereIn('cmpd_cmp_id', $rows->pluck('bae_cmp_id')->unique())->pluck('cmpd_name', 'cmpd_cmp_id');
+        $users = $userIds->isEmpty() ? collect() : DB::table('user_master')->whereIn('um_id', $userIds)->get(['um_id', 'um_email_id', 'um_mobile_no'])->keyBy('um_id');
+        $details = $userIds->isEmpty() ? collect() : DB::table('user_details')->whereIn('ud_um_id', $userIds)->get(['ud_um_id', 'ud_first_name', 'ud_last_name', 'ud_whatsapp_no'])->keyBy('ud_um_id');
+        $interactions->setCollection($rows->map(function ($row) use ($businessNames, $users, $details) {
+            $user = $users[$row->bae_um_id] ?? null;
+            $detail = $details[$row->bae_um_id] ?? null;
+            $row->cmpd_name = $businessNames[$row->bae_cmp_id] ?? 'Your business';
+            $row->um_email_id = $user->um_email_id ?? null;
+            $row->um_mobile_no = $user->um_mobile_no ?? null;
+            $row->ud_first_name = $detail->ud_first_name ?? null;
+            $row->ud_last_name = $detail->ud_last_name ?? null;
+            // wa.me link: WhatsApp number from the profile, else the mobile; 10-digit numbers get +91.
+            $wa = preg_replace('/\D+/', '', (string) (($detail->ud_whatsapp_no ?? null) ?: ($user->um_mobile_no ?? '')));
+            $row->whatsapp_url = strlen($wa) >= 10 ? 'https://wa.me/'.(strlen($wa) === 10 ? '91'.$wa : $wa) : null;
+
+            return $row;
+        }));
+
+        $lastDay = (string) $request->query('last_day', '');
+
+        // Lazy-load request from the page: return just the next batch of items.
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'html' => view('Member.BusinessActivity.partials.items', compact('interactions', 'lastDay'))->render(),
+                'next' => $interactions->hasMorePages() ? $interactions->nextPageUrl() : null,
+            ]);
+        }
+
+        // Chart summary: one grouped query (at most 30 days x 5 types rows), cached for 5 minutes.
+        $summary = Cache::remember('member-activity-summary:'.$member->um_id.':'.md5($businessIds->implode(',')), 300, function () use ($businessIds, $since, $types) {
+            $grouped = DB::table('business_analytics_events')
+                ->whereIn('bae_cmp_id', $businessIds)
+                ->whereIn('bae_event_type', $types)
+                ->where('bae_created_at', '>=', $since)
+                ->selectRaw('DATE(bae_created_at) as day, bae_event_type as type, COUNT(*) as total')
+                ->groupBy('day', 'type')
+                ->get();
+            $days = collect(range(29, 0))->mapWithKeys(fn ($ago) => [now()->subDays($ago)->toDateString() => 0])->all();
+            foreach ($grouped as $row) {
+                if (isset($days[$row->day])) {
+                    $days[$row->day] += (int) $row->total;
+                }
+            }
+            $byType = collect($types)->mapWithKeys(fn ($type) => [$type => (int) $grouped->where('type', $type)->sum('total')])->all();
+            $members = DB::table('business_analytics_events')
+                ->whereIn('bae_cmp_id', $businessIds)
+                ->whereIn('bae_event_type', $types)
+                ->where('bae_created_at', '>=', $since)
+                ->whereNotNull('bae_um_id')
+                ->distinct()->count('bae_um_id');
+
+            return ['days' => $days, 'byType' => $byType, 'total' => array_sum($byType), 'members' => $members];
+        });
+
+        return view('Member.BusinessActivity.index', compact('interactions', 'summary', 'lastDay', 'ownedBusinesses', 'selectedBusiness'));
     }
 
     public function openAdminDashboard(Request $request): RedirectResponse
@@ -351,20 +540,38 @@ class DashboardController extends Controller
 
     public function storeEnquiry(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        if ($request->filled('requirement')) {
+            $requirement = trim((string) $request->input('requirement'));
+            $request->merge([
+                'subject' => Str::limit(preg_replace('/\s+/', ' ', $requirement), 250, ''),
+                'description' => $requirement,
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), [
             'subject' => ['required', 'string', 'max:250'],
             'description' => ['required', 'string', 'max:2000'],
             'visibility' => ['required', 'in:public,private'],
             'company_id' => ['nullable', 'integer', 'exists:companies_master,cmp_id'],
         ]);
 
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput()->with('open_dialog', 'requirementModal')->with('requirement_tab', 'own');
+        }
+
+        $data = $validator->validated();
+
         if ($data['visibility'] === 'private' && empty($data['company_id'])) {
-            return back()->withErrors(['company_id' => 'Choose a business for a private enquiry.'])->withInput();
+            return back()->withErrors(['company_id' => 'Choose a business for a private enquiry.'])->withInput()->with('open_dialog', 'requirementModal')->with('requirement_tab', 'own');
         }
 
         /** @var UserMaster $member */
         $member = Auth::guard('member')->user();
         $detail = $member->userDetail;
+
+        if ($data['visibility'] === 'private' && $this->ownsBusiness($member, (int) $data['company_id'])) {
+            return back()->withErrors(['company_id' => 'You cannot send an enquiry to your own business.'])->withInput()->with('open_dialog', 'requirementModal')->with('requirement_tab', 'own');
+        }
 
         DB::transaction(function () use ($data, $member, $detail) {
             $enquiry = EnquiryMaster::create([
@@ -505,8 +712,19 @@ class DashboardController extends Controller
         return back()->with('success', 'Your review has been published successfully.');
     }
 
+    /** True when the member is linked to (owns) the given business. */
+    private function ownsBusiness(?UserMaster $member, int $companyId): bool
+    {
+        return $member && $companyId > 0 && DB::table('user_companies_map')
+            ->where('ucm_um_id', $member->um_id)->where('ucm_cmp_id', $companyId)->exists();
+    }
+
     public function storeReferral(Request $request): RedirectResponse
     {
+        if ($request->filled('requirement')) {
+            $request->merge(['note' => trim((string) $request->input('requirement'))]);
+        }
+
         $validator = Validator::make($request->all(), [
             'audience' => ['required', 'in:all_members,individual'],
             'referral_company_id' => ['nullable', 'integer', 'exists:companies_master,cmp_id'],
@@ -520,10 +738,14 @@ class DashboardController extends Controller
             if ($request->input('audience') === 'individual' && !$request->filled('referral_company_id')) {
                 $validator->errors()->add('referral_company_id', 'Choose a business for an individual reference.');
             }
+            if ($request->input('audience') === 'individual' && $request->filled('referral_company_id')
+                && $this->ownsBusiness(Auth::guard('member')->user(), (int) $request->input('referral_company_id'))) {
+                $validator->errors()->add('referral_company_id', 'You cannot share a reference with your own business.');
+            }
         });
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput()->with('open_dialog', 'referralModal');
+            return back()->withErrors($validator)->withInput()->with('open_dialog', 'requirementModal')->with('requirement_tab', 'someone');
         }
 
         $data = $validator->validated();

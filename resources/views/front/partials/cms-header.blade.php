@@ -31,4 +31,16 @@
 </header>
 <style>
 .cms-nav .cms-login{margin-left:7px;padding:10px 16px;color:#fff;background:#397ef6}.cms-nav .cms-login:hover{color:#fff;background:#2868dc}.cms-nav .cms-visitor{padding:9px 15px;border:1px solid #397ef6;color:#2868dc;background:#fff}.cms-nav .cms-visitor:hover{color:#fff;background:#397ef6}.cms-account{display:flex;align-items:center;gap:9px;margin-left:7px;padding-left:10px;border-left:1px solid #e3e9f1}.cms-account-person{display:flex;align-items:center;gap:8px;min-width:0}.cms-account-avatar{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:#edf4ff;color:#397ef6;font-size:10px;font-weight:800}.cms-account-details{min-width:0}.cms-account-name{display:block;max-width:130px;overflow:hidden;color:#263752;font-size:12px;font-weight:800;text-overflow:ellipsis;white-space:nowrap}.cms-nav .cms-dashboard{padding:8px 12px;border:1px solid #172b4d;background:#172b4d;color:#fff;font-size:11px;font-weight:800}.cms-nav .cms-dashboard:hover{border-color:#223e6d;background:#223e6d;color:#fff}.cms-nav .cms-logout{min-height:0;padding:3px 0 0;color:#68768b;font-size:10px}.cms-nav .cms-logout:hover{color:#b42318;background:transparent}@media(max-width:800px){.cms-nav .cms-login{margin-left:0;text-align:center}.cms-nav .cms-visitor{text-align:center}.cms-account{justify-content:space-between;gap:14px;margin:4px 0 0;padding:14px;border-top:1px solid #e6ebf2;border-left:0;border-radius:0 0 8px 8px;background:#f8faff}.cms-account-person{min-width:0}.cms-account-avatar{width:42px;height:42px;flex-basis:42px;border-radius:12px;font-size:12px}.cms-account-name{max-width:220px;font-size:13px}.cms-nav .cms-logout{display:inline-flex;min-height:24px;padding:3px 0 0;font-size:11px}.cms-nav .cms-dashboard{flex:0 0 auto;min-height:42px;padding:10px 14px;border-radius:9px;font-size:12px}}
+
+/* tablet / small laptop: menu has too many links to fit, so use the hamburger up to 1199px */
+@media(min-width:801px) and (max-width:1199.98px){
+.cms-header{position:sticky}
+.cms-nav{position:absolute;top:100%;right:24px;left:auto;width:340px;display:none;align-items:stretch;flex-direction:column;gap:2px;padding:9px;border:1px solid #e3e8f0;border-radius:10px;background:#fff;box-shadow:0 12px 30px rgba(30,45,70,.12)}
+.cms-nav.open{display:flex}
+.cms-menu-toggle{display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:8px;color:#23324b;cursor:pointer}
+.cms-nav a{display:flex;align-items:center;min-height:44px;padding:12px 14px}
+.cms-nav .cms-login,.cms-nav .cms-visitor{margin-left:0;justify-content:center;text-align:center}
+.cms-dropdown{position:static;display:block;margin-left:14px;border:0;box-shadow:none}
+.cms-account{justify-content:space-between;gap:14px;margin:4px 0 0;padding:14px;border-top:1px solid #e6ebf2;border-left:0;border-radius:0 0 8px 8px;background:#f8faff}
+}
 </style>

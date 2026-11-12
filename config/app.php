@@ -19,6 +19,11 @@ return [
     'name' => env('APP_NAME', 'Laravel'),
 
     /*
+    | Browser tab title used on every page (public site, member area and admin).
+    */
+    'page_title' => env('APP_PAGE_TITLE', 'Networx - Refer. Rise. Repeat - A business networking platform'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------

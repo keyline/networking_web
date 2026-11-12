@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Build your business page · Networx</title>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ config('app.page_title') }}</title>
 <style>
 /* Responsive containment for the portfolio editor. Content and behaviour stay unchanged. */
 html,body{width:100%;max-width:100%;overflow-x:hidden}

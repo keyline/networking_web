@@ -22,8 +22,13 @@ class MemberMeetingRegistrationTest extends TestCase
 
         $this->actingAs($reporter, 'member')->get(route('dashboard.index'))
             ->assertOk()
-            ->assertSee('data-open="meetingModal">Register</button>', false)
-            ->assertSee('Register member meeting')
+            ->assertSee('data-open="meetingListModal" aria-label="View my meetings"', false)
+            ->assertSee('qa-card qa-review', false)
+            ->assertSee('Recommend a member business')
+            ->assertSee('qa-card qa-meeting', false)
+            ->assertSee('Log a meeting')
+            ->assertSee('My meetings')
+            ->assertDontSee('<h2>Meetings</h2>', false)
             ->assertSee('Meeting Counterpart');
 
         $this->actingAs($reporter, 'member')->post(route('member.meetings.store'), [
@@ -49,7 +54,7 @@ class MemberMeetingRegistrationTest extends TestCase
 
         $this->actingAs($reporter, 'member')->get(route('dashboard.index'))
             ->assertOk()
-            ->assertSee('Recent member meetings')
+            ->assertSee('My meetings')
             ->assertSee('Kolkata office')
             ->assertSee('Exchange two introductions next week.');
     }
@@ -65,8 +70,10 @@ class MemberMeetingRegistrationTest extends TestCase
         $this->actingAs($guest, 'member')->get(route('dashboard.index'))
             ->assertOk()
             ->assertDontSee('Register a meeting')
+            ->assertDontSee('aria-label="View meetings"', false)
+            ->assertDontSee('aria-label="Add meeting"', false)
             ->assertDontSee('aria-label="Quick actions"', false)
-            ->assertSee('Find people');
+            ->assertSee('My enquiries');
 
         $this->actingAs($guest, 'member')->post(route('member.meetings.store'), [
             'counterpart_member_id' => $counterpart->um_id,

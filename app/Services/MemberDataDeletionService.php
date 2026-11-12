@@ -76,6 +76,78 @@ class MemberDataDeletionService
         $this->deleteFiles($files, $companyIds);
     }
 
+    /**
+     * Activity that blocks deleting a business, keyed by company id:
+     * [cmp_id => ['references' => n, 'reviews' => n, 'meetings' => n, 'chapters' => n]].
+     * A fixed number of grouped queries for the whole list.
+     */
+    public function businessActivity(array $companyIds): array
+    {
+        $companyIds = array_values(array_unique(array_map('intval', $companyIds)));
+        if (! $companyIds) {
+            return [];
+        }
+        $owners = DB::table('user_companies_map')->whereIn('ucm_cmp_id', $companyIds)->get(['ucm_cmp_id', 'ucm_um_id']);
+        $ownerIds = $owners->pluck('ucm_um_id')->unique()->values()->all();
+        $refs = DB::table('enquiry_to_user')->whereIn('etu_cmp_id', $companyIds)->selectRaw('etu_cmp_id as id, COUNT(*) as n')->groupBy('etu_cmp_id')->pluck('n', 'id');
+        $legacy = DB::table('enquiries')->whereIn('company_id', $companyIds)->selectRaw('company_id as id, COUNT(*) as n')->groupBy('company_id')->pluck('n', 'id');
+        $reviews = DB::table('reviews')->whereIn('rev_cmp_id', $companyIds)->selectRaw('rev_cmp_id as id, COUNT(*) as n')->groupBy('rev_cmp_id')->pluck('n', 'id');
+        $chapters = DB::table('chapter_members')->whereIn('company_id', $companyIds)->whereIn('status', ['invited', 'active'])->selectRaw('company_id as id, COUNT(*) as n')->groupBy('company_id')->pluck('n', 'id');
+        $meetingsByUser = collect();
+        if ($ownerIds) {
+            foreach (['reported_by_um_id', 'counterpart_um_id'] as $column) {
+                DB::table('member_meetings')->whereIn($column, $ownerIds)->selectRaw("{$column} as id, COUNT(*) as n")->groupBy($column)->get()
+                    ->each(function ($row) use ($meetingsByUser) { $meetingsByUser[$row->id] = ($meetingsByUser[$row->id] ?? 0) + (int) $row->n; });
+            }
+        }
+        $result = [];
+        foreach ($companyIds as $id) {
+            $meetings = $owners->where('ucm_cmp_id', $id)->sum(fn ($o) => $meetingsByUser[$o->ucm_um_id] ?? 0);
+            $result[$id] = [
+                'references' => (int) ($refs[$id] ?? 0) + (int) ($legacy[$id] ?? 0),
+                'reviews' => (int) ($reviews[$id] ?? 0),
+                'meetings' => (int) $meetings,
+                'chapters' => (int) ($chapters[$id] ?? 0),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Delete one business that has no activity. Owner accounts are kept; an owner left
+     * without any business becomes a Guest (user type 3).
+     *
+     * @return array<int> ids of owners converted to guest
+     */
+    public function deleteLinkedBusiness(CompaniesMaster $business): array
+    {
+        $companyId = (int) $business->cmp_id;
+        $activity = $this->businessActivity([$companyId])[$companyId];
+        if (array_sum($activity) > 0) {
+            throw new \RuntimeException('This business has references, reviews, meetings or chapter memberships and cannot be deleted.');
+        }
+        $files = $this->collectFiles(0, [$companyId]);
+        $guests = [];
+
+        DB::transaction(function () use ($companyId, &$guests) {
+            $ownerIds = DB::table('user_companies_map')->where('ucm_cmp_id', $companyId)->pluck('ucm_um_id')->all();
+            DB::table('user_companies_map')->where('ucm_cmp_id', $companyId)->delete();
+            $this->deleteBusinessRows([$companyId]);
+            foreach ($ownerIds as $ownerId) {
+                if (! DB::table('user_companies_map')->where('ucm_um_id', $ownerId)->exists()) {
+                    DB::table('user_master')->where('um_id', $ownerId)->update(['um_utm_id' => 3]);
+                    $guests[] = (int) $ownerId;
+                }
+            }
+        });
+
+        $this->deleteFiles($files, [$companyId]);
+        \App\Services\BusinessSearchIndex::touch([$companyId]);
+
+        return $guests;
+    }
+
     public function deleteOrphanBusiness(CompaniesMaster $business): void
     {
         $companyId = (int) $business->cmp_id;
@@ -85,30 +157,34 @@ class MemberDataDeletionService
         $companyIds = [$companyId];
         $files = $this->collectFiles(0, $companyIds);
 
-        DB::transaction(function () use ($companyIds) {
-            DB::table('chapter_members')->whereIn('company_id', $companyIds)->delete();
-            DB::table('business_analytics_events')->whereIn('bae_cmp_id', $companyIds)->delete();
-            DB::table('company_click_master')->whereIn('ccm_cmp_id', $companyIds)->delete();
-            DB::table('reviews')->whereIn('rev_cmp_id', $companyIds)->delete();
-            DB::table('enquiries')->whereIn('company_id', $companyIds)->delete();
-            $enquiryIds = DB::table('enquiry_to_user')->whereIn('etu_cmp_id', $companyIds)->pluck('etu_enm_id');
-            DB::table('enquiry_to_user')->whereIn('etu_cmp_id', $companyIds)->delete();
-            DB::table('enquiry_master')->whereIn('enm_id', $enquiryIds)
-                ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('enquiry_to_user')->whereColumn('etu_enm_id', 'enquiry_master.enm_id'))
-                ->delete();
-            DB::table('business_portfolio_media')->whereIn('company_id', $companyIds)->delete();
-            DB::table('business_portfolio_items')->whereIn('company_id', $companyIds)->delete();
-            DB::table('business_portfolios')->whereIn('company_id', $companyIds)->delete();
-            DB::table('categories_to_companies')->whereIn('ctc_cmp_id', $companyIds)->delete();
-            DB::table('company_sociallink')->whereIn('cs_cmp_id', $companyIds)->delete();
-            DB::table('company_images')->whereIn('ci_cmp_id', $companyIds)->delete();
-            DB::table('user_devices')->whereIn('company_id', $companyIds)->delete();
-            DB::table('user_activities')->whereIn('company_id', $companyIds)->delete();
-            DB::table('companies_details')->whereIn('cmpd_cmp_id', $companyIds)->delete();
-            DB::table('companies_master')->whereIn('cmp_id', $companyIds)->delete();
-        });
+        DB::transaction(fn () => $this->deleteBusinessRows($companyIds));
 
         $this->deleteFiles($files, $companyIds);
+    }
+
+    /** Remove every row that belongs to the given businesses (call inside a transaction). */
+    private function deleteBusinessRows(array $companyIds): void
+    {
+        DB::table('chapter_members')->whereIn('company_id', $companyIds)->delete();
+        DB::table('business_analytics_events')->whereIn('bae_cmp_id', $companyIds)->delete();
+        DB::table('company_click_master')->whereIn('ccm_cmp_id', $companyIds)->delete();
+        DB::table('reviews')->whereIn('rev_cmp_id', $companyIds)->delete();
+        DB::table('enquiries')->whereIn('company_id', $companyIds)->delete();
+        $enquiryIds = DB::table('enquiry_to_user')->whereIn('etu_cmp_id', $companyIds)->pluck('etu_enm_id');
+        DB::table('enquiry_to_user')->whereIn('etu_cmp_id', $companyIds)->delete();
+        DB::table('enquiry_master')->whereIn('enm_id', $enquiryIds)
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('enquiry_to_user')->whereColumn('etu_enm_id', 'enquiry_master.enm_id'))
+            ->delete();
+        DB::table('business_portfolio_media')->whereIn('company_id', $companyIds)->delete();
+        DB::table('business_portfolio_items')->whereIn('company_id', $companyIds)->delete();
+        DB::table('business_portfolios')->whereIn('company_id', $companyIds)->delete();
+        DB::table('categories_to_companies')->whereIn('ctc_cmp_id', $companyIds)->delete();
+        DB::table('company_sociallink')->whereIn('cs_cmp_id', $companyIds)->delete();
+        DB::table('company_images')->whereIn('ci_cmp_id', $companyIds)->delete();
+        DB::table('user_devices')->whereIn('company_id', $companyIds)->delete();
+        DB::table('user_activities')->whereIn('company_id', $companyIds)->delete();
+        DB::table('companies_details')->whereIn('cmpd_cmp_id', $companyIds)->delete();
+        DB::table('companies_master')->whereIn('cmp_id', $companyIds)->delete();
     }
 
     private function collectFiles(int $userId, array $companyIds): array

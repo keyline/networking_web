@@ -65,6 +65,7 @@ class ClientController extends Controller
             ->whereHas('details')
             ->whereHas('owner')
             ->get();
+        $activity = app(MemberDataDeletionService::class)->businessActivity($list->pluck('cmp_id')->all());
         foreach ($list  as $row) {
             if (!is_null($row->owner)) {
                 $tagList = [];
@@ -98,6 +99,7 @@ class ClientController extends Controller
                     'pincode' => $row->details?->cmpd_pincode ?? '',
                     'status' => $row->details?->cmpd_status ?? 0,
                     'sponsored' => (bool) ($row->details?->cmpd_is_sponsored ?? false),
+                    'activity' => $activity[$row->cmp_id] ?? [],
                     'owner_name' => trim(($userDetails->ud_first_name ?? '').' '.($userDetails->ud_last_name ?? '')),
                     'tagCount' => implode(', ', $tagList),
                 ];
@@ -886,6 +888,23 @@ class ClientController extends Controller
         $business->update(['cmpd_status' => 1, 'cmpd_is_document_valid' => '1']);
 
         return back()->with('success_message', 'Business approved and added to the public member directory.');
+    }
+
+    /** Delete a business with no activity; the owner is kept and becomes a guest if it was their last business. */
+    public function deleteBusiness(CompaniesMaster $company, MemberDataDeletionService $deletionService)
+    {
+        $name = CompaniesDetail::where('cmpd_cmp_id', $company->cmp_id)->value('cmpd_name') ?: 'Business #'.$company->cmp_id;
+        try {
+            $guests = $deletionService->deleteLinkedBusiness($company);
+        } catch (\RuntimeException $exception) {
+            return back()->with('error_message', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            Log::error('Business deletion failed.', ['company_id' => $company->cmp_id, 'exception' => $exception]);
+
+            return back()->with('error_message', 'The business could not be deleted. Nothing was removed.');
+        }
+
+        return back()->with('success_message', $name.' was deleted.'.($guests ? ' Its owner now has a guest account.' : ''));
     }
 
     /** Reject a pending member (status 3) and every business of theirs that is not approved yet. */

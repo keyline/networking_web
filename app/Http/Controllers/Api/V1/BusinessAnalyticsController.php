@@ -331,7 +331,7 @@ class BusinessAnalyticsController extends Controller
                 'event_type' => $row->bae_event_type,
                 'source' => $row->bae_source ?: 'UNKNOWN',
                 'created_at' => $row->bae_created_at,
-                'user_name' => trim(($row->ud_first_name ?? '').' '.($row->ud_last_name ?? '')) ?: ($row->um_email_id ? 'Registered user' : 'Public visitor'),
+                'user_name' => trim(($row->ud_first_name ?? '').' '.($row->ud_last_name ?? '')) ?: ($row->um_email_id ? 'Registered user' : 'Unregistered visitor'),
                 'user_email' => $row->um_email_id,
                 'user_mobile' => $row->um_mobile_no,
             ])->all();

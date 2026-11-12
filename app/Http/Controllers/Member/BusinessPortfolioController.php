@@ -22,6 +22,13 @@ use Illuminate\View\View;
 
 class BusinessPortfolioController extends Controller
 {
+    public function index(Request $request): View
+    {
+        $businesses = $request->user('member')->companies()->with('details')->get();
+
+        return view('Member.BusinessPortfolio.index', compact('businesses'));
+    }
+
     public function edit(Request $request, string $companyToken, PortfolioRouteToken $tokens): View
     {
         $company = $this->companyFromToken($companyToken, $tokens);

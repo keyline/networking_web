@@ -4,7 +4,7 @@
   <!-- Favicons -->
   <link href="<?=env('UPLOADS_URL').$generalSetting->site_favicon?>" rel="icon">
   <!-- Title -->
-  <title><?=$title?></title>
+  <title><?= e(config('app.page_title')) ?></title>
   <!-- Favicon -->
   <link rel="shortcut icon" href="favicon.ico">
   <!-- Font -->
