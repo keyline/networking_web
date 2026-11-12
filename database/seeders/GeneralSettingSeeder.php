@@ -16,12 +16,12 @@ class GeneralSettingSeeder extends Seeder
         GeneralSetting::query()->firstOrCreate(
             ['id' => 1],
             [
-                'site_name' => 'Net-Works',
+                'site_name' => 'Networx',
                 'site_mail' => 'admin@example.com',
                 'system_email' => 'admin@example.com',
                 'site_url' => config('app.url'),
                 'from_email' => 'admin@example.com',
-                'from_name' => 'Net-Works',
+                'from_name' => 'Networx',
             ]
         );
     }

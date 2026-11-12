@@ -1,4 +1,4 @@
--- Net-Works: restore the shared guest account used by the mobile app
+-- Networx: restore the shared guest account used by the mobile app
 --
 -- The mobile app signs in as guest@keylines.net / 123456 on launch so visitors
 -- land on the business list without registering. If this account is missing the

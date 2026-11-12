@@ -90,7 +90,7 @@ class PublicBusinessController extends Controller
             ->withQueryString();
 
         return view('front.members', array_merge($this->siteData(), [
-            'title' => 'Members · Net-Works',
+            'title' => 'Members · Networx',
             'businesses' => $businesses,
             'categories' => BusinessCategoryMaster::where('status', 1)->orderBy('name')->get(),
             'search' => $search,
@@ -309,7 +309,7 @@ class PublicBusinessController extends Controller
         }
         $number = preg_replace('/\D/', '', (string) ($business->cmpd_whatsapp_no ?: $business->cmpd_phone));
         if ($type === 'whatsapp' && $number) {
-            $message = Str::limit((string) $request->query('message', 'Hello, I found your Net-Works business page.'), 500, '');
+            $message = Str::limit((string) $request->query('message', 'Hello, I found your Networx business page.'), 500, '');
             return redirect()->away('https://wa.me/'.$number.'?text='.rawurlencode($message));
         }
 

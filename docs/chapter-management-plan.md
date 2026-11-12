@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Chapters are local operating groups inside Net-Works. Organization membership remains the source of billing eligibility; chapter membership records where a person participates, which business they represent, their role, status, and history.
+Chapters are local operating groups inside Networx. Organization membership remains the source of billing eligibility; chapter membership records where a person participates, which business they represent, their role, status, and history.
 
 ## Operating model
 

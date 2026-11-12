@@ -115,7 +115,7 @@ class MemberController extends Controller
             $user = UserMaster::whereRaw('LOWER(um_email_id) = ?', [strtolower($profile['email'])])
                 ->where('um_status', 2)->first();
             if (!$user) {
-                return redirect()->route('member.index')->withErrors(['google' => 'No active Net-Works account uses this Google email address.']);
+                return redirect()->route('member.index')->withErrors(['google' => 'No active Networx account uses this Google email address.']);
             }
             $user->update(['um_profile_type' => 'G', 'um_social_token' => $profile['sub'] ?? $user->um_social_token]);
             $this->loginService->authenticate($request, $user);

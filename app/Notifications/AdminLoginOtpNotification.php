@@ -22,9 +22,9 @@ class AdminLoginOtpNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Net-Works admin sign-in code')
+            ->subject('Networx admin sign-in code')
             ->greeting('Hello '.$notifiable->name.',')
-            ->line('Use this one-time code to sign in to the Net-Works administration portal:')
+            ->line('Use this one-time code to sign in to the Networx administration portal:')
             ->line('**'.$this->otp.'**')
             ->line('The code expires in 10 minutes. If you did not request it, you can ignore this email.');
     }

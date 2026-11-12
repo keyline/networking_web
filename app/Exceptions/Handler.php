@@ -5,6 +5,7 @@ namespace App\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -29,6 +30,19 @@ class Handler extends ExceptionHandler
             return response()->view('errors.413', [
                 'joinRequest' => $request->is('join'),
             ], 413);
+        });
+
+        $this->renderable(function (HttpException $exception, Request $request) {
+            if ($exception->getStatusCode() !== 419 || ! $request->is('member/*')) {
+                return null;
+            }
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('member.index')->withErrors([
+                'session' => 'Your sign-in page expired. Please try again.',
+            ]);
         });
 
         $this->reportable(function (Throwable $e) {

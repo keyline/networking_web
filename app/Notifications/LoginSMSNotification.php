@@ -56,7 +56,7 @@ class LoginSMSNotification extends Notification
         return (new KeylineSmsService())
                 //->from('ObiWan')
                 ->to($notifiable->um_mobile_no)
-                ->line("Dear {$recipientName}, {$notifiable->um_otp} is your Net-Works login OTP. It expires in 10 minutes. Do not share it with anyone.");
+                ->line("Dear {$recipientName}, {$notifiable->um_otp} is your Networx login OTP. It expires in 10 minutes. Do not share it with anyone.");
         //->line("Do not share this OTP with anyone for security reasons.");
 
 

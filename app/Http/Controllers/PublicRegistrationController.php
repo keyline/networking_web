@@ -152,7 +152,7 @@ class PublicRegistrationController extends Controller
         }
 
         return view('front.guest-register', array_merge($this->viewData(), [
-            'title' => 'Guest registration · Net-Works',
+            'title' => 'Guest registration · Networx',
             'guestMobile' => $request->session()->get('guest_registration_mobile'),
             'guestLoginMode' => $request->session()->get('guest_login_mode'),
             'guestLoginDestination' => $request->session()->get('guest_login_destination'),
@@ -317,7 +317,7 @@ class PublicRegistrationController extends Controller
         $registrationSettings = PublicRegistrationSetting::current();
 
         return [
-            'title' => 'Join Net-Works',
+            'title' => 'Join Networx',
             'generalSetting' => $generalSetting,
             'registrationOpen' => $registrationSettings->enabled,
             'registrationSettings' => $registrationSettings,

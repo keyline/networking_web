@@ -37,7 +37,7 @@ class UserOtpEmailNotify extends Notification
         $name = trim(($notifiable->userDetail?->ud_first_name ?? '').' '.($notifiable->userDetail?->ud_last_name ?? '')) ?: 'Member';
 
         return (new MailMessage())
-                    ->subject('Your Net-Works login OTP')
+                    ->subject('Your Networx login OTP')
                     ->view('email-templates.login-otp', [
                         'name' => $name,
                         'otp' => $notifiable->um_otp,

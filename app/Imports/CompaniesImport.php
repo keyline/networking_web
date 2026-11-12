@@ -23,7 +23,7 @@ class CompaniesImport implements ToModel, WithStartRow, WithChunkReading
         if ($row[3] != '' && $row[6] != '') {
 
             $user = UserMaster::firstOrCreate([
-                        'um_email_id'   => !empty($row[6]) ? $row[6] : 'no-reply@net-works.local',
+                        'um_email_id'   => !empty($row[6]) ? $row[6] : 'no-reply@networx.local',
                         'um_mobile_no'  => $row[3]
                     ], [
                         'um_utm_id' => 2,

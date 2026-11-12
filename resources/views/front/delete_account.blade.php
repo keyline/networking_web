@@ -78,7 +78,7 @@
     <div class="container mt-4">
 
         <h3 class="text-center">
-            <a class="site-home-link" href="{{ url('/') }}" aria-label="Home"><img src="{{ env('UPLOADS_URL') . $generalSetting->site_logo }}" alt="Net-Works"
+            <a class="site-home-link" href="{{ url('/') }}" aria-label="Home"><img src="{{ env('UPLOADS_URL') . $generalSetting->site_logo }}" alt="Networx"
                 class="img-fluid" style="max-width:220px;max-height:100px;width:auto;height:auto"></a>
             <p class="mt-3">Delete Account Request</p>
         </h3>

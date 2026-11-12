@@ -56,7 +56,7 @@ class FrontController extends Controller
         }
 
         $data['generalSetting'] = GeneralSetting::find(1);
-        $data['title'] = $data['generalSetting']->site_name ?? 'Net-Works';
+        $data['title'] = $data['generalSetting']->site_name ?? 'Networx';
         $data['headerNavigation'] = $this->navigationFor('header');
         $data['footerNavigation'] = $this->navigationFor('footer');
         $data['banners'] = Banner::where('status', 1)->orderBy('id')->get()->filter(function ($banner) {

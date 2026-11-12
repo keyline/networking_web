@@ -41,7 +41,7 @@ return new class extends Migration
         $now = now();
         $sectionId = DB::table('homepage_sections')->insertGetId([
             'type' => 'steps',
-            'name' => 'How Net-Works helps',
+            'name' => 'How Networx helps',
             'eyebrow' => 'How it works',
             'title' => 'Build relationships that grow your business',
             'body' => 'A simple path from joining the community to creating valuable business opportunities.',
@@ -71,7 +71,7 @@ return new class extends Migration
             'name' => 'Upcoming events',
             'eyebrow' => 'Community calendar',
             'title' => 'Meet, learn and build meaningful connections',
-            'body' => 'Reserve your place and participate in upcoming Net-Works events.',
+            'body' => 'Reserve your place and participate in upcoming Networx events.',
             'settings' => json_encode(['limit' => 3]),
             'sort_order' => 60,
             'is_active' => true,
@@ -84,7 +84,7 @@ return new class extends Migration
             'name' => 'Join call to action',
             'title' => 'Ready to grow your network?',
             'body' => 'Join the community, connect with trusted members and create new opportunities.',
-            'settings' => json_encode(['button_label' => 'Join Net-Works', 'button_url' => '/join', 'secondary_label' => 'Member login', 'secondary_url' => '/member']),
+            'settings' => json_encode(['button_label' => 'Join Networx', 'button_url' => '/join', 'secondary_label' => 'Member login', 'secondary_url' => '/member']),
             'sort_order' => 100,
             'is_active' => true,
             'created_at' => $now,

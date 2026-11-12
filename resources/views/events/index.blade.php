@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Events | Net-Works</title>
+    <title>Events | Networx</title>
     @include('front.partials.cms-styles')
     <style>
         *{box-sizing:border-box}body{margin:0;background:#f5f7fb;font:15px Arial;color:#18243a}

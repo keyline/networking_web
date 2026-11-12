@@ -1,4 +1,4 @@
--- Net-Works: reset all member and business data
+-- Networx: reset all member and business data
 --
 -- DESTRUCTIVE AND IRREVERSIBLE. Take a database backup before running this file.
 -- This preserves super-admin accounts, the mobile app's shared guest account

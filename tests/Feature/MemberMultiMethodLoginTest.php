@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\User\UserMaster;
 use App\Services\Member\GoogleMemberAuthService;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Hash;
 use Mockery;
 use Tests\TestCase;
@@ -136,5 +139,18 @@ class MemberMultiMethodLoginTest extends TestCase
             ->assertSessionMissing('member_otp_mobile_value')
             ->assertSee('Email OTP')
             ->assertSee('Back to website');
+    }
+
+    public function test_expired_member_login_form_returns_to_a_fresh_login_page(): void
+    {
+        $request = Request::create('/member/send-otp', 'POST');
+        $session = app('session')->driver();
+        $session->start();
+        $request->setLaravelSession($session);
+
+        $response = app(ExceptionHandler::class)->render($request, new TokenMismatchException);
+
+        $this->assertSame(route('member.index'), $response->getTargetUrl());
+        $this->assertTrue($session->get('errors')->has('session'));
     }
 }

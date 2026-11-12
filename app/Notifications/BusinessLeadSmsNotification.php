@@ -16,6 +16,6 @@ class BusinessLeadSmsNotification extends Notification
     public function toSms(object $notifiable): KeylineSmsService
     {
         $number = $this->mobile ?: $notifiable->um_mobile_no;
-        return (new KeylineSmsService)->to($number)->line("New Net-Works enquiry for {$this->businessName} from {$this->lead->enm_name}. Phone: ".($this->lead->enm_phone ?: 'not provided').'. Sign in to view details.');
+        return (new KeylineSmsService)->to($number)->line("New Networx enquiry for {$this->businessName} from {$this->lead->enm_name}. Phone: ".($this->lead->enm_phone ?: 'not provided').'. Sign in to view details.');
     }
 }
