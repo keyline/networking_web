@@ -73,6 +73,11 @@ class MemberMeetingRegistrationTest extends TestCase
             ->assertDontSee('aria-label="View meetings"', false)
             ->assertDontSee('aria-label="Add meeting"', false)
             ->assertDontSee('aria-label="Quick actions"', false)
+            ->assertSee('aria-label="Visitor directories"', false)
+            ->assertSee('href="'.route('members.index').'"', false)
+            ->assertSee('href="'.route('member.members.index').'"', false)
+            ->assertSee('Businesses')
+            ->assertSee('Members')
             ->assertSee('My enquiries');
 
         $this->actingAs($guest, 'member')->post(route('member.meetings.store'), [

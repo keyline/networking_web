@@ -196,7 +196,7 @@ class PublicRegistrationController extends Controller
             $request->session()->put([
                 'guest_login_user_id' => $user->um_id,
                 'guest_login_mode' => $isEmail ? 'email' : 'mobile',
-                'guest_login_destination' => $isEmail ? $user->um_email_id : 'mobile ending in '.substr($mobile, -4),
+                'guest_login_destination' => $isEmail ? $user->um_email_id : $mobile,
             ]);
             RateLimiter::hit($key, 60);
             return redirect()->route('guest.register')->with('success', 'Account found. We sent you a login OTP.');
@@ -231,6 +231,23 @@ class PublicRegistrationController extends Controller
         RateLimiter::hit($key, 60);
 
         return redirect()->route('guest.register')->with('success', 'OTP sent to your mobile number.');
+    }
+
+    public function guestChangeNumber(Request $request)
+    {
+        $request->session()->forget([
+            'guest_registration_mobile',
+            'guest_registration_otp_hash',
+            'guest_registration_otp_expires_at',
+            'guest_registration_verified',
+            'testing_guest_registration_otp',
+            'guest_login_user_id',
+            'guest_login_mode',
+            'guest_login_destination',
+            'testing_guest_login_otp',
+        ]);
+
+        return redirect()->route('guest.register');
     }
 
     public function guestVerifyOtp(Request $request)

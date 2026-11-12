@@ -39,6 +39,7 @@
         .qa-enquiry{--qa-grad:linear-gradient(135deg,#ffaa45,#f0702c);--qa-soft:#fff2e5;--qa-glow:rgba(240,112,44,.33)}
         .qa-review{--qa-grad:linear-gradient(135deg,#ffcf55,#e99a16);--qa-soft:#fff7dc;--qa-glow:rgba(233,154,22,.3)}
         .qa-meeting{--qa-grad:linear-gradient(135deg,#43c990,#16875a);--qa-soft:#e6f8ef;--qa-glow:rgba(22,135,90,.3)}
+        .visitor-qa{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}
         .owner-analytics{margin:-4px 0 22px}.owner-analytics-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:10px}.owner-analytics-head h2{margin:0;font-size:17px}.owner-analytics-head span{color:var(--muted);font-size:12px}.analytics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.analytics-stat{padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow)}.analytics-stat strong{display:block;font-size:24px;line-height:1.1;color:var(--blue)}.analytics-stat span{display:block;margin-top:5px;color:var(--muted);font-size:12px;font-weight:700}
         @media(max-width:991.98px){.qa{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.qa-card{min-height:0;aspect-ratio:1/1}}
         @media(max-width:650px){.analytics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -291,6 +292,7 @@
     $profilePhotoUrl = $detail?->ud_profile_image ? env('UPLOADS_URL').'user/'.$detail->ud_profile_image : null;
     $hasBusinesses = $member->companies->isNotEmpty();
     $isBusinessOwner = $hasBusinesses;
+    $isVisitor = (int) $member->um_utm_id === 1;
 @endphp
 <div class="shell">
     <header class="topbar">
@@ -334,6 +336,19 @@
                 @endif
             </section>
         @endunless
+
+        @if($isVisitor)
+        <nav class="qa visitor-qa" aria-label="Visitor directories">
+            <a class="qa-card qa-business" href="{{ route('members.index') }}">
+                <span class="qa-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2h6a2 2 0 0 1 2 2v4H2V8a2 2 0 0 1 2-2Zm2-2v2h0V4ZM2 14h8v2h4v-2h8v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z"/></svg></span>
+                <strong>Businesses</strong><small>Browse the directory</small>
+            </a>
+            <a class="qa-card qa-members" href="{{ route('member.members.index') }}">
+                <span class="qa-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 1a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 1c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4Zm-8 0c-.3 0-.7 0-1.1.1A4.7 4.7 0 0 1 9 17v2H1v-2c0-2.2 4.4-4 7-4Z"/></svg></span>
+                <strong>Members</strong><small>Find people in the network</small>
+            </a>
+        </nav>
+        @endif
 
         @if($hasBusinesses)
         {{-- Quick action cards: 2x2 squares on phones/tablets, one row of four on desktop --}}

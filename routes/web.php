@@ -48,6 +48,7 @@ Route::get('/join', [PublicRegistrationController::class, 'create'])->name('join
 Route::post('/join', [PublicRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('join.store');
 Route::get('/guest/register', [PublicRegistrationController::class, 'guestCreate'])->name('guest.register');
 Route::post('/guest/register/send-otp', [PublicRegistrationController::class, 'guestSendOtp'])->middleware('throttle:guest-otp-send')->name('guest.register.send-otp');
+Route::post('/guest/register/change-number', [PublicRegistrationController::class, 'guestChangeNumber'])->name('guest.register.change-number');
 Route::post('/guest/register/verify-otp', [PublicRegistrationController::class, 'guestVerifyOtp'])->middleware('throttle:guest-otp-verify')->name('guest.register.verify-otp');
 Route::post('/guest/register/complete', [PublicRegistrationController::class, 'guestStore'])->middleware('throttle:guest-registration-complete')->name('guest.register.complete');
 Route::get('/members', [PublicBusinessController::class, 'index'])->name('members.index');

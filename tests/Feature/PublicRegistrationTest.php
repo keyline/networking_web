@@ -128,6 +128,33 @@ class PublicRegistrationTest extends TestCase
         }
     }
 
+    public function test_guest_can_change_an_incorrect_number_before_verifying_otp(): void
+    {
+        $intended = route('members.index');
+
+        $this->get(route('guest.register', ['redirect' => $intended]))->assertOk();
+        $this->post(route('guest.register.send-otp'), ['identifier' => '9876543203'])
+            ->assertRedirect(route('guest.register'));
+
+        $this->get(route('guest.register'))
+            ->assertOk()
+            ->assertSee('OTP sent to')
+            ->assertSee('9876543203')
+            ->assertSee('Change number');
+
+        $this->post(route('guest.register.change-number'))
+            ->assertRedirect(route('guest.register'))
+            ->assertSessionMissing('guest_registration_mobile')
+            ->assertSessionMissing('guest_registration_otp_hash')
+            ->assertSessionMissing('testing_guest_registration_otp')
+            ->assertSessionHas('guest_registration_intended', $intended);
+
+        $this->get(route('guest.register'))
+            ->assertOk()
+            ->assertSee('Mobile number or email')
+            ->assertDontSee('Verify mobile');
+    }
+
     public function test_otp_attempts_do_not_throttle_the_profile_completion_route(): void
     {
         for ($attempt = 0; $attempt < 10; $attempt++) {
@@ -158,6 +185,11 @@ class PublicRegistrationTest extends TestCase
         $this->post(route('guest.register.send-otp'), ['identifier' => '9876543288'])
             ->assertRedirect(route('guest.register'))
             ->assertSessionHas('guest_login_mode', 'mobile');
+        $this->get(route('guest.register'))
+            ->assertOk()
+            ->assertSee('OTP sent to')
+            ->assertSee('9876543288')
+            ->assertSee('Change number');
         $otp = session('testing_guest_login_otp');
         $this->post(route('guest.register.verify-otp'), ['otp' => $otp])->assertRedirect($intended);
 
