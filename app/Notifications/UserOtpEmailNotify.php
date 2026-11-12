@@ -14,7 +14,11 @@ class UserOtpEmailNotify extends Notification
     /**
      * Create a new notification instance.
      */
-    public function __construct()
+    public function __construct(
+        private ?string $recipientName = null,
+        private ?string $otp = null,
+        private bool $contactChange = false,
+    )
     {
         //
     }
@@ -34,13 +38,17 @@ class UserOtpEmailNotify extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $name = trim(($notifiable->userDetail?->ud_first_name ?? '').' '.($notifiable->userDetail?->ud_last_name ?? '')) ?: 'Member';
+        $name = $this->recipientName ?: (trim(($notifiable->userDetail?->ud_first_name ?? '').' '.($notifiable->userDetail?->ud_last_name ?? '')) ?: 'Member');
+
+        $subject = $this->contactChange ? 'Verify your new Networx email' : 'Your Networx login OTP';
 
         return (new MailMessage())
-                    ->subject('Your Networx login OTP')
+                    ->subject($subject)
                     ->view('email-templates.login-otp', [
                         'name' => $name,
-                        'otp' => $notifiable->um_otp,
+                        'otp' => $this->otp ?: $notifiable->um_otp,
+                        'contactChange' => $this->contactChange,
+                        'subject' => $subject,
                     ]);
     }
 

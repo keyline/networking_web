@@ -10,6 +10,7 @@ use App\Http\Controllers\Member\User\MemberController;
 use App\Http\Controllers\Member\BusinessPortfolioController;
 use App\Http\Controllers\Member\BusinessController as MemberBusinessController;
 use App\Http\Controllers\Member\MembershipRequestController;
+use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\MembershipAccountsController;
 use App\Http\Controllers\Admin\MembershipSettingController;
@@ -87,6 +88,11 @@ Route::middleware('member.guest')->group(function () {
 
 Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(function () {
     Route::resource('dashboard', DashboardController::class);
+    Route::get('profile', [ProfileController::class, 'show'])->name('member.profile.show');
+    Route::put('profile', [ProfileController::class, 'updateBasics'])->name('member.profile.update');
+    Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('member.profile.password');
+    Route::post('profile/contact/send-otp', [ProfileController::class, 'sendContactOtp'])->middleware('throttle:3,1')->name('member.profile.contact.send-otp');
+    Route::post('profile/contact/verify-otp', [ProfileController::class, 'verifyContactOtp'])->middleware('throttle:5,1')->name('member.profile.contact.verify-otp');
     Route::get('members', [DashboardController::class, 'members'])->name('member.members.index');
     Route::post('admin-dashboard', [DashboardController::class, 'openAdminDashboard'])->name('member.admin-dashboard');
     Route::post('dashboard/enquiries', [DashboardController::class, 'storeEnquiry'])->name('member.enquiries.store');

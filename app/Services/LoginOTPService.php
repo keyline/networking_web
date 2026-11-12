@@ -8,6 +8,7 @@ use App\Notifications\UserOtpEmailNotify;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 class LoginOTPService
 {
@@ -62,27 +63,41 @@ class LoginOTPService
     {
         $user = UserMaster::findOrFail($userId);
 
-        if (!app()->environment('testing')) {
-            $settings = GeneralSetting::find(1);
-
-            if ($settings && $settings->smtp_host && $settings->smtp_username && $settings->smtp_password) {
-                config([
-                    'mail.default' => 'smtp',
-                    'mail.mailers.smtp.host' => $settings->smtp_host,
-                    'mail.mailers.smtp.port' => (int) $settings->smtp_port,
-                    'mail.mailers.smtp.encryption' => (int) $settings->smtp_port === 465 ? 'ssl' : 'tls',
-                    'mail.mailers.smtp.username' => $settings->smtp_username,
-                    'mail.mailers.smtp.password' => $settings->smtp_password,
-                    'mail.from.address' => $settings->from_email,
-                    'mail.from.name' => $settings->from_name,
-                ]);
-                Mail::purge('smtp');
-            }
-        }
+        $this->configureMailer();
 
         // Authentication codes must be delivered during this request and must
         // never depend on a background queue worker being available.
         $user->notifyNow(new UserOtpEmailNotify());
+    }
+
+    public function sendEmailOTPTo(int $userId, string $email): void
+    {
+        $user = UserMaster::findOrFail($userId);
+        $name = trim(($user->userDetail?->ud_first_name ?? '').' '.($user->userDetail?->ud_last_name ?? '')) ?: 'Member';
+        $this->configureMailer();
+        Notification::route('mail', $email)->notifyNow(new UserOtpEmailNotify($name, (string) $user->um_otp, true));
+    }
+
+    private function configureMailer(): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+        $settings = GeneralSetting::find(1);
+        if (! $settings || ! $settings->smtp_host || ! $settings->smtp_username || ! $settings->smtp_password) {
+            return;
+        }
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => $settings->smtp_host,
+            'mail.mailers.smtp.port' => (int) $settings->smtp_port,
+            'mail.mailers.smtp.encryption' => (int) $settings->smtp_port === 465 ? 'ssl' : 'tls',
+            'mail.mailers.smtp.username' => $settings->smtp_username,
+            'mail.mailers.smtp.password' => $settings->smtp_password,
+            'mail.from.address' => $settings->from_email,
+            'mail.from.name' => $settings->from_name,
+        ]);
+        Mail::purge('smtp');
     }
 
     public function sendOTP(int $userId): void

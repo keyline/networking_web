@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Networx login OTP</title>
+    <title>{{ $subject ?? 'Your Networx login OTP' }}</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f3f6f9; color:#243447; font-family:Arial, Helvetica, sans-serif;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f6f9;">
@@ -18,15 +18,15 @@
                 <tr>
                     <td style="padding:40px;">
                         <p style="margin:0 0 12px; font-size:16px; line-height:24px;">Hello {{ $name }},</p>
-                        <h1 style="margin:0 0 14px; color:#172b4d; font-size:25px; line-height:34px;">Verify your login</h1>
+                        <h1 style="margin:0 0 14px; color:#172b4d; font-size:25px; line-height:34px;">{{ !empty($contactChange) ? 'Verify your new email' : 'Verify your login' }}</h1>
                         <p style="margin:0 0 26px; color:#52616f; font-size:16px; line-height:25px;">
-                            Use the one-time password below to securely sign in to your Networx account.
+                            {{ !empty($contactChange) ? 'Use the one-time password below to confirm this email address for your Networx account.' : 'Use the one-time password below to securely sign in to your Networx account.' }}
                         </p>
 
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                             <tr>
                                 <td align="center" style="padding:22px; background:#f0f7ff; border:1px solid #cfe4f7; border-radius:10px;">
-                                    <div style="margin-bottom:8px; color:#52616f; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;">Your login OTP</div>
+                                    <div style="margin-bottom:8px; color:#52616f; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;">{{ !empty($contactChange) ? 'Your verification OTP' : 'Your login OTP' }}</div>
                                     <div style="color:#173f5f; font-size:36px; font-weight:700; letter-spacing:10px; line-height:44px;">{{ $otp }}</div>
                                 </td>
                             </tr>
