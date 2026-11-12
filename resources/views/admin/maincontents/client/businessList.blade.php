@@ -6,6 +6,14 @@ use App\Models\Role;
 
 $controllerRoute = $module['controller_route'];
 ?>
+<style>
+    #simpletable th, #simpletable td { padding: .45rem .55rem; vertical-align: middle; font-size: 12px; line-height: 1.25; }
+    #simpletable th { white-space: nowrap; }
+    #simpletable td:nth-child(2) { min-width: 190px; }
+    #simpletable td:nth-child(3) { min-width: 130px; }
+    #simpletable .btn-sm { padding: .22rem .45rem; font-size: 11px; }
+    #simpletable form { margin: 0; }
+</style>
 <div class="pagetitle">
     <h1><?= $page_header ?></h1>
     <nav>

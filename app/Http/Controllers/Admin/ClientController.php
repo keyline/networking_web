@@ -70,7 +70,7 @@ class ClientController extends Controller
                 $tagList = [];
                 $category = CategoryToCompany::select('ctc_bcm_id')->with('category:bcm_id,name')->where('ctc_cmp_id', $row->cmp_id)->get()->toArray();
 
-                $userDetails = UserDetails::select('ud_first_name')->where('ud_um_id', $row->owner->ucm_um_id)->first();
+                $userDetails = UserDetails::select('ud_first_name', 'ud_last_name')->where('ud_um_id', $row->owner->ucm_um_id)->first();
 
 
 
@@ -98,7 +98,7 @@ class ClientController extends Controller
                     'pincode' => $row->details?->cmpd_pincode ?? '',
                     'status' => $row->details?->cmpd_status ?? 0,
                     'sponsored' => (bool) ($row->details?->cmpd_is_sponsored ?? false),
-                    'owner_name' =>  $userDetails->ud_first_name ?? '',
+                    'owner_name' => trim(($userDetails->ud_first_name ?? '').' '.($userDetails->ud_last_name ?? '')),
                     'tagCount' => implode(', ', $tagList),
                 ];
             }
