@@ -31,7 +31,7 @@
     }
 </style>
 
-<div class="container mt-4">
+<div class="mt-4">
     <h2 class="mb-4 text-center">Image Gallery</h2>
     <div class="row row-cols-2 row-cols-md-4 g-4">
         @foreach ($images as $img)

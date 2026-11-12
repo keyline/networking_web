@@ -106,29 +106,9 @@ $pageFunction = count($pageName) > 2 ? $pageName[2] : '';
             border: 2px solid <?=$generalSetting->theme_color ?>;
         }
 
-        .dataTables_wrapper .dataTables_top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .dataTables_wrapper .dataTables_buttons {
-            flex: 1;
-        }
-
-        .dataTables_wrapper .dataTables_length {
-            flex: 1;
-            margin-left: 10px;
-            margin-bottom: 10px;
-            margin-top: 10px;
-        }
-
-        .dataTables_wrapper .dataTables_filter {
-            flex: 1;
-            text-align: right;
-        }
-
+        /* DataTables 2.x wraps tables in .dt-container (not .dataTables_wrapper);
+           the old .dataTables_wrapper rules never matched and were removed.
+           Mobile toolbar/scroll rules live in assets/css/custom.css. */
         .dt-search {
             float: right;
             margin-bottom: 10px;
@@ -206,6 +186,53 @@ $pageFunction = count($pageName) > 2 ? $pageName[2] : '';
     <!-- JS Front -->
     <script src="<?= env('ADMIN_ASSETS_URL') ?>assets/js/theme.min.js"></script>
     <script src="<?= env('ADMIN_ASSETS_URL') ?>assets/js/hs.theme-appearance-charts.js"></script>
+    <script>
+        /* mobile responsive: off-canvas sidebar toggle below 1200px.
+           Front's HSSideNav is in vendor.min.js but is deliberately NOT initialised:
+           it would reveal the collapse/mini toggler and change the desktop sidebar,
+           and it writes a localStorage flag that the mini-cache script misreads.
+           This small toggle only acts below 1200px, so desktop is unchanged. */
+        (function() {
+            if (window.__adminAsideToggle) return; // guard against double init
+            window.__adminAsideToggle = true;
+            var body = document.body,
+                aside = document.querySelector('.js-navbar-vertical-aside'),
+                mq = window.matchMedia('(max-width: 1199.98px)');
+            if (!aside) return;
+            var overlay = document.createElement('div');
+            overlay.className = 'admin-aside-overlay';
+            overlay.setAttribute('aria-hidden', 'true');
+            body.appendChild(overlay);
+            var invokers = document.querySelectorAll('.js-navbar-vertical-aside-toggle-invoker');
+            invokers.forEach(function(btn) {
+                btn.setAttribute('aria-label', 'Toggle navigation');
+                btn.setAttribute('aria-expanded', 'false');
+            });
+
+            function setOpen(open) {
+                open = !!open && mq.matches;
+                body.classList.toggle('admin-aside-open', open);
+                invokers.forEach(function(btn) {
+                    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                });
+            }
+            document.addEventListener('click', function(e) {
+                // desktop: keep previous behaviour (toggler does nothing); also skip if HSSideNav ever gets initialised
+                if (!mq.matches || aside.classList.contains('navbar-vertical-aside-initialized')) return;
+                if (e.target.closest('.js-navbar-vertical-aside-toggle-invoker')) {
+                    e.preventDefault();
+                    setOpen(!body.classList.contains('admin-aside-open'));
+                } else if (e.target === overlay) {
+                    setOpen(false);
+                }
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') setOpen(false);
+            });
+            var onChange = function() { setOpen(false); };
+            mq.addEventListener ? mq.addEventListener('change', onChange) : mq.addListener(onChange);
+        })();
+    </script>
 
     <script src="<?= env('ADMIN_ASSETS_URL') ?>assets/js/main.js"></script>
     <script src="<?= env('ADMIN_ASSETS_URL') ?>assets/js/jquery.min.js"></script>

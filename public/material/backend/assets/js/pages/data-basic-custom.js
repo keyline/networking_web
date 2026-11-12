@@ -8,7 +8,7 @@ $(document).ready(function() {
         $('#simpletable').DataTable({
             "destroy": true, // Allows reinitialization
             "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-            "dom": '<"dataTables_top"Bfl>tip', // 'B' adds buttons, 'l' adds length menu
+            "dom": '<"dataTables_top"Bfl><"dt-table-scroll"t>ip', // 'B' buttons, 'f' search, 'l' length; table wrapped in .dt-table-scroll so only the table scrolls sideways (mobile responsive)
             "buttons": [
                 'excel', 'csv', 'pdf', 'print'
             ]
@@ -16,7 +16,7 @@ $(document).ready(function() {
         $('#simpletable2').DataTable({
             "destroy": true, // Allows reinitialization
             "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-            "dom": '<"dataTables_top"Bfl>tip', // 'B' adds buttons, 'l' adds length menu
+            "dom": '<"dataTables_top"Bfl><"dt-table-scroll"t>ip', // 'B' buttons, 'f' search, 'l' length; table wrapped in .dt-table-scroll so only the table scrolls sideways (mobile responsive)
             "buttons": [
                 'excel', 'csv', 'pdf', 'print'
             ]
@@ -24,7 +24,7 @@ $(document).ready(function() {
         $('#simpletable3').DataTable({
             "destroy": true, // Allows reinitialization
             "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-            "dom": '<"dataTables_top"Bfl>tip', // 'B' adds buttons, 'l' adds length menu
+            "dom": '<"dataTables_top"Bfl><"dt-table-scroll"t>ip', // 'B' buttons, 'f' search, 'l' length; table wrapped in .dt-table-scroll so only the table scrolls sideways (mobile responsive)
             "buttons": [
                 'excel', 'csv', 'pdf', 'print'
             ]

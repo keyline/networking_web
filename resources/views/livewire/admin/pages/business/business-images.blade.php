@@ -7,5 +7,3 @@
     <!-- Gallery Component -->
     <livewire:admin.pages.business.image-gallery :business_id="$business_id" :wire:key="'image-gallery-' . now()->timestamp" />
 </div>
-
-</div>

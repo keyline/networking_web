@@ -20,6 +20,12 @@ $controllerRoute = $module['controller_route'];
   /* .row.border_bottom:last-child{
     border-bottom: none;
   } */
+  .eod-total { margin-right: 100px; }
+  @media (max-width: 767.98px) {
+    .ml-85 { margin-left: 0; }
+    .eod-total { margin-right: 0; }
+    .row.border_bottom { padding-left: 0; padding-right: 0; }
+  }
 </style>
 <div class="pagetitle">
   <h1><?=$page_header?></h1>
@@ -70,24 +76,24 @@ $controllerRoute = $module['controller_route'];
                       $total += $rows->subtotal;                   
                      ?>
                   <div class="row border_bottom">
-                    <div class="col-md-6">
+                    <div class="col-12 col-lg-6">
                       <h4><?=$rows->product_name .' - '. $rows->size_name .''. $rows->unit_name?></h4>
                       <p><?=$rows->product_short_desc?></p>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-sm-4 col-lg-2">
                       <h4>Qty: <?=$rows->qty?></h4>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-sm-4 col-lg-2">
                       <h4>Rate: <?=number_format($rows->rate, 2)?></h4>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-sm-4 col-lg-2">
                       <h4>Subtotal: <?=number_format($rows->subtotal, 2)?></h4>
                     </div>
                   </div>
                   <?php } ?>                  
                   <div class="row">
                     <div class="col-md-12">
-                      <h4 style="text-align: right; margin-right: 100px;">Total : <?=number_format($total, 2)?></h4>
+                      <h4 class="eod-total" style="text-align: right;">Total : <?=number_format($total, 2)?></h4>
                     </div>                    
                   </div>         
                 </div>

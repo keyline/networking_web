@@ -38,6 +38,9 @@ $controllerRoute = $module['controller_route'];
       display: none !important;
   }
 
+  @media (max-width: 767.98px) {
+    .ml-85 { margin-left: 0; }
+  }
 </style>
 <div class="pagetitle">
   <h1><?=$page_header?></h1>
@@ -94,25 +97,25 @@ $controllerRoute = $module['controller_route'];
                           $total += (float)$subtotal;
                           ?>
                           <div class="row border_bottom">
-                              <div class="col-md-6">
+                              <div class="col-12 col-lg-6">
                                   <h4 class="mb-0"><?=$item['product_name']?></h4>
                                   <p class="mb-1"><?=$item['product_short_desc']?></p>                                  
                               </div>
-                              <div class="col-md-2">
+                              <div class="col-sm-4 col-lg-2">
                                   <h4>Qty: <?=$item['qty']?></h4>
                               </div>
-                              <div class="col-md-2">
+                              <div class="col-sm-4 col-lg-2">
                                   <h4>Rate: <?=$item['rate']?></h4>
                               </div>
-                              <div class="col-md-2">
+                              <div class="col-sm-4 col-lg-2">
                                   <h4>Subtotal: <?=$item['subtotal']?></h4>
                               </div>
                               <div class="col-md-12">
-                                <ul class="d-flex w-100" style="margin-bottom: 0;list-style-type: none; padding-left: 0; align-items: center;">
+                                <ul class="d-flex flex-wrap w-100" style="margin-bottom: 0;list-style-type: none; padding-left: 0; align-items: center;">
                                     <li class="orderdtl"><p class="bold600 mb-0 pe-1">PACKING SIZE</p>: <p class="mb-0 ps-1"><?=$item['package_size']?></p></li>
-                                    <li class="pe-1 ps-1">|</li>
+                                    <li class="pe-1 ps-1 d-none d-sm-block">|</li>
                                     <li class="orderdtl"><p class="bold600 mb-0 pe-1">CASE SIZE</p>: <p class="mb-0 ps-1"><?=$item['case_size']?></p></li>
-                                    <li class="pe-1 ps-1">|</li>
+                                    <li class="pe-1 ps-1 d-none d-sm-block">|</li>
                                     <li class="orderdtl"><p class="bold600 mb-0 pe-1">QTY. PER CASE</p>: <p class="mb-0 ps-1"><?=$item['qty_per_case']?></p></li>
                                 </ul>
                               </div>

@@ -15,18 +15,15 @@ $controllerRoute = $module['controller_route'];
   }
 </style>
 <style>
-  * {
+  /* Reset scoped to this page's own content (was a global `*` / h1-p reset that leaked into header, sidebar and breadcrumbs).
+     :where() keeps specificity at 0, exactly like the old universal selector. */
+  :where(.employee_attendance_holder, #attendance_info_popup) * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  p {
+  :where(.employee_attendance_holder, #attendance_info_popup) :is(h1, h2, h3, h4, h5, p) {
       padding: 0;
       margin: 0;
   }
@@ -172,6 +169,14 @@ $controllerRoute = $module['controller_route'];
   .cal_date p+p {
       font-size: 10px;
   }
+  @media (max-width: 575.98px) {
+      .attendance_calender td .cal_date {
+          margin: 2px;
+          padding: 2px;
+          height: 36px;
+          font-size: 11px;
+      }
+  }
   /* modal css */
   .modal.drawer {
       display: flex !important;
@@ -292,7 +297,7 @@ $controllerRoute = $module['controller_route'];
         @endif
         </div> -->
         <div class="employee_attendance_holder">
-            <div class="container-fluid py-3">
+            <div class="py-3">
                 <!-- <header class="mb-4 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">KEYLINE DIGITECH PRIVATE LIMITED</h5>
                 <span>Company Code: CN0459</span>
@@ -381,7 +386,7 @@ $controllerRoute = $module['controller_route'];
                             </div>
                         </div>
 
-                        <div class="attendance_calender pt-4">
+                        <div class="attendance_calender pt-4 table-responsive">
                         <table class="table">
                             <thead>
                                 <tr>

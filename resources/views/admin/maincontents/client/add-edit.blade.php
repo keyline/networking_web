@@ -148,38 +148,38 @@ $controllerRoute                = $module['controller_route'];
           <form method="POST" action="" enctype="multipart/form-data">
             @csrf
             <div class="row mb-3">
-              <label for="client_type" class="col-md-2 col-lg-2 col-form-label">Client Type</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="client_type" class="col-md-3 col-lg-2 col-form-label">Client Type</label>
+              <div class="col-md-9 col-lg-10">
                 <input type="text" name="client_type" class="form-control" id="client_type" value="<?=$slug?>" readonly>
               </div>
             </div>
             <div class="row mb-3">
-              <label for="name" class="col-md-2 col-lg-2 col-form-label">Name <span class="text-danger">*</span></label>
-              <div class="col-md-10 col-lg-10">
+              <label for="name" class="col-md-3 col-lg-2 col-form-label">Name <span class="text-danger">*</span></label>
+              <div class="col-md-9 col-lg-10">
                 <input type="text" name="name" class="form-control" id="name" value="<?=$name?>" required>
               </div>
             </div>
             <div class="row mb-3">
-              <label for="email" class="col-md-2 col-lg-2 col-form-label">Email</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="email" class="col-md-3 col-lg-2 col-form-label">Email</label>
+              <div class="col-md-9 col-lg-10">
                 <input type="email" name="email" class="form-control" id="email" value="<?=$email?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="alt_email" class="col-md-2 col-lg-2 col-form-label">Alternate Email</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="alt_email" class="col-md-3 col-lg-2 col-form-label">Alternate Email</label>
+              <div class="col-md-9 col-lg-10">
                 <input type="alt_email" name="alt_email" class="form-control" id="alt_email" value="<?=$alt_email?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="phone" class="col-md-2 col-lg-2 col-form-label">Phone <span class="text-danger">*</span></label>
-              <div class="col-md-10 col-lg-10">
+              <label for="phone" class="col-md-3 col-lg-2 col-form-label">Phone <span class="text-danger">*</span></label>
+              <div class="col-md-9 col-lg-10">
                 <input type="text" name="phone" class="form-control" maxlength="10" id="phone" value="<?=$phone?>" required>
               </div>
             </div>
             <div class="row mb-3">
-              <div class="col-md-2 col-lg-2"></div>
-              <div class="col-md-10 col-lg-10">
+              <div class="col-md-3 col-lg-2"></div>
+              <div class="col-md-9 col-lg-10">
                 <div class="form-check">
                   <input type="checkbox" class="form-check-input" id="sameAsPhone">
                   <label for="sameAsPhone" class="form-check-label">Same as Phone Number</label>
@@ -187,20 +187,20 @@ $controllerRoute                = $module['controller_route'];
               </div>
             </div>
             <div class="row mb-3">
-              <label for="whatsapp_no" class="col-md-2 col-lg-2 col-form-label">Whatsapp No</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="whatsapp_no" class="col-md-3 col-lg-2 col-form-label">Whatsapp No</label>
+              <div class="col-md-9 col-lg-10">
                 <input type="text" name="whatsapp_no" class="form-control" id="whatsapp_no" value="<?=$whatsapp_no?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="short_bio" class="col-md-2 col-lg-2 col-form-label">Short Bio</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="short_bio" class="col-md-3 col-lg-2 col-form-label">Short Bio</label>
+              <div class="col-md-9 col-lg-10">
                   <textarea name="short_bio" class="form-control" rows="5"><?=$short_bio?></textarea>
               </div>
             </div>
             <div class="row mb-3">
-                <label for="district_id" class="col-md-2 col-lg-2 col-form-label">District</label>
-                <div class="col-md-10 col-lg-10">
+                <label for="district_id" class="col-md-3 col-lg-2 col-form-label">District</label>
+                <div class="col-md-9 col-lg-10">
                   <select name="district_id" class="form-control" id="district_id" required>
                     <option value="" selected>Select District</option>
                     @if ($districts)
@@ -213,63 +213,63 @@ $controllerRoute                = $module['controller_route'];
             </div>
 
             <div class="row mb-3">
-              <label for="address" class="col-md-2 col-lg-2 col-form-label">Address <span class="text-danger">*</span></label>
-              <div class="col-md-10 col-lg-10">
+              <label for="address" class="col-md-3 col-lg-2 col-form-label">Address <span class="text-danger">*</span></label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="address" id="address1" class="form-control" value="<?=$address?>" required>
               </div>
             </div>
             <div class="row mb-3">
-              <label for="country" class="col-md-2 col-lg-2 col-form-label">Country</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="country" class="col-md-3 col-lg-2 col-form-label">Country</label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="country" id="country1" class="form-control" value="<?=$country?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="state" class="col-md-2 col-lg-2 col-form-label">State <span class="text-danger">*</span></label>
-              <div class="col-md-10 col-lg-10">
+              <label for="state" class="col-md-3 col-lg-2 col-form-label">State <span class="text-danger">*</span></label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="state" id="state1" class="form-control" value="<?=$state?>" required>
               </div>
             </div>
             <div class="row mb-3">
-              <label for="city" class="col-md-2 col-lg-2 col-form-label">City</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="city" class="col-md-3 col-lg-2 col-form-label">City</label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="city" id="city1" class="form-control" value="<?=$city?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="locality" class="col-md-2 col-lg-2 col-form-label">Locality</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="locality" class="col-md-3 col-lg-2 col-form-label">Locality</label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="locality" id="locality1" class="form-control" value="<?=$locality?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="street_no" class="col-md-2 col-lg-2 col-form-label">Street No.</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="street_no" class="col-md-3 col-lg-2 col-form-label">Street No.</label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="street_no" id="street_no1" class="form-control" value="<?=$street_no?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="zipcode" class="col-md-2 col-lg-2 col-form-label">Zipcode <span class="text-danger">*</span></label>
-              <div class="col-md-10 col-lg-10">
+              <label for="zipcode" class="col-md-3 col-lg-2 col-form-label">Zipcode <span class="text-danger">*</span></label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="zipcode" id="zipcode1" class="form-control" value="<?=$zipcode?>" required>
               </div>
             </div>
             <div class="row mb-3">
-              <label for="latitude" class="col-md-2 col-lg-2 col-form-label">Latitude</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="latitude" class="col-md-3 col-lg-2 col-form-label">Latitude</label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="latitude" id="lat1" class="form-control" value="<?=$latitude?>">
               </div>
             </div>
             <div class="row mb-3">
-              <label for="longitude" class="col-md-2 col-lg-2 col-form-label">Longitude</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="longitude" class="col-md-3 col-lg-2 col-form-label">Longitude</label>
+              <div class="col-md-9 col-lg-10">
                   <input type="text" name="longitude" id="lng1" class="form-control" value="<?=$longitude?>">
               </div>
             </div>
 
             <div class="row mb-3">
-              <label for="profile_image" class="col-md-2 col-lg-2 col-form-label">Profile Image</label>
-              <div class="col-md-10 col-lg-10">
+              <label for="profile_image" class="col-md-3 col-lg-2 col-form-label">Profile Image</label>
+              <div class="col-md-9 col-lg-10">
                 <input type="file" name="profile_image" class="form-control" id="profile_image">
                 <small class="text-info">* Only JPG, JPEG, ICO, SVG, PNG, WEBP files are allowed</small><br>
                 <?php if($profile_image != ''){?>

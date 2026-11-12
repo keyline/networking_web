@@ -13,6 +13,7 @@ use App\Models\User\UserMaster;
 use App\Notifications\BusinessLeadEmailNotification;
 use App\Notifications\BusinessLeadSmsNotification;
 use App\Services\BusinessAboutService;
+use App\Services\BusinessSearchIndex;
 use Carbon\Carbon;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\QrCode;
@@ -48,6 +49,9 @@ class PublicBusinessController extends Controller
             ->groupBy('enquiry_to_user.etu_cmp_id')
             ->selectRaw('enquiry_to_user.etu_cmp_id, COUNT(*) as engagement_enquiries');
 
+        $searchHits = $search !== '' ? app(BusinessSearchIndex::class)->search($search) : collect();
+        $searchIds = $searchHits->keys()->map(fn ($id) => (int) $id)->all();
+
         $businesses = CompaniesDetail::query()
             ->select('companies_details.*')
             ->leftJoinSub($eventEngagement, 'directory_events', function ($join) {
@@ -69,12 +73,12 @@ class PublicBusinessController extends Controller
             ->where('cmpd_status', 1)
             ->whereNotNull('public_slug')
             ->whereHas('companies.users', fn ($query) => $query->where('um_status', 2))
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($details) use ($search) {
-                    $details->where('cmpd_name', 'like', "%{$search}%")
-                        ->orWhere('cmpd_description', 'like', "%{$search}%")
-                        ->orWhereHas('companies.categories', fn ($categories) => $categories->where('name', 'like', "%{$search}%"));
-                });
+            ->when($search !== '', function ($query) use ($searchIds) {
+                // Smart search: matched ids come from the FULLTEXT search index, ranked by relevance.
+                $query->whereIn('companies_details.cmpd_cmp_id', $searchIds ?: [0]);
+                if ($searchIds) {
+                    $query->orderByRaw('FIELD(companies_details.cmpd_cmp_id, '.implode(',', $searchIds).')');
+                }
             })
             ->when($categoryId, fn ($query) => $query->whereHas(
                 'companies.categories',
@@ -91,7 +95,20 @@ class PublicBusinessController extends Controller
             'categories' => BusinessCategoryMaster::where('status', 1)->orderBy('name')->get(),
             'search' => $search,
             'categoryId' => $categoryId,
+            'searchMatches' => $searchHits->map(fn ($hit) => $hit['match'])->filter()->all(),
         ]));
+    }
+
+    /** Live suggestions for the directory search box (JSON, cached briefly). */
+    public function suggest(Request $request, BusinessSearchIndex $index): JsonResponse
+    {
+        $query = trim((string) $request->query('q'));
+        if (mb_strlen($query) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        return response()->json(['results' => $index->suggest($query)])
+            ->header('Cache-Control', 'public, max-age=60');
     }
 
     public function show(Request $request, string $slug): View

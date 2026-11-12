@@ -38,23 +38,23 @@ $controllerRoute = $module['controller_route'];
             <table class="table table-striped">
               <tr>
                 <th>Name</th>
-                <td><?=$row->name?></td>
+                <td class="text-break"><?=$row->name?></td>
               </tr>
               <tr>
                 <th>Email</th>
-                <td><?=$row->email?></td>
+                <td class="text-break"><?=$row->email?></td>
               </tr>
               <tr>
                 <th>Phone</th>
-                <td><?=$row->phone?></td>
+                <td class="text-break"><?=$row->phone?></td>
               </tr>
               <tr>
                 <th>Question For</th>
-                <td><?=$row->question_for?></td>
+                <td class="text-break"><?=$row->question_for?></td>
               </tr>
               <tr>
                 <th>Subject</th>
-                <td><?=$row->subject?></td>
+                <td class="text-break"><?=$row->subject?></td>
               </tr>
               <tr>
                 <th>Enquiry Date/Time</th>
@@ -62,7 +62,7 @@ $controllerRoute = $module['controller_route'];
               </tr>
               <tr>
                 <th>Description</th>
-                <td><?=$row->description?></td>
+                <td class="text-break"><?=$row->description?></td>
               </tr>
             </table>
           <?php }?>

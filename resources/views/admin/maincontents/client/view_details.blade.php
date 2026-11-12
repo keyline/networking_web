@@ -66,7 +66,8 @@ $url_slug = $slug;
                         {{-- tab 1 --}}
                         <div class="tab-pane fade show active" id="tab1">
 
-                            <table class="table table-striped table-bordered nowrap">
+                            <style>@media (max-width: 767.98px) { .client-kv-table td { white-space: normal; overflow-wrap: anywhere; word-break: break-word; } }</style>
+                            <table class="table table-striped table-bordered nowrap client-kv-table">
                                 <tbody>
 
                                     <tr>
@@ -84,7 +85,7 @@ $url_slug = $slug;
                                     </tr>
                                     <tr>
                                         <td>Email</td>
-                                        <td> {{ $row->um_email_id ?? '' }} </td>
+                                        <td class="text-break"> {{ $row->um_email_id ?? '' }} </td>
                                     </tr>
 
                                     <tr>
@@ -94,7 +95,7 @@ $url_slug = $slug;
 
                                     <tr>
                                         <td>Address</td>
-                                        <td> {{ $row->userDetail->ud_addr_1 ?? '' }} </td>
+                                        <td class="text-break"> {{ $row->userDetail->ud_addr_1 ?? '' }} </td>
                                     </tr>
 
 

@@ -18,7 +18,7 @@
             <div class="card-header">
                 <div>
                     <h4 class="mb-1">{{ $displayName }}</h4>
-                    <span class="text-muted">{{ $user->um_email_id }} · {{ $user->um_mobile_no }} · {{ $user->userType->utm_name ?? 'Member' }}</span>
+                    <span class="text-muted text-break">{{ $user->um_email_id }} · {{ $user->um_mobile_no }} · {{ $user->userType->utm_name ?? 'Member' }}</span>
                 </div>
             </div>
             <div class="card-body">

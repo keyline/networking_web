@@ -28,9 +28,18 @@ body .field input[type=file]{overflow:hidden}body .side{width:100%}
  body .mobilebar{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
 }
 @media(max-width:600px){
- body .site-logo{display:none}body .title strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
- body .category-options{grid-template-columns:1fr 1fr}body .category-option span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ body .site-logo{width:56px;flex-basis:56px}body .site-logo img{max-width:56px;max-height:28px}body .title strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ body .category-option span{overflow-wrap:anywhere}
  body .category-tools{align-items:stretch;flex-direction:column;gap:5px}body .category-count{padding-left:2px}
+}
+/* mobile readability: labels >= 12px, inputs >= 16px (stops iOS focus zoom), 40px+ buttons */
+@media(max-width:820px){
+ body .title span{font-size:12px}body .status{font-size:11px}body .tab{font-size:12px}body .head p{font-size:12px}body .field label{font-size:12px}
+ body .button{min-height:40px}
+ body .tabs{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+}
+@media(max-width:767.98px){
+ body .field input,body .field textarea,body .field select,body .category-search,body input:not([type=checkbox]):not([type=radio]):not([type=file]),body select,body textarea{font-size:16px}
 }
 @media(max-width:390px){
  body .category-options{grid-template-columns:1fr}body .item{align-items:flex-start;flex-wrap:wrap}

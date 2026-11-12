@@ -132,3 +132,101 @@
     font-size: 12px;
     line-height: 1.25;
 }
+
+/* =====================================================================
+   mobile responsive: admin panel global fixes (QC items G1-G8).
+   Everything that could change the desktop look is inside a max-width
+   media query, so >=1200px renders exactly as before.
+   ===================================================================== */
+
+/* mobile responsive: G1 off-canvas sidebar (toggled by the small script in
+   layout-after-login.blade.php, which adds body.admin-aside-open) */
+.admin-aside-overlay { display: none; }
+@media (max-width: 1199.98px) {
+    .has-navbar-vertical-aside .navbar-vertical-aside { transition: margin-left .2s ease-in-out; }
+    /* header hamburger: theme keeps it at opacity 0 until HSSideNav runs */
+    .has-navbar-vertical-aside .navbar-nav-wrap .navbar-aside-toggler { display: block; opacity: 1; }
+    .has-navbar-vertical-aside .navbar-nav-wrap .navbar-toggler-short-align { display: none; }
+    .has-navbar-vertical-aside .navbar-nav-wrap .navbar-toggler-full-align { display: block; }
+    /* open state */
+    body.admin-aside-open { overflow: hidden; }
+    body.admin-aside-open .navbar-vertical-aside { margin-left: 0; z-index: 1041; box-shadow: 0 0 2.5rem rgba(19, 33, 68, .2); }
+    body.admin-aside-open .navbar-vertical-aside .navbar-aside-toggler { opacity: 1; }
+    body.admin-aside-open .admin-aside-overlay {
+        display: block; position: fixed; inset: 0; z-index: 1040;
+        background-color: rgba(19, 33, 68, .25);
+    }
+}
+
+/* mobile responsive: header items must fit at 360px */
+@media (max-width: 575.98px) {
+    #header .navbar-brand-logo { min-width: 0; max-width: 6.5rem; }
+    #header .navbar-nav-wrap-content-start .dropdown.ms-2 { margin-left: .25rem !important; }
+    #header .navbar-dropdown-account { max-width: calc(100vw - 1.5rem); }
+    #header .navbar-dropdown-account .card-text,
+    #header .navbar-dropdown-account h5 { overflow-wrap: anywhere; }
+}
+
+/* mobile responsive: G2 DataTables 2.x (.dt-container). data-basic-custom.js
+   wraps the <table> in .dt-table-scroll, so only the table scrolls sideways
+   while buttons / search / length / info / pager stay in view. */
+.table-responsive:has(> .dt-container) { overflow: visible; }
+.dt-container .dt-table-scroll { clear: both; overflow-x: auto; -webkit-overflow-scrolling: touch; } /* clear: the floated .dt-search must not squeeze it */
+@media (max-width: 767.98px) {
+    .dt-container .dataTables_top { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 10px; }
+    .dt-container .dataTables_top::after { content: none; }
+    .dt-container .dt-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dt-container .dt-buttons button { padding: 2px 12px; margin: 0; }
+    .dt-container .dataTables_top .dt-search,
+    .dt-container .dataTables_top .dt-length { float: none; margin: 0; text-align: left; }
+    .dt-container .dt-search label { display: inline; }
+    .dt-container .dataTables_top .dt-search { display: flex; align-items: center; gap: 6px; }
+    .dt-container .dataTables_top .dt-search input { flex: 1 1 auto; min-width: 0; width: auto !important; margin-left: 0 !important; }
+    .dt-container .dt-info,
+    .dt-container .dt-paging { float: none !important; text-align: center; }
+    .dt-container .dt-paging { margin-top: 6px; }
+    .dt-container .dt-paging .dt-paging-button { padding: .4em .75em; }
+}
+
+/* mobile responsive: G3 Laravel ->links() pagination wraps instead of overflowing */
+@media (max-width: 1199.98px) {
+    .pagination { flex-wrap: wrap; row-gap: 4px; }
+}
+
+/* mobile responsive: G4 cap content images (not inside tables, where a % max-width
+   would let thumbnails collapse in auto-layout columns) */
+@media (max-width: 1199.98px) {
+    .admin-page-content img { max-width: 100%; }
+    .admin-page-content table img { max-width: none; }
+}
+
+/* mobile responsive: G5 key/value detail tables (add class "table-kv" to the <table>) */
+@media (max-width: 767.98px) {
+    .table-kv td, .table-kv th { overflow-wrap: anywhere; word-break: break-word; }
+}
+
+/* mobile responsive: G6 page-head / toolbar flex rows that did not wrap.
+   Each selector is prefixed by its own page's classes, so nothing leaks; the
+   .admin-page-content prefix lets these beat the page's own later <style> rules. */
+@media (max-width: 767.98px) {
+    .admin-page-content :is(.ev-head, .ev-toolbar, .eo-head, .b-head, .cs-head, .ch-head, .cf-head,
+    .ru-head-actions, .ma-head .d-flex, .erp-page .page-header,
+    .access-search, .map .head, .map .card-head, .hp-actions) { flex-wrap: wrap; gap: 10px; }
+    .admin-page-content .ev-toolbar form { flex-wrap: wrap; }
+    .admin-page-content .ev-input { min-width: 0; flex: 1 1 100%; }
+    .admin-page-content .access-search input { min-width: 0; }
+    .admin-page-content .cs-actions { flex-wrap: wrap; }
+    .admin-page-content :is(.ev-wrap, .eo, .builder, .imp, .map) { padding: 16px 0; }
+}
+
+/* G8 shared right/left drawer modal (was copy-pasted in 8 page views; identical rules) */
+.modal.drawer { display: flex !important; pointer-events: none; }
+.modal.drawer * { pointer-events: none; }
+.modal.drawer .modal-dialog { margin: 0px; display: flex; flex: auto; transform: translate(25%, 0); }
+.modal.drawer .modal-dialog .modal-content { border: none; border-radius: 0px; }
+.modal.drawer .modal-dialog .modal-content .modal-body { overflow: auto; }
+.modal.drawer.show { pointer-events: auto; }
+.modal.drawer.show * { pointer-events: auto; }
+.modal.drawer.show .modal-dialog { transform: translate(0, 0); }
+.modal.drawer.right-align { flex-direction: row-reverse; }
+.modal.drawer.left-align:not(.show) .modal-dialog { transform: translate(-25%, 0); }

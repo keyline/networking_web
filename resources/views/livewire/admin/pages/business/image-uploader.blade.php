@@ -56,7 +56,7 @@
         <br>
         <!-- Preview Newly Selected Images -->
         @if ($newImages)
-            <div class="container mt-4">
+            <div class="mt-4">
                 <h2 class="mb-4 text-center">Preview</h2>
                 <div class="row row-cols-2 row-cols-md-4 g-4">
                     @foreach ($newImages as $index => $image)

@@ -3,6 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Events | Net-Works</title>
+    @include('front.partials.cms-styles')
     <style>
         *{box-sizing:border-box}body{margin:0;background:#f5f7fb;font:15px Arial;color:#18243a}
         header{display:flex;align-items:center;min-height:74px;padding:10px max(24px,calc((100% - 1120px)/2));border-bottom:1px solid #e2e8f0;background:#fff}
@@ -18,7 +19,9 @@
         .body{padding:18px}.date{color:#377dff;text-transform:uppercase;font-size:12px;font-weight:800}.card h2{margin:7px 0;font-size:20px}.muted{color:#718096}
         .button{display:inline-block;margin-top:12px;padding:10px 15px;border-radius:8px;background:#377dff;color:#fff;text-decoration:none;font-weight:700}
         .pagination{display:flex;justify-content:flex-end;gap:0;margin:25px 0 0;padding:0;list-style:none}.page-link{display:block;min-width:38px;margin-left:-1px;padding:9px 12px;border:1px solid #dce3ed;background:#fff;color:#377dff;text-align:center;text-decoration:none}.page-item:first-child .page-link{border-radius:8px 0 0 8px}.page-item:last-child .page-link{border-radius:0 8px 8px 0}.page-item.active .page-link{position:relative;border-color:#377dff;background:#377dff;color:#fff}.page-item.disabled .page-link{background:#f3f5f8;color:#9aa5b5}
-        @media(max-width:800px){.grid{grid-template-columns:1fr}}
+        @media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid>.card.body{grid-column:1/-1}}
+        @media(max-width:640px){.grid{grid-template-columns:1fr}}
+        @media(max-width:520px){.button{display:block;text-align:center;min-height:44px;padding:12px 15px}.page-link{min-width:44px;padding:12px}}
         @media(max-width:520px){header{min-height:62px;padding:8px 16px}.portal-brand img{max-width:140px;max-height:44px}.wrap{margin-top:26px;padding:0 14px}.intro h1{font-size:30px}.cover{height:165px}}
     </style>
 </head>
@@ -47,5 +50,6 @@
     </div>
     <div style="margin-top:25px">{{$events->links()}}</div>
 </main>
+@include('front.partials.cms-footer', ['generalSetting' => $generalSetting ?? \App\Models\GeneralSetting::find(1)])
 </body>
 </html>

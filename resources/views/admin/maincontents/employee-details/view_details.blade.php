@@ -13,6 +13,11 @@ $controllerRoute = $module['controller_route'];
   .lightbox .lb-nav {
       display: none !important;
   }
+  @media (max-width: 767.98px) {
+    .emp-detail-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .emp-detail-tabs .nav-item { flex: 0 0 auto; }
+    .emp-kv-table th, .emp-kv-table td { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+  }
 </style>
 <div class="pagetitle">
   <h1><?=$page_header?></h1>
@@ -42,7 +47,7 @@ $controllerRoute = $module['controller_route'];
     <div class="col-lg-12">
       <div class="card">
         <div class="card-body">          
-          <ul class="nav nav-tabs nav-tabs-bordered">
+          <ul class="nav nav-tabs nav-tabs-bordered emp-detail-tabs">
             <li class="nav-item">
               <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab1">Basic Info</button>
             </li>            
@@ -72,7 +77,7 @@ $controllerRoute = $module['controller_route'];
                 <a href="?=url('admin/' . $controllerRoute . '/edit/'.Helper::encoded($row->id))?>" class="btn btn-outline-primary btn-sm" title="Edit <?=$module['title']?>"><i class="fa fa-edit"> Edit</i></a>
                 ?php } ?>
               </p> -->
-              <table class="table table-striped table-bordered nowrap">                
+              <table class="table table-striped table-bordered nowrap emp-kv-table">                
                 <tbody>                
                     <tr>   
                     <?php if($admin->company_id == 0){ ?>
@@ -109,11 +114,11 @@ $controllerRoute = $module['controller_route'];
                     </tr>                
                     <tr>
                       <td>Email</td>
-                      <td><?= $row->email ?></td>
+                      <td class="text-break"><?= $row->email ?></td>
                     </tr>
                     <tr>
                       <td>Alt Email</td>
-                      <td><?= $row->alt_email ?></td>
+                      <td class="text-break"><?= $row->alt_email ?></td>
                     </tr>
                     <tr>
                       <td>Phone</td>
@@ -125,11 +130,11 @@ $controllerRoute = $module['controller_route'];
                     </tr>
                     <tr>
                       <td>Short Bio</td>
-                      <td><?= $row->short_bio?></td>
+                      <td class="text-break"><?= $row->short_bio?></td>
                     </tr>
                     <tr>
                       <td>Address</td>
-                      <td><?=$row->address?></td>
+                      <td class="text-break"><?=$row->address?></td>
                     </tr>
                     <tr>
                       <td>Date of Birth</td>

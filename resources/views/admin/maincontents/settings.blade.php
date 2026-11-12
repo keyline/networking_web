@@ -81,6 +81,9 @@ $user_type = session('type');
   @media (max-width: 991px) { .settings-page .settings-card > .card-body { display: block; } .settings-page .settings-nav { flex-direction: row; overflow-x: auto; padding: 10px; border-right: 0; border-bottom: 1px solid var(--sp-border); } .settings-page .settings-nav::before { display: none; } .settings-page .settings-nav .nav-item { width: auto; } .settings-page .settings-nav .nav-link { width: auto; } .settings-page .template-manager { grid-template-columns: 170px minmax(0, 1fr); } }
   @media (max-width: 767px) { .settings-page .template-delivery { grid-template-columns: 1fr; } .settings-page .template-manager { display: block; } .settings-page .template-list { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid #e4e9f1; } .settings-page .template-list-title { display: none; } .settings-page .template-selector { flex: 0 0 auto; width: auto; white-space: nowrap; } }
   @media (max-width: 575px) { .settings-page .settings-content { padding: 18px 15px 22px !important; } .settings-page .settings-content .col-form-label { padding-bottom: 5px; } }
+  /* Add/remove button columns: align with inputs on md+, small gap when stacked on mobile */
+  .stg-btn-offset-26, .stg-btn-offset-33 { margin-top: .5rem; }
+  @media (min-width: 768px) { .stg-btn-offset-26 { margin-top: 26px; } .stg-btn-offset-33 { margin-top: 33px; } }
 </style>
 <div class="settings-page">
 <!-- Page Header -->
@@ -570,7 +573,7 @@ $user_type = session('type');
                                   <input type="text" class="form-control requiredCheck" data-check="Link" value="<?=$footer_link[$i]?>" name="footer_link[]" autocomplete="off">
                               </span>
                           </div>
-                          <div class="col-md-2" style="margin-top: 26px;">
+                          <div class="col-md-2 stg-btn-offset-26">
                               <a href="javascript:void(0);" class="remove_button1" title="Add field"><i class="fa fa-minus-circle fa-2x text-danger"></i></a>
                           </div>
                       </div>
@@ -588,7 +591,7 @@ $user_type = session('type');
                               <input type="text" class="form-control requiredCheck" data-check="Link" name="first_col_link[]" autocomplete="off">
                           </span>
                       </div>
-                      <div class="col-md-2" style="margin-top: 26px;">
+                      <div class="col-md-2 stg-btn-offset-26">
                           <a href="javascript:void(0);" class="add_button1" title="Add field"><i class="fa fa-plus-circle fa-2x text-success"></i></a>
                       </div>
                   </div>
@@ -614,7 +617,7 @@ $user_type = session('type');
                                   <input type="text" class="form-control requiredCheck" data-check="Link" value="<?=$footer_link2[$i]?>" name="second_col_link[]" autocomplete="off">
                               </span>
                           </div>
-                          <div class="col-md-2" style="margin-top: 26px;">
+                          <div class="col-md-2 stg-btn-offset-26">
                               <a href="javascript:void(0);" class="remove_button2" title="Add field"><i class="fa fa-minus-circle fa-2x text-danger"></i></a>
                           </div>
                       </div>
@@ -632,7 +635,7 @@ $user_type = session('type');
                               <input type="text" class="form-control requiredCheck" data-check="Link" name="second_col_link[]" autocomplete="off">
                           </span>
                       </div>
-                      <div class="col-md-2" style="margin-top: 26px;">
+                      <div class="col-md-2 stg-btn-offset-26">
                           <a href="javascript:void(0);" class="add_button2" title="Add field"><i class="fa fa-plus-circle fa-2x text-success"></i></a>
                       </div>
                   </div>
@@ -658,7 +661,7 @@ $user_type = session('type');
                                   <input type="text" class="form-control requiredCheck" data-check="Link" value="<?=$footer_link3[$i]?>" name="footer_link3[]" autocomplete="off">
                               </span>
                           </div>
-                          <div class="col-md-2" style="margin-top: 26px;">
+                          <div class="col-md-2 stg-btn-offset-26">
                               <a href="javascript:void(0);" class="remove_button3" title="Add field"><i class="fa fa-minus-circle fa-2x text-danger"></i></a>
                           </div>
                       </div>
@@ -676,7 +679,7 @@ $user_type = session('type');
                               <input type="text" class="form-control requiredCheck" data-check="Link" name="footer_link3[]" autocomplete="off">
                           </span>
                       </div>
-                      <div class="col-md-2" style="margin-top: 26px;">
+                      <div class="col-md-2 stg-btn-offset-26">
                           <a href="javascript:void(0);" class="add_button3" title="Add field"><i class="fa fa-plus-circle fa-2x text-success"></i></a>
                       </div>
                   </div>
@@ -970,7 +973,7 @@ $user_type = session('type');
                                     <input type="text" class="form-control requiredCheck" data-check="Link" name="footer_link[]" autocomplete="off">\
                                 </span>\
                             </div>\
-                            <div class="col-md-2" style="margin-top: 26px;">\
+                            <div class="col-md-2 stg-btn-offset-26">\
                                 <a href="javascript:void(0);" class="remove_button1" title="Remove field"><i class="fa fa-minus-circle fa-2x text-danger"></i></a>\
                             </div>\
                         </div>'; //New input field html
@@ -1010,7 +1013,7 @@ $user_type = session('type');
                                     <input type="text" class="form-control requiredCheck" data-check="Second Column Link" name="second_col_link[]" autocomplete="off">\
                                 </span>\
                             </div>\
-                            <div class="col-md-2" style="margin-top: 33px;">\
+                            <div class="col-md-2 stg-btn-offset-33">\
                                 <a href="javascript:void(0);" class="remove_button2" title="Remove field"><i class="fa fa-minus-circle fa-2x text-danger"></i></a>\
                             </div>\
                         </div>'; //New input field html
@@ -1050,7 +1053,7 @@ $user_type = session('type');
                                     <input type="text" class="form-control requiredCheck" data-check="Third Column Link" name="footer_link3[]" autocomplete="off">\
                                 </span>\
                             </div>\
-                            <div class="col-md-2" style="margin-top: 33px;">\
+                            <div class="col-md-2 stg-btn-offset-33">\
                                 <a href="javascript:void(0);" class="remove_button3" title="Remove field"><i class="fa fa-minus-circle fa-2x text-danger"></i></a>\
                             </div>\
                         </div>'; //New input field html

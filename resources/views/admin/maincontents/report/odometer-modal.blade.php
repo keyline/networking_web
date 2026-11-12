@@ -84,7 +84,7 @@
               <h6 class="mb-1"><u>ODO History</u></h6>
               <?php if($odometer_data){ foreach($odometer_data as $odometer_row){?>
                 <div class="timeline-section mb-3" style="border: 1px solid #0096885e;padding: 10px;border-radius: 10px;background-color: #055e1303;">
-                  <button type="button" class="btn btn-primary btn-xs" style="float: right;" onclick="openEditModal(<?=$odometer_row['id']?>,'<?=$name?>')"><i class="fa fa-edit"></i> Edit</button>
+                  <div class="d-flex justify-content-end mb-2 d-sm-block mb-sm-0"><button type="button" class="btn btn-primary btn-xs" style="float: right;" onclick="openEditModal(<?=$odometer_row['id']?>,'<?=$name?>')"><i class="fa fa-edit"></i> Edit</button></div>
                   <div class="row align-items-center">
                     <div class="col-sm-5">
                         <h5 class="text-success">START</h5>

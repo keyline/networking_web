@@ -20,6 +20,10 @@ $controllerRoute = $module['controller_route'];
   /* .row.border_bottom:last-child{
     border-bottom: none;
   } */
+  @media (max-width: 767.98px) {
+    .ml-85 { margin-left: 0; }
+    .row.border_bottom { padding-left: 0; padding-right: 0; }
+  }
 </style>
 <div class="pagetitle">
   <h1><?=$page_header?></h1>
@@ -70,17 +74,17 @@ $controllerRoute = $module['controller_route'];
                       $total += $rows->subtotal;                   
                      ?>
                   <div class="row border_bottom">
-                    <div class="col-md-6">
+                    <div class="col-12 col-lg-6">
                       <h4><?=$rows->product_name .' - '. $rows->size_name .''. $rows->unit_name?></h4>
                       <p><?=$rows->product_short_desc?></p>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-sm-4 col-lg-2">
                       <h4>Qty: <?=$rows->qty?></h4>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-sm-4 col-lg-2">
                       <h4>Rate: <?=$rows->rate?></h4>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-sm-4 col-lg-2">
                       <h4>Subtotal: <?=$rows->subtotal?></h4>
                     </div>
                   </div>

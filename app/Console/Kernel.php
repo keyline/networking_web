@@ -13,6 +13,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
+        // Directory search also self-refreshes hourly when searched; this covers quiet periods if cron runs.
+        $schedule->command('businesses:reindex')->dailyAt('03:30')->withoutOverlapping();
     }
 
     /**

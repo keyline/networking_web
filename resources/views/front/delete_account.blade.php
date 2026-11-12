@@ -14,14 +14,10 @@
     <meta name="apiUrl" content="{{ env('APP_URL') . 'api/v1/' }}">
 
     <link href="" rel="apple-touch-icon">
-    <link rel="stylesheet" href="https://commodity.ecoex.market/public/material/backend/lightbox/lightbox.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
         integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.0.1/css/toastr.css" rel="stylesheet" />
-    <script type="text/javascript"
-        src="https://ff.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=1A9JMWlvLvNu0u-GPLe2pusfM6tZuy-ftpRi_Lfcd9rdSAV9UXLMik163535OXsluPQ8Eo9Jh9coX2nH0xxhsOr3R4L2ytVF4G1vkGwOGx4"
-        charset="UTF-8"></script>
     <style type="text/css">
         .toast-success {
             background-color: #000;
@@ -59,6 +55,16 @@
             margin: 5px;
         }
 
+        #form_submit .btn,
+        #form_submit .form-control {
+            min-height: 44px;
+        }
+
+        .site-home-link {
+            display: inline-block;
+            padding: 8px 0;
+        }
+
         .whatimgs img.example-image {
             max-width: 60px;
             border: 1px solid #999;
@@ -72,12 +78,12 @@
     <div class="container mt-4">
 
         <h3 class="text-center">
-            <a href="{{ url('/') }}" aria-label="Home"><img src="{{ env('UPLOADS_URL') . $generalSetting->site_logo }}" alt="Net-Works"
-                style="width: 100;height:100px"></a>
+            <a class="site-home-link" href="{{ url('/') }}" aria-label="Home"><img src="{{ env('UPLOADS_URL') . $generalSetting->site_logo }}" alt="Net-Works"
+                class="img-fluid" style="max-width:220px;max-height:100px;width:auto;height:auto"></a>
             <p class="mt-3">Delete Account Request</p>
         </h3>
-        <div class=" justify-content-center d-flex">
-            <div class="row col-md-8 col-sm-12 col-xs-12">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8">
                 <form method="POST" id="form_submit"
                     style="border: 1px solid #48974e73;padding: 15px;border-radius: 5px;">
                     <input type="hidden" name="entity_name" id="entity_name">
@@ -85,14 +91,14 @@
 
                     <div class="form-group mb-3">
                         <div class="row align-items-end">
-                            <div class="col-md-10">
+                            <div class="col-12 col-sm-7 col-lg-8 col-xl-9">
                                 <label for="phone" class="fw-bold">Phone Number</label>
                                 <input type="text" class="form-control" id="phone" name="phone"
                                     placeholder="Phone Number" maxlength="10" minlength="10" required
                                     onkeypress="return isNumber(event)">
                             </div>
-                            <div class="col-md-2">
-                                <button type="button" class="btn btn-primary btn-sm w-100" id="phone-otp-btn">Get
+                            <div class="col-12 col-sm-5 col-lg-4 col-xl-3 mt-2 mt-sm-0">
+                                <button type="button" class="btn btn-primary w-100 text-nowrap" id="phone-otp-btn">Get
                                     Phone OTP</button>
 
                                 <input type="hidden" id="user_phone" name="user_phone" value="">
@@ -103,14 +109,14 @@
                     </div>
                     <div class="form-group mb-3" id="phone_otp_row">
                         <div class="row align-items-end">
-                            <div class="col-md-10">
+                            <div class="col-12 col-sm-7 col-lg-8 col-xl-9">
                                 <label for="phone_otp" class="fw-bold">Phone OTP</label>
                                 <input type="text" class="form-control" id="phone_otp" name="phone_otp"
                                     placeholder="Phone OTP" maxlength="6" minlength="4" required>
 
                             </div>
-                            <div class="col-md-2">
-                                <button type="button" class="btn btn-info btn-sm w-100"
+                            <div class="col-12 col-sm-5 col-lg-4 col-xl-3 mt-2 mt-sm-0">
+                                <button type="button" class="btn btn-info w-100 text-nowrap"
                                     id="phone-validate-btn">Validate Phone</button>
                                 <input type="hidden" name="is_phone_verify" id="is_phone_verify" value="0">
                             </div>
@@ -133,13 +139,22 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
     </script>
-    <script src="https://commodity.ecoex.market/public/material/backend/lightbox/lightbox.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.0.1/js/toastr.js"></script>
 
 
 
     <script type="text/javascript">
+        // global so the inline onkeypress="return isNumber(event)" handlers can reach it
+        function isNumber(evt) {
+            evt = (evt) ? evt : window.event;
+            var charCode = (evt.which) ? evt.which : evt.keyCode;
+            if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+                return false;
+            }
+            return true;
+        }
+
         $(document).ready(function() {
             $('#submit-btn').attr('disabled', true);
 
@@ -152,19 +167,6 @@
                 },
             });
 
-            lightbox.option({
-                'resizeDuration': 200,
-                'wrapAround': true
-            })
-
-            function isNumber(evt) {
-                evt = (evt) ? evt : window.event;
-                var charCode = (evt.which) ? evt.which : evt.keyCode;
-                if (charCode > 31 && (charCode < 48 || charCode > 57)) {
-                    return false;
-                }
-                return true;
-            }
 
 
             function toastAlert(type, message, redirectStatus = false, redirectUrl = '') {

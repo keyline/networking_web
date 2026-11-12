@@ -166,7 +166,7 @@ $currentDate = date('Y-m-d');
           </div>
           <div class="row">
               <!-- Sidebar Filters -->
-              <div class="col-md-3 mb-4">
+              <div class="col-lg-3 mb-4">
                   <div class="card">
                       <div class="card-body">
                           <h5 class="card-title">Filters</h5>
@@ -197,7 +197,7 @@ $currentDate = date('Y-m-d');
               </div>
       
               <!-- Main Content -->
-              <div class="col-md-9">
+              <div class="col-lg-9">
                   <div class="card">
                       <div class="card-header">
                           <div class="row">
@@ -206,7 +206,7 @@ $currentDate = date('Y-m-d');
                                       <input type="text" class="form-control" placeholder="Search staff by Name or Phone" aria-label="Username" aria-describedby="basic-addon1">
                                   </div>
                               </div>
-                              <div class="col-lg-8 col-md-6 d-flex justify-content-end">
+                              <div class="col-lg-8 col-md-6 d-flex justify-content-end mt-2 mt-md-0">
                                   <button class="btn btn-primary">Download Report</button>
                               </div>
                           </div>
@@ -227,7 +227,7 @@ $currentDate = date('Y-m-d');
                                   <?php if(count($rows)>0){ $sl=1; foreach($rows as $row){ ?>
                                     
                                   <tr>                                                                        
-                                      <td><img src="<?=env('UPLOADS_URL').$row->profile_image?>" class="table_user" alt="<?=$row->name?>" style="width: 150px; height: 150px; margin-top: 10px;"><?=$row->name?></td>
+                                      <td><img src="<?=env('UPLOADS_URL').$row->profile_image?>" class="table_user" alt="<?=$row->name?>"><?=$row->name?></td>
                                       <td><?=$row->phone?></td>
                                       <td><?=$row->employee_no?></td>
                                       <td><?php

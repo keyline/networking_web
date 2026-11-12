@@ -26,12 +26,14 @@ $sourceTotal = max(1, (int) $sources->sum('total'));
   .analytics-page .panel-head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #edf1f6; }
   .analytics-page .panel-head h2 { margin:0; color:var(--an-text); font-size:14px; font-weight:750; }
   .analytics-page .panel-head span { color:#8a96a8; font-size:10px; }
-  .analytics-page .trend-chart { display:flex; align-items:flex-end; gap:5px; height:195px; padding:24px 16px 14px; }
+  .analytics-page .trend-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .analytics-page .trend-chart { min-width:max(100%, calc(var(--trend-days, 30) * 10px)); display:flex; align-items:flex-end; gap:5px; height:195px; padding:24px 16px 14px; }
   .analytics-page .trend-day { display:flex; flex:1; align-items:center; flex-direction:column; justify-content:flex-end; min-width:5px; height:100%; }
   .analytics-page .trend-bars { display:flex; align-items:flex-end; justify-content:center; gap:2px; width:100%; height:155px; }
   .analytics-page .bar { width:min(9px, 42%); min-height:2px; border-radius:3px 3px 1px 1px; background:#7faaf8; }
   .analytics-page .bar.clicks { background:#27b692; }
   .analytics-page .trend-label { margin-top:6px; color:#9aa5b5; font-size:8px; white-space:nowrap; transform:rotate(-35deg); }
+  .analytics-page .trend-label.is-minor { visibility:hidden; }
   .analytics-page .chart-legend { display:flex; gap:14px; padding:0 16px 14px; color:#77859a; font-size:10px; }
   .analytics-page .legend-dot { display:inline-block; width:7px; height:7px; margin-right:5px; border-radius:2px; background:#7faaf8; }
   .analytics-page .legend-dot.clicks { background:#27b692; }
@@ -61,7 +63,7 @@ $sourceTotal = max(1, (int) $sources->sum('total'));
   .analytics-page .empty { padding:35px !important; color:#8995a6; text-align:center; }
   .analytics-page .pagination-wrap { padding:12px 16px; }
   @media(max-width:1199px){.analytics-page .stats{grid-template-columns:repeat(3,1fr)}.analytics-page .overview-grid{grid-template-columns:1fr}}
-  @media(max-width:767px){.analytics-page .analytics-head{align-items:stretch;flex-direction:column}.analytics-page .stats{grid-template-columns:repeat(2,1fr)}.analytics-page .channel-strip{grid-template-columns:repeat(2,1fr)}.analytics-page .ranking-tools{align-items:stretch;flex-direction:column}.analytics-page .search-form{width:100%}}
+  @media(max-width:767px){.analytics-page .trend-chart{gap:2px;min-width:max(100%, calc(var(--trend-days, 30) * 7px))}.analytics-page .trend-label.is-minor-mobile{visibility:hidden}.analytics-page .analytics-head{align-items:stretch;flex-direction:column}.analytics-page .stats{grid-template-columns:repeat(2,1fr)}.analytics-page .channel-strip{grid-template-columns:repeat(2,1fr)}.analytics-page .ranking-tools{align-items:stretch;flex-direction:column}.analytics-page .search-form{width:100%}}
 </style>
 
 <div class="analytics-page">
@@ -101,13 +103,18 @@ $sourceTotal = max(1, (int) $sources->sum('total'));
     <section class="panel">
       <div class="panel-head"><h2>Views and contact activity</h2><span>Daily trend</span></div>
       @if($trend->isNotEmpty())
-        <div class="trend-chart">
-          @foreach($trend as $point)
+        @php($trendCount = $trend->count())
+        @php($trendLabelStep = $trendCount > 31 ? (int) ceil($trendCount / 15) : 1)
+        @php($trendMobileStep = $trendCount > 10 ? max(5, $trendLabelStep) : $trendLabelStep)
+        <div class="trend-scroll">
+        <div class="trend-chart" style="--trend-days: {{ $trendCount }}">
+          @foreach($trend->values() as $trendIndex => $point)
             <div class="trend-day" title="{{ $point->day }}: {{ $point->views }} views, {{ $point->clicks }} clicks">
               <div class="trend-bars"><span class="bar" style="height:{{ max(2, ((int)$point->views / $maxTrend) * 100) }}%"></span><span class="bar clicks" style="height:{{ max(2, ((int)$point->clicks / $maxTrend) * 100) }}%"></span></div>
-              <span class="trend-label">{{ \Carbon\Carbon::parse($point->day)->format('d M') }}</span>
+              <span class="trend-label{{ $trendIndex % $trendLabelStep !== 0 ? ' is-minor' : '' }}{{ $trendIndex % $trendMobileStep !== 0 ? ' is-minor-mobile' : '' }}">{{ \Carbon\Carbon::parse($point->day)->format('d M') }}</span>
             </div>
           @endforeach
+        </div>
         </div>
         <div class="chart-legend"><span><i class="legend-dot"></i>Views</span><span><i class="legend-dot clicks"></i>Contact clicks</span></div>
       @else

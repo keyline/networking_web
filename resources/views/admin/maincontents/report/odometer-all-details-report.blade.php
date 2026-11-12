@@ -119,7 +119,7 @@ use App\Models\Admin;
                 <div class="col-md-6">
                   <input type="month" name="month_year" class="form-control" value="<?=date($year.'-'.$month)?>">
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 mt-2 mt-md-0">
                   <button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-paper-plane"></i> Generate</button>
                   <?php if($is_search){?><a href="<?=url('admin/report/odometer-details-report')?>" class="btn btn-secondary btn-sm"><i class="fa fa-refresh"></i> Reset</a><?php }?>
                 </div>                
