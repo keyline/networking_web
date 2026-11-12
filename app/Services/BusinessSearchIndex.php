@@ -73,12 +73,57 @@ class BusinessSearchIndex
         if ($rows->isEmpty() && count($long) > 1) {
             $rows = $this->run($phrase, $long, [], false, $limit, $publicOnly);
         }
+        // 4) close spellings: shorten long words to their stem ("digital" -> "digi*" finds "DigiTech",
+        //    "consultants" -> "consult*"), still one indexed FULLTEXT query
+        if ($rows->isEmpty()) {
+            $stems = array_values(array_unique(array_map(
+                fn ($t) => mb_strlen($t) >= 5 ? mb_substr($t, 0, max(4, mb_strlen($t) - 3)) : $t,
+                $long
+            )));
+            if ($stems !== $long && $stems !== []) {
+                $rows = $this->run($phrase, $stems, [], count($stems) === 1, $limit, $publicOnly);
+            }
+        }
 
         return $rows->mapWithKeys(fn ($row) => [(int) $row->cmp_id => [
             'score' => (float) $row->score,
             'match' => $this->matchReason($row, $tokens),
             'row' => $row,
         ]]);
+    }
+
+    /** Ranked business ids matching the query (best first). */
+    public function businessIds(string $query, bool $publicOnly = true, int $limit = 500): array
+    {
+        return $this->search($query, $limit, $publicOnly)->keys()->map(fn ($id) => (int) $id)->all();
+    }
+
+    /**
+     * Ranked member (user) ids for a member search: owners of matching businesses
+     * (name, owner name, category, products/services, keywords) plus a direct phone
+     * match when the query looks like a number. Two small indexed queries.
+     */
+    public function memberIds(string $query, int $limit = 500): array
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return [];
+        }
+        $ids = [];
+        $digits = preg_replace('/\D+/', '', $query);
+        if (strlen($digits) >= 4 && preg_match('/^[\d\s+()-]+$/', $query)) {
+            $ids = DB::table('user_master')->where('um_mobile_no', 'like', '%'.$digits.'%')->limit($limit)->pluck('um_id')->map(fn ($id) => (int) $id)->all();
+        }
+        $businessIds = $this->businessIds($query, false, $limit);
+        if ($businessIds) {
+            $owners = DB::table('user_companies_map')->whereIn('ucm_cmp_id', $businessIds)->get(['ucm_cmp_id', 'ucm_um_id']);
+            $rank = array_flip($businessIds);
+            foreach ($owners->sortBy(fn ($o) => $rank[$o->ucm_cmp_id] ?? PHP_INT_MAX) as $owner) {
+                $ids[] = (int) $owner->ucm_um_id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /** Small, cached result set for the live suggestion dropdown. */

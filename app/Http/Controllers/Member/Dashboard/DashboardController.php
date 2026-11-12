@@ -24,22 +24,19 @@ class DashboardController extends Controller
     public function members(Request $request): View
     {
         $search = trim((string) $request->query('search'));
+        $memberMatches = $search !== '' ? app(\App\Services\BusinessSearchIndex::class)->memberIds($search) : [];
         $members = UserMaster::activeMembers()
             ->with([
                 'userDetail:ud_id,ud_um_id,ud_first_name,ud_last_name',
                 'companies.details:cmpd_id,cmpd_cmp_id,cmpd_name,cmpd_status,public_slug',
                 'companies.categories:bcm_id,name',
             ])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('um_user_name', 'like', "%{$search}%")
-                        ->orWhere('um_mobile_no', 'like', "%{$search}%")
-                        ->orWhereHas('userDetail', fn ($details) => $details
-                            ->where('ud_first_name', 'like', "%{$search}%")
-                            ->orWhere('ud_last_name', 'like', "%{$search}%"))
-                        ->orWhereHas('companies.details', fn ($details) => $details
-                            ->where('cmpd_name', 'like', "%{$search}%"));
-                });
+            // Smart search (business name, owner, category, services, phone) via the search index.
+            ->when($search !== '', function ($query) use ($memberMatches) {
+                $query->whereIn('um_id', $memberMatches ?: [0]);
+                if ($memberMatches) {
+                    $query->orderByRaw('FIELD(um_id, '.implode(',', $memberMatches).')');
+                }
             })
             ->orderByDesc('um_id')
             ->paginate(20)
@@ -175,21 +172,11 @@ class DashboardController extends Controller
         $directory = collect();
 
         if ($search !== '') {
+            $directoryIds = app(\App\Services\BusinessSearchIndex::class)->businessIds($search, true, 8);
             $directory = CompaniesMaster::query()
                 ->with(['details', 'users.userDetail'])
-                ->where(function ($query) use ($search) {
-                    $query->whereHas('details', function ($details) use ($search) {
-                        $details->where('cmpd_name', 'like', "%{$search}%")
-                            ->orWhere('cmpd_description', 'like', "%{$search}%")
-                            ->orWhere('cmpd_email', 'like', "%{$search}%");
-                    })->orWhereHas('users', function ($users) use ($search) {
-                        $users->where('um_email_id', 'like', "%{$search}%")
-                            ->orWhereHas('userDetail', function ($details) use ($search) {
-                                $details->where('ud_first_name', 'like', "%{$search}%")
-                                    ->orWhere('ud_last_name', 'like', "%{$search}%");
-                            });
-                    });
-                })
+                ->whereIn('cmp_id', $directoryIds ?: [0])
+                ->when($directoryIds, fn ($query) => $query->orderByRaw('FIELD(cmp_id, '.implode(',', $directoryIds).')'))
                 ->limit(8)
                 ->get();
 

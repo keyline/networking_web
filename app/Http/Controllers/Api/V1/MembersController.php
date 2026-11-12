@@ -44,15 +44,8 @@ class MembersController extends Controller
             ->where('um.um_status', 2);    // active, verified accounts
 
         if ($search !== '') {
-            $like = '%' . $search . '%';
-            $query->where(function ($q) use ($like) {
-                $q->where('ud.ud_first_name', 'like', $like)
-                    ->orWhere('ud.ud_last_name', 'like', $like)
-                    ->orWhere(DB::raw("CONCAT(ud.ud_first_name, ' ', ud.ud_last_name)"), 'like', $like)
-                    ->orWhere('cd.cmpd_name', 'like', $like)
-                    ->orWhere('bcm.name', 'like', $like)
-                    ->orWhere('um.um_mobile_no', 'like', $like);
-            });
+            // Smart search via the business search index (names, owners, categories, services, phone).
+            $query->whereIn('um.um_id', app(\App\Services\BusinessSearchIndex::class)->memberIds($search) ?: [0]);
         }
 
         $total = (clone $query)->distinct()->count('um.um_id');

@@ -1116,13 +1116,8 @@ class ApiController extends Controller
                     ->leftJoin('countries as cu', 'cu.id', '=', 'companies_details.cmpd_country')
                     ->leftJoin('categories_to_companies', 'categories_to_companies.ctc_cmp_id', '=', 'companies_details.cmpd_cmp_id')
                     ->leftJoin('business_category_master', 'business_category_master.bcm_id', '=', 'categories_to_companies.ctc_bcm_id')
-                    ->where(function ($subQuery) use ($keyword) {
-                        $subQuery->where('companies_details.cmpd_description', 'like', "%{$keyword}%")
-                            ->orWhere('companies_details.cmpd_name', 'like', "%{$keyword}%")
-                            ->orWhere('business_category_master.name', 'like', "%{$keyword}%")
-                            ->orWhere('user_details.ud_first_name', 'like', "%{$keyword}%")
-                        ;
-                    })
+                    // Smart search via the business search index (name, owner, category, services, about).
+                    ->whereIn('companies_details.cmpd_cmp_id', app(\App\Services\BusinessSearchIndex::class)->businessIds((string) $keyword) ?: [0])
                     ->where('companies_details.cmpd_status', 1)
                     ->select(
                         DB::raw("TRIM(CONCAT(COALESCE(user_details.ud_salutation, ''), ' ', COALESCE(user_details.ud_first_name, ''), ' ', COALESCE(user_details.ud_last_name, ''))) AS ud_first_name"),
