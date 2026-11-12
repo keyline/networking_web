@@ -54,6 +54,7 @@ $controllerRoute = $module['controller_route'];
 
                                     <!-- <th scope="col">Client Type</th> -->
                                     <th scope="col">Business Name</th>
+                                    <th scope="col">Owner</th>
                                     <th scope="col">Category</th>
                                     <th scope="col">Email</th>
                                     <th scope="col">Phone</th>
@@ -75,10 +76,8 @@ $controllerRoute = $module['controller_route'];
                                                 <a href="{{ route('business.show', ['slug' => $row['public_slug'], 'preview' => 'visitor']) }}"
                                                     target="_blank" rel="noopener noreferrer"
                                                     title="Preview public business page">{{ wordwrap($row['name'], 40, "\n", true) }} <i class="fa fa-external-link-alt small"></i></a>
-                                                <br>
-                                                <small><span style="color: #ccc8c8"> Owner :</span>
-                                                    {{ $row['owner_name'] }}</small>
                                             </td>
+                                            <td>{{ $row['owner_name'] ?: '—' }}</td>
                                             <td>{{ $row['tagCount'] }}</td>
                                             <td>{{ $row['email'] }}</td>
                                             <td>{{ $row['phone'] }}</td>
