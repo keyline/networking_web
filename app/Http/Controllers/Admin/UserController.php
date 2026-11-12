@@ -306,9 +306,10 @@ class UserController extends Controller
                 'companies.categories:bcm_id,name',
             ])
             ->whereHas('companies')
+            ->where('um_status', '!=', 3) // 3 = rejected
             ->where(function ($query) {
                 $query->where('um_status', '!=', 2)
-                    ->orWhereHas('companies.details', fn ($business) => $business->where('cmpd_status', '!=', 1));
+                    ->orWhereHas('companies.details', fn ($business) => $business->whereNotIn('cmpd_status', [1, 3]));
             })
             ->orderByDesc('um_id')
             ->limit(12)

@@ -314,7 +314,31 @@ use App\Helpers\Helper;
         </div>
     </div>
     <!-- End Stats -->
-    <section class="pending-card" aria-labelledby="pending-registration-title">
+    <style>
+/* pending requests: reject + delete */
+.pending-action-set{grid-template-columns:58px repeat(3,minmax(84px,1fr))!important}
+.pending-button.reject{border-color:#f5c2c7;background:#fff5f5;color:#c2273a}
+.pending-button.reject:hover{background:#ffe9eb}
+.pending-action-set.remove form{grid-column:2/-1}
+.pending-button.delete{border-color:#c2273a;background:#c2273a;color:#fff}
+.pending-button.delete:hover{background:#a51f30}
+.pending-action-grid{min-width:400px}
+@media(max-width:767.98px){
+  /* phones: each pending request becomes a stacked card instead of a squeezed table row */
+  .pending-table-wrap{overflow:visible}
+  .pending-table,.pending-table tbody,.pending-table tr,.pending-table td{display:block;width:100%}
+  .pending-table thead{display:none}
+  .pending-table tr{padding:14px 16px;border-bottom:1px solid #e8edf4}
+  .pending-table td{padding:4px 0;border:0}
+  .pending-table td:nth-child(3):before{content:"Member status: ";color:#6b7890;font-size:12px}
+  .pending-action-grid{min-width:0;margin-top:8px}
+  .pending-action-set{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .pending-action-label{grid-column:1/-1}
+  .pending-action-set.remove form{grid-column:1/-1}
+  .pending-button{min-height:40px;font-size:12px}
+}
+</style>
+<section class="pending-card" aria-labelledby="pending-registration-title">
       <div class="pending-head"><div><h2 id="pending-registration-title">Pending member requests</h2><p>Approve the member first, then approve each linked business.</p></div><span class="pending-count">{{ $pendingRegistrations->count() }} pending</span></div>
       @if($pendingRegistrations->isEmpty())
         <div class="pending-empty"><i class="fa fa-check-circle me-1"></i> No member or business approvals are pending.</div>
@@ -329,7 +353,7 @@ use App\Helpers\Helper;
           @endphp
           <tr>
             <td><div class="pending-name">{{ $pendingName }}</div><div class="pending-meta">{{ $pendingMember->um_email_id }} · {{ $pendingMember->um_mobile_no }}</div></td>
-            <td>@foreach($pendingMember->companies as $company)@if($company->details)<div class="pending-business">{{ $company->details->cmpd_name }} <span class="pending-badge">{{ (int) $company->details->cmpd_status === 1 ? 'Approved' : 'Pending' }}</span></div>@endif @endforeach</td>
+            <td>@foreach($pendingMember->companies as $company)@if($company->details)<div class="pending-business">{{ $company->details->cmpd_name }} <span class="pending-badge">{{ match((int) $company->details->cmpd_status) { 1 => 'Approved', 3 => 'Rejected', default => 'Pending' } }}</span></div>@endif @endforeach</td>
             <td><span class="pending-badge">{{ $memberApproved ? 'Approved' : 'Pending' }}</span></td>
             <td>
               <div class="pending-action-grid">
@@ -338,8 +362,10 @@ use App\Helpers\Helper;
                   <button class="pending-button review" type="button" data-bs-toggle="modal" data-bs-target="#pending-profile-{{ $pendingMember->um_id }}"><i class="fa fa-eye"></i> View</button>
                   @if(!$memberApproved)
                     <form method="post" action="{{ route('admin.registrations.approve-member', $pendingMember) }}" onsubmit="return confirm('Approve this member profile? Business approval will remain separate.');">@csrf<button class="pending-button approve-profile" type="submit"><i class="fa fa-user-check"></i> Approve</button></form>
+                    <form method="post" action="{{ route('admin.registrations.reject-member', $pendingMember) }}" onsubmit="return confirm('Reject {{ addslashes($pendingName) }}? They will not be able to sign in, and their pending business will be rejected too.');">@csrf<button class="pending-button reject" type="submit"><i class="fa fa-user-xmark"></i> Reject</button></form>
                   @else
                     <button class="pending-button" type="button" disabled><i class="fa fa-check"></i> Approved</button>
+                    <span></span>
                   @endif
                 </div>
                 @foreach($pendingMember->companies as $company)
@@ -348,16 +374,28 @@ use App\Helpers\Helper;
                     <div class="pending-action-set">
                       <span class="pending-action-label">Business</span>
                       <button class="pending-button review business" type="button" data-bs-toggle="modal" data-bs-target="#pending-business-{{ $pendingMember->um_id }}-{{ $company->cmp_id }}"><i class="fa fa-eye"></i> View</button>
+                      @php $businessRejected = (int) $business->cmpd_status === 3; @endphp
                       @if($businessApproved)
                         <button class="pending-button business" type="button" disabled><i class="fa fa-check"></i> Approved</button>
+                      @elseif($businessRejected)
+                        <button class="pending-button" type="button" disabled><i class="fa fa-ban"></i> Rejected</button>
                       @elseif($memberApproved)
                         <form method="post" action="{{ route('admin.registrations.approve-business', [$pendingMember, $company]) }}" onsubmit="return confirm('Approve {{ addslashes($business->cmpd_name) }} for the public directory?');">@csrf<button class="pending-button business" type="submit"><i class="fa fa-building-circle-check"></i> Approve</button></form>
                       @else
                         <button class="pending-button business" type="button" disabled title="Approve the profile first"><i class="fa fa-lock"></i> Approve</button>
                       @endif
+                      @if(!$businessApproved && !$businessRejected)
+                        <form method="post" action="{{ route('admin.registrations.reject-business', [$pendingMember, $company]) }}" onsubmit="return confirm('Reject {{ addslashes($business->cmpd_name) }}? It will not appear in the directory.');">@csrf<button class="pending-button reject" type="submit"><i class="fa fa-ban"></i> Reject</button></form>
+                      @else
+                        <span></span>
+                      @endif
                     </div>
                   @endif
                 @endforeach
+                <div class="pending-action-set remove">
+                  <span class="pending-action-label">Remove</span>
+                  <form method="post" action="{{ route('admin.registrations.delete', $pendingMember) }}" onsubmit="return confirm('Permanently delete {{ addslashes($pendingName) }} and ALL their business data? This cannot be undone.');">@csrf @method('DELETE')<button class="pending-button delete" type="submit"><i class="fa fa-trash-can"></i> Delete permanently</button></form>
+                </div>
               </div>
             </td>
           </tr>

@@ -387,6 +387,12 @@ Route::prefix('/admin')->namespace('App\Http\Controllers\Admin')->group(function
             ->whereNumber('user')->name('admin.registrations.approve-member');
         Route::post('clients/{user}/businesses/{company}/approve', 'ClientController@approveBusiness')
             ->whereNumber('user')->whereNumber('company')->name('admin.registrations.approve-business');
+        Route::post('clients/{user}/reject-member', 'ClientController@rejectMember')
+            ->whereNumber('user')->name('admin.registrations.reject-member');
+        Route::post('clients/{user}/businesses/{company}/reject', 'ClientController@rejectBusiness')
+            ->whereNumber('user')->whereNumber('company')->name('admin.registrations.reject-business');
+        Route::delete('clients/{user}/pending-request', 'ClientController@deletePendingMember')
+            ->whereNumber('user')->name('admin.registrations.delete');
         Route::match(['get', 'post'], 'clients/{slug}/add', 'ClientController@add');
         Route::match(['get', 'post'], 'clients/{slug}/edit/{id}', 'ClientController@edit');
         Route::match(['get', 'post'], 'clients/{slug}/view_details/{id}', 'ClientController@viewDetails');

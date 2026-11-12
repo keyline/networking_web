@@ -888,6 +888,51 @@ class ClientController extends Controller
         return back()->with('success_message', 'Business approved and added to the public member directory.');
     }
 
+    /** Reject a pending member (status 3) and every business of theirs that is not approved yet. */
+    public function rejectMember(Request $request, UserMaster $user)
+    {
+        abort_if((int) $user->um_status === 2, 422, 'This member is already approved. Use the users list to deactivate them.');
+
+        DB::transaction(function () use ($user) {
+            $user->update(['um_status' => 3]);
+            $companyIds = $user->companies()->pluck('companies_master.cmp_id');
+            CompaniesDetail::whereIn('cmpd_cmp_id', $companyIds)->where('cmpd_status', '!=', 1)->update(['cmpd_status' => 3]);
+        });
+
+        return back()->with('success_message', 'Member request rejected. They cannot sign in and their pending business stays hidden.');
+    }
+
+    /** Reject one pending business (status 3); the member's own status is unchanged. */
+    public function rejectBusiness(Request $request, UserMaster $user, CompaniesMaster $company)
+    {
+        abort_unless($user->companies()->where('companies_master.cmp_id', $company->cmp_id)->exists(), 404);
+        $business = CompaniesDetail::where('cmpd_cmp_id', $company->cmp_id)->firstOrFail();
+        abort_if((int) $business->cmpd_status === 1, 422, 'This business is already approved.');
+        $business->update(['cmpd_status' => 3]);
+
+        return back()->with('success_message', ($business->cmpd_name ?: 'Business').' was rejected and will not appear in the directory.');
+    }
+
+    /** Permanently delete a pending member request with all linked business data. */
+    public function deletePendingMember(UserMaster $user, MemberDataDeletionService $deletionService)
+    {
+        // The shared guest account powers the app's visitor landing page and must never be deleted.
+        abort_if(strtolower((string) $user->um_email_id) === 'guest@keylines.net', 422, 'The shared guest account cannot be deleted.');
+
+        $displayName = trim(($user->userDetail?->ud_first_name ?? '').' '.($user->userDetail?->ud_last_name ?? ''))
+            ?: ($user->um_user_name ?: 'User #'.$user->um_id);
+
+        try {
+            $deletionService->delete($user);
+        } catch (\Throwable $exception) {
+            Log::error('Pending member deletion failed.', ['user_id' => $user->um_id, 'exception' => $exception]);
+
+            return back()->with('error_message', 'The request could not be deleted. Nothing was removed.');
+        }
+
+        return back()->with('success_message', $displayName.' and their business data were permanently deleted.');
+    }
+
     // view details
     public function viewDetails($slug, $id)
     {
