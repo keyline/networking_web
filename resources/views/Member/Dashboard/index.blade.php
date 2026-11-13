@@ -282,6 +282,27 @@
         @media(max-width:560px){.apply-cta{flex-wrap:wrap}.apply-btn{width:100%}}
 
         .request-contact .myself{color:#6b7890;font-weight:600}
+
+        /* edit own review */
+        .review-card .rv-view{display:flex;align-items:flex-end;gap:10px}
+        .review-card .rv-view .ref-note{flex:1;min-width:0}
+        .rv-edit{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:auto;min-height:36px;padding:0 14px;border:1px solid #f1dfa5;border-radius:999px;background:#fff9e6;color:#9a6b00;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+        .rv-edit svg{width:15px;height:15px;fill:currentColor}
+        .rv-edit:hover{background:#fff2c9}
+        .rv-form{margin-top:10px}
+        .rv-stars{display:inline-flex;flex-direction:row-reverse;gap:4px;margin-bottom:8px}
+        .rv-stars input{position:absolute;opacity:0;pointer-events:none}
+        .rv-stars label{color:#dde3ec;font-size:30px;line-height:1;cursor:pointer;transition:color .1s}
+        .rv-stars input:checked~label,.rv-stars label:hover,.rv-stars label:hover~label{color:#f5b301}
+        .rv-stars input:focus-visible+label{outline:2px solid #f5b301;border-radius:4px}
+        .rv-form textarea{width:100%;min-height:84px;font-size:15px}
+        .rv-error{margin:6px 0 0;color:#c2273a;font-size:13px}
+        .rv-actions{display:flex;gap:8px;margin-top:10px}
+        .rv-actions button{flex:1;min-height:42px;border-radius:999px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+        .rv-cancel{border:0;background:#fff7d9;color:#9a6b00}
+        .rv-save{border:0;background:linear-gradient(135deg,#ffcf55,#e99a16);color:#3d2800}
+        .rv-save:disabled{opacity:.6}
+        @media(max-width:767.98px){.rv-form textarea{font-size:16px}}
 </style>
 </head>
 <body>
@@ -396,7 +417,7 @@
 
                 @if($hasBusinesses)
                 <section class="card section-gap compact-card tcard th-orange">
-                    <div class="tc-band"><span class="th-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10v4a1 1 0 0 0 1 1h2l1 5h2.5l-1-5H9l7 4V5L9 9H4a1 1 0 0 0-1 1Zm15-1.5v7a3.5 3.5 0 0 0 0-7Z"/></svg></span><div class="tc-title"><h2>Member enquiries</h2></div><button class="btn btn-outline" data-open="enquiryModal">Post <span aria-hidden="true">+</span></button></div>
+                    <div class="tc-band"><span class="th-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10v4a1 1 0 0 0 1 1h2l1 5h2.5l-1-5H9l7 4V5L9 9H4a1 1 0 0 0-1 1Zm15-1.5v7a3.5 3.5 0 0 0 0-7Z"/></svg></span><div class="tc-title"><h2>Enquiry</h2></div><button class="btn btn-outline" data-open="enquiryModal">Post <span aria-hidden="true">+</span></button></div>
                     <div class="card-body feed">
                         @forelse($communityEnquiries as $enquiry)
                             @php
@@ -512,5 +533,17 @@ if(d.empty)status.innerHTML='<div class="ref-empty">'+meta[current][3]+'</div>';
 catch(e){status.innerHTML='<div class="ref-empty">Couldn’t load the list. Try again.</div>';more.hidden=false}finally{busy=false;more.disabled=false;more.textContent='Load more'}};
 document.querySelectorAll('[data-list]').forEach(btn=>btn.addEventListener('click',()=>{const t=btn.dataset.list;current=t;const m=meta[t];title.textContent=m[0];help.textContent=m[1];modal.classList.remove('th-orange','th-amber');modal.classList.add(m[2]);body.innerHTML='';status.innerHTML='';more.hidden=true;next=base.replace('__T__',t);modal.showModal();load()}));
 more.addEventListener('click',load)})();
-</script>@include('partials.contact-picker')</body>
+</script>@include('partials.contact-picker')
+<script>
+/* edit own review inside the "My reviews" list */
+(()=>{const body=document.getElementById('myListBody');if(!body)return;
+body.addEventListener('click',e=>{const card=e.target.closest('.review-card');if(!card)return;
+ if(e.target.closest('.rv-edit')){card.querySelector('.rv-view').hidden=true;const f=card.querySelector('.rv-form');f.hidden=false;f.querySelector('textarea').focus()}
+ if(e.target.closest('.rv-cancel')){const f=card.querySelector('.rv-form');f.reset();f.hidden=true;card.querySelector('.rv-view').hidden=false;card.querySelector('.rv-error').hidden=true}});
+body.addEventListener('submit',async e=>{const f=e.target.closest('.rv-form');if(!f)return;e.preventDefault();const card=f.closest('.review-card'),err=f.querySelector('.rv-error'),btn=f.querySelector('.rv-save');
+ btn.disabled=true;btn.textContent='Saving…';err.hidden=true;
+ try{const r=await fetch(f.action,{method:'POST',body:new FormData(f),headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.message||'Could not save the review.');card.outerHTML=d.html}
+ catch(x){err.textContent=x.message;err.hidden=false;btn.disabled=false;btn.textContent='Save review'}});})();
+</script></body>
 </html>

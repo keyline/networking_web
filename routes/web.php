@@ -104,6 +104,7 @@ Route::middleware(['auth:member', 'member.active'])->prefix('member')->group(fun
     Route::post('dashboard/referrals', [DashboardController::class, 'storeReferral'])->name('member.referrals.store');
     Route::post('dashboard/meetings', [DashboardController::class, 'storeMeeting'])->name('member.meetings.store');
     Route::post('dashboard/reviews', [DashboardController::class, 'storeReview'])->name('member.reviews.store');
+    Route::put('dashboard/reviews/{review}', [DashboardController::class, 'updateReview'])->whereNumber('review')->middleware('throttle:30,1')->name('member.reviews.update');
     Route::get('business-owner-membership', [MembershipRequestController::class, 'create'])->name('member.membership.create');
     Route::post('business-owner-membership', [MembershipRequestController::class, 'store'])->name('member.membership.store');
     Route::middleware('business.owner')->group(function () {

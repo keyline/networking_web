@@ -358,7 +358,7 @@ class DashboardController extends Controller
                 ->leftJoin('companies_details as cd', 'cd.cmpd_cmp_id', '=', 'r.rev_cmp_id')
                 ->where('r.rev_um_id', $member->um_id)
                 ->orderByDesc('r.created_at')->orderByDesc('r.rev_id')
-                ->simplePaginate(10, ['r.rev_id', 'r.rev_rating', 'r.rev_comment', 'r.created_at', 'cd.cmpd_name as business_name']);
+                ->simplePaginate(10, ['r.rev_id', 'r.rev_rating', 'r.rev_comment', 'r.created_at', 'r.updated_at', 'cd.cmpd_name as business_name']);
         }
 
         return response()->json([
@@ -703,6 +703,39 @@ class DashboardController extends Controller
         ]);
 
         return back()->with('success', 'Your review has been published successfully.');
+    }
+
+    /** A member edits the rating and comment of their own review. */
+    public function updateReview(Request $request, int $review)
+    {
+        $member = Auth::guard('member')->user();
+        $row = ReviewMaster::query()->where('rev_id', $review)->where('rev_um_id', $member->um_id)->firstOrFail();
+
+        $validator = Validator::make($request->all(), [
+            'rating' => ['required', 'integer', 'between:1,5'],
+            'comment' => ['required', 'string', 'min:3', 'max:1000'],
+        ]);
+        if ($validator->fails()) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $validator->errors()->first()], 422)
+                : back()->withErrors($validator);
+        }
+
+        $data = $validator->validated();
+        $row->update(['rev_rating' => $data['rating'], 'rev_comment' => trim($data['comment'])]);
+
+        if ($request->expectsJson()) {
+            $item = DB::table('reviews as r')->leftJoin('companies_details as cd', 'cd.cmpd_cmp_id', '=', 'r.rev_cmp_id')
+                ->where('r.rev_id', $row->rev_id)
+                ->first(['r.rev_id', 'r.rev_rating', 'r.rev_comment', 'r.created_at', 'r.updated_at', 'cd.cmpd_name as business_name']);
+
+            return response()->json([
+                'message' => 'Review updated.',
+                'html' => view('Member.Dashboard.partials.review-card', ['item' => $item])->render(),
+            ]);
+        }
+
+        return back()->with('success', 'Your review has been updated.');
     }
 
     /** True when the member is linked to (owns) the given business. */
