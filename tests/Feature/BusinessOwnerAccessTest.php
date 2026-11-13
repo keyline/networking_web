@@ -153,6 +153,46 @@ class BusinessOwnerAccessTest extends TestCase
             ->assertSee('Need%20a%20photographer', false)->assertSee('Phone%3A%209876543210', false);
     }
 
+    public function test_member_enquiries_label_only_the_viewer_and_visitors(): void
+    {
+        $viewer = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'label-viewer',
+            'um_email_id' => 'label-viewer@example.test', 'um_mobile_no' => '9876501180', 'um_status' => 2,
+        ]);
+        $visitor = UserMaster::create([
+            'um_utm_id' => 1, 'um_user_name' => 'label-visitor',
+            'um_email_id' => 'label-visitor@example.test', 'um_mobile_no' => '9876501181', 'um_status' => 2,
+        ]);
+        $member = UserMaster::create([
+            'um_utm_id' => 2, 'um_user_name' => 'label-member',
+            'um_email_id' => 'label-member@example.test', 'um_mobile_no' => '9876501182', 'um_status' => 2,
+        ]);
+        $company = CompaniesMaster::create([]);
+        CompaniesDetail::create([
+            'cmpd_cmp_id' => $company->cmp_id, 'cmpd_name' => 'Label Test Business',
+            'cmpd_description' => 'Label test business.', 'cmpd_status' => 1,
+        ]);
+        DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $viewer->um_id]);
+
+        foreach ([[$viewer, 'Own Contact'], [$visitor, 'Visitor Contact'], [$member, 'Member Contact']] as [$sender, $name]) {
+            $enquiry = \App\Models\Enquiries\EnquiryMaster::create([
+                'enm_name' => $name, 'enm_subject' => $name.' request', 'enm_description' => 'Label test.',
+                'enm_type' => 2, 'enm_is_myself' => 1, 'enm_status' => 1,
+            ]);
+            DB::table('enquiry_to_user')->insert([
+                'etu_cmp_id' => 0, 'etu_enm_id' => $enquiry->enm_id,
+                'etu_um_id' => $sender->um_id, 'etu_created_at' => now(),
+            ]);
+        }
+
+        $this->actingAs($viewer, 'member')->get(route('dashboard.index'))
+            ->assertOk()
+            ->assertSee('Own Contact <span class="myself">(myself)</span>', false)
+            ->assertSee('Visitor Contact <span class="myself">(Visitor)</span>', false)
+            ->assertSee('Member Contact')
+            ->assertDontSee('Member Contact <span class="myself">', false);
+    }
+
     public function test_business_owner_dashboard_counts_references_the_member_has_given(): void
     {
         $owner = UserMaster::create([

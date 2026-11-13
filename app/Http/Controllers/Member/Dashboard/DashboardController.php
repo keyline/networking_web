@@ -221,11 +221,15 @@ class DashboardController extends Controller
         $communityEnquiries = EnquiryMaster::query()
             ->where('enm_type', 2)->where('enm_status', 1)
             ->latest('enm_created_at')->limit(5)->get();
-        // Which of these requests were posted by the signed-in member (shown as "(myself)").
-        $ownCommunityIds = DB::table('enquiry_to_user')
-            ->whereIn('etu_enm_id', $communityEnquiries->pluck('enm_id'))
-            ->where('etu_um_id', $member->um_id)
-            ->pluck('etu_enm_id')->map(fn ($id) => (int) $id)->all();
+        $communityEnquiryLabels = DB::table('enquiry_to_user as etu')
+            ->join('user_master as sender', 'sender.um_id', '=', 'etu.etu_um_id')
+            ->whereIn('etu.etu_enm_id', $communityEnquiries->pluck('enm_id'))
+            ->select('etu.etu_enm_id', 'sender.um_id', 'sender.um_utm_id')
+            ->get()->mapWithKeys(fn ($sender) => [
+                (int) $sender->etu_enm_id => (int) $sender->um_id === (int) $member->um_id
+                    ? 'myself'
+                    : ((int) $sender->um_utm_id === 1 ? 'Visitor' : null),
+            ]);
 
         $businessOptions = CompaniesMaster::query()
             ->with('details:cmpd_id,cmpd_cmp_id,cmpd_name')
@@ -324,7 +328,7 @@ class DashboardController extends Controller
         ];
 
         return view('Member.Dashboard.index', compact(
-            'ownCommunityIds',
+            'communityEnquiryLabels',
             'quickCounts',
             'member', 'adminAccess', 'canManageBusinesses', 'businessAnalytics', 'analyticsPeriod', 'analyticsPeriods', 'search', 'directory', 'myEnquiries', 'communityEnquiries', 'businessOptions', 'reviewBusinessOptions', 'memberOptions', 'meetingMemberOptions', 'recentMeetings'
         ));
