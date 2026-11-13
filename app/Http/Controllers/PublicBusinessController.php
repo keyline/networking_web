@@ -235,23 +235,27 @@ class PublicBusinessController extends Controller
             return back()->withErrors(['lead' => 'This is your own business, so you cannot send it an enquiry.']);
         }
 
-        $enquiryFor = $request->input('enquiry_for', 'someone');
+        $enquiryFor = $request->input('enquiry_for', 'someone') === 'myself' ? 'myself' : 'someone';
+        $someone = $enquiryFor === 'someone';
         $data = $request->validate([
             'enquiry_for' => ['nullable', Rule::in(['myself', 'someone'])],
-            'name' => [Rule::requiredIf($enquiryFor === 'someone'), 'nullable', 'string', 'max:150'],
-            'email' => [Rule::requiredIf($enquiryFor === 'someone' && !$request->filled('phone')), 'nullable', 'email:rfc', 'max:250'],
-            'phone' => [Rule::requiredIf($enquiryFor === 'someone' && !$request->filled('email')), 'nullable', 'regex:/^[6-9][0-9]{9}$/'],
+            // contact details are only asked for when the enquiry is for someone else
+            'name' => [Rule::requiredIf($someone), 'nullable', 'string', 'max:150'],
+            'phone' => [Rule::requiredIf($someone), 'nullable', 'regex:/^[6-9][0-9]{9}$/'],
+            'email' => ['nullable', 'email:rfc', 'max:250'],
             'whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
-            'subject' => ['nullable', 'string', 'max:250', 'required_without:product_title'],
             'product_title' => ['nullable', 'string', 'max:150'],
             'message' => ['required', 'string', 'max:3000'],
             'website' => ['nullable', 'max:0'],
         ], [
-            'email.required_without' => 'Provide an email address or mobile number.',
-            'phone.required_without' => 'Provide a mobile number or email address.',
+            'name.required' => 'Enter their name.',
+            'phone.required' => 'Enter their 10-digit mobile number.',
             'phone.regex' => 'Enter a valid 10-digit Indian mobile number.',
             'whatsapp.regex' => 'Enter a valid 10-digit WhatsApp number.',
+            'message.required' => 'Describe the requirement.',
         ]);
+        // one requirement box: its first line becomes the subject
+        $data['subject'] = Str::limit(trim(strtok(trim($data['message']), "\n")), 120, '…');
 
         $ownerId = DB::table('user_companies_map')
             ->where('ucm_cmp_id', $business->cmpd_cmp_id)
@@ -264,11 +268,12 @@ class PublicBusinessController extends Controller
         // etu_um_id records the signed-in sender for both their own enquiries and referrals.
         $senderId = (int) Auth::guard('member')->id();
         if ($enquiryFor === 'myself') {
+            // the system already knows the member: use their profile, ignore any posted contact fields
             $sender = UserMaster::with('userDetail')->findOrFail($senderId);
             $data['name'] = trim(($sender->userDetail?->ud_first_name ?? '').' '.($sender->userDetail?->ud_last_name ?? '')) ?: $sender->um_user_name;
-            $data['email'] = $data['email'] ?? $sender->um_email_id;
+            $data['email'] = $sender->um_email_id;
             $data['phone'] = $sender->um_mobile_no;
-            $data['whatsapp'] = $data['whatsapp'] ?? $sender->userDetail?->ud_whatsapp_no;
+            $data['whatsapp'] = $sender->userDetail?->ud_whatsapp_no;
         }
 
         $lead = DB::transaction(function () use ($data, $business, $senderId, $enquiryFor) {
