@@ -190,7 +190,7 @@ class BusinessOwnerAccessTest extends TestCase
             ->assertOk()
             ->assertSee('Own Contact <span class="myself">(myself)</span>', false)
             ->assertSee('Different Contact')->assertDontSee('Different Contact <span class="myself">', false)
-            ->assertSee('Visitor Contact <span class="myself">(Visitor)</span>', false)
+            ->assertSee('Visitor Contact <span class="myself">(Guest)</span>', false)
             ->assertSee('Member Contact')
             ->assertDontSee('Member Contact <span class="myself">', false);
     }

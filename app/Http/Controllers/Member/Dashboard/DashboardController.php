@@ -230,7 +230,7 @@ class DashboardController extends Controller
                 (int) $sender->etu_enm_id => (int) $sender->um_id === (int) $member->um_id
                     && strcasecmp(trim((string) $sender->enm_name), $member->um_name) === 0
                     ? 'myself'
-                    : ((int) $sender->um_utm_id === 1 ? 'Visitor' : null),
+                    : ((int) $sender->um_utm_id === 1 ? 'Guest' : null),
             ]);
 
         $businessOptions = CompaniesMaster::query()
