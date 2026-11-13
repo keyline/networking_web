@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PublicBusinessController extends Controller
@@ -233,10 +234,12 @@ class PublicBusinessController extends Controller
             return back()->withErrors(['lead' => 'This is your own business, so you cannot send it an enquiry.']);
         }
 
+        $enquiryFor = $request->input('enquiry_for', 'someone');
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
-            'email' => ['nullable', 'email:rfc', 'max:250', 'required_without:phone'],
-            'phone' => ['nullable', 'regex:/^[6-9][0-9]{9}$/', 'required_without:email'],
+            'enquiry_for' => ['nullable', Rule::in(['myself', 'someone'])],
+            'name' => [Rule::requiredIf($enquiryFor === 'someone'), 'nullable', 'string', 'max:150'],
+            'email' => [Rule::requiredIf($enquiryFor === 'someone' && !$request->filled('phone')), 'nullable', 'email:rfc', 'max:250'],
+            'phone' => [Rule::requiredIf($enquiryFor === 'someone' && !$request->filled('email')), 'nullable', 'regex:/^[6-9][0-9]{9}$/'],
             'whatsapp' => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
             'subject' => ['nullable', 'string', 'max:250', 'required_without:product_title'],
             'product_title' => ['nullable', 'string', 'max:150'],
@@ -257,12 +260,17 @@ class PublicBusinessController extends Controller
             return back()->withInput()->withErrors(['lead' => 'This business cannot receive enquiries yet. Please use its listed contact details.']);
         }
 
-        // The signed-in member who submits this form is the referrer: storing them in etu_um_id
-        // (enm_is_myself = 0) makes the enquiry a normal reference — it counts as a reference
-        // received for the business and a reference given by the sender, on web and in the app.
+        // etu_um_id records the signed-in sender for both their own enquiries and referrals.
         $senderId = (int) Auth::guard('member')->id();
+        if ($enquiryFor === 'myself') {
+            $sender = UserMaster::with('userDetail')->findOrFail($senderId);
+            $data['name'] = trim(($sender->userDetail?->ud_first_name ?? '').' '.($sender->userDetail?->ud_last_name ?? '')) ?: $sender->um_user_name;
+            $data['email'] = $data['email'] ?? $sender->um_email_id;
+            $data['phone'] = $sender->um_mobile_no;
+            $data['whatsapp'] = $data['whatsapp'] ?? $sender->userDetail?->ud_whatsapp_no;
+        }
 
-        $lead = DB::transaction(function () use ($data, $business, $senderId) {
+        $lead = DB::transaction(function () use ($data, $business, $senderId, $enquiryFor) {
             $lead = EnquiryMaster::create([
                 'enm_name' => $data['name'],
                 'enm_email' => $data['email'] ?? null,
@@ -272,7 +280,7 @@ class PublicBusinessController extends Controller
                 'enm_subject' => !empty($data['product_title']) ? 'Enquiry about '.$data['product_title'] : $data['subject'],
                 'enm_description' => $data['message'],
                 'enm_type' => 1,
-                'enm_is_myself' => 0,
+                'enm_is_myself' => $enquiryFor === 'myself' ? 1 : 0,
                 'enm_status' => 1,
             ]);
 

@@ -124,6 +124,8 @@ class PublicBusinessProfileTest extends TestCase
             ->assertSee('9876501234')
             ->assertSee('Private business address')
             ->assertSee('productPreviewDialog', false)
+            ->assertSee('Myself')
+            ->assertSee('Someone I know')
             ->assertSee('Preview Tax consulting')
             ->assertSee('Email enquiry')
             ->assertSee('I%20want%20to%20know%20more%20about%20this%3A%20Tax%20consulting', false)
@@ -169,9 +171,23 @@ class PublicBusinessProfileTest extends TestCase
 
         $response->assertRedirect(route('business.show', 'example-business'))->assertSessionHas('lead_success');
         $this->assertDatabaseHas('enquiry_master', ['enm_email' => 'lead@example.test', 'enm_subject' => 'Need a quotation']);
-        $this->assertDatabaseHas('enquiry_to_user', ['etu_cmp_id' => $company->cmp_id, 'etu_um_id' => $owner->um_id]);
+        $this->assertDatabaseHas('enquiry_to_user', ['etu_cmp_id' => $company->cmp_id, 'etu_um_id' => $visitor->um_id]);
         Notification::assertSentTo($owner, BusinessLeadSmsNotification::class);
         Notification::assertSentOnDemand(BusinessLeadEmailNotification::class);
+
+        $this->actingAs($visitor, 'member')->post(route('business.lead', 'example-business'), [
+            'enquiry_for' => 'myself',
+            'subject' => 'Need this for myself',
+            'message' => 'Please contact me about this request.',
+        ])->assertRedirect(route('business.show', 'example-business'))->assertSessionHas('lead_success');
+
+        $this->assertDatabaseHas('enquiry_master', [
+            'enm_name' => 'visitor',
+            'enm_email' => 'visitor@example.test',
+            'enm_phone' => '9123409876',
+            'enm_subject' => 'Need this for myself',
+            'enm_is_myself' => 1,
+        ]);
 
         $this->post(route('business.lead', 'example-business'), [
             'name' => 'Product Buyer', 'phone' => '9234567890', 'product_title' => 'Tax consulting',
