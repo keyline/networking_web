@@ -14,13 +14,36 @@
 .panel{background:#f7f7f7}
 .tabs{background:#ececef}
 input,.google{background:#fff}
+
+/* compact professional sign-in card */
+body{background:linear-gradient(145deg,#eaf1ff 0,#f5f2ff 52%,#eef7f5 100%)}
+.panel{padding:28px;background:transparent}
+.card{position:relative;overflow:hidden;padding:28px;border:1px solid #e0e7f2;border-radius:24px;background:#f7f7f7;box-shadow:0 22px 60px rgba(31,53,91,.14)}
+.card:before{position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#397ef6,#6b52dc,#27ad87);content:""}
+.brand-block{margin-bottom:20px}
+.brand-block .brand img{max-width:190px;max-height:62px}
+.tagline{margin-top:7px;font-size:11px;letter-spacing:.18em}
+h1{font-size:28px;letter-spacing:-.03em}
+.sub{margin-bottom:18px;font-size:13px;line-height:1.5}
+.tabs{gap:3px;margin-bottom:14px;padding:3px;border:0;border-radius:11px;background:#edf1f8;box-shadow:inset 0 0 0 1px #e1e7f1}
+.tab{min-height:38px;padding:6px 4px;border-radius:8px;color:#63718a;font-size:11px;font-weight:750;white-space:nowrap;transition:background .15s,color .15s,box-shadow .15s}
+.tab:hover{color:#315fc7}
+.tab.active{background:linear-gradient(135deg,#397ef6,#6654dc);color:#fff;box-shadow:0 3px 9px rgba(57,126,246,.22)}
+label{margin-top:10px}
+input{height:44px;border-radius:11px;background:#fff}
+button,.google{height:44px;margin-top:14px;border-radius:11px;background:linear-gradient(135deg,#397ef6,#6255df);box-shadow:0 7px 16px rgba(57,126,246,.2)}
+.google,.resend{box-shadow:none}
+.links{margin-top:12px;padding-top:4px}
+.links a{font-weight:600}
+@media(max-width:850px){.panel{min-height:100dvh;align-items:flex-start;padding:18px 14px}.card{max-width:430px;margin:0 auto;padding:22px 18px;border-radius:20px}.brand-block{margin-bottom:16px}.brand-block .brand img{max-width:168px;max-height:54px}.tagline{font-size:10px}h1{font-size:25px}.sub{margin-bottom:15px}.tabs{margin-bottom:12px}.tab{min-height:38px}.links{margin-top:10px}}
+@media(max-width:370px){.card{padding:20px 14px}.tab{font-size:10px}.links a{font-size:12px}}
 </style></head><body>@php($otpDigits=\App\Services\Member\MemberLoginService::usesTestOtp()?6:4)<main class="shell"><section class="panel"><div class="card"><div class="brand-block"><a class="brand" href="{{url('/')}}">@include('Member.partials.site-logo')</a><p class="tagline">Refer. Rise. Repeat.</p></div>@php($otpMode=session('member_otp_email')?'email':(session('member_otp_user_id')?'mobile':null))@if($otpMode)<a class="back" href="{{route('member.index',['reset'=>1])}}">← Change {{$otpMode==='email'?'email address':'mobile number'}}</a>@endif<h1>{{$otpMode?'Verify your OTP':'Welcome back'}}</h1><p class="sub">{{$otpMode?'Enter the '.$otpDigits.'-digit code sent to your registered contact.':'Sign in to manage your business, chapter, enquiries and referrals.'}}</p>
 @if(session('success'))<div class="message success">{{session('success')}}</div>@endif @if($errors->any())<div class="message error"><ul>@foreach($errors->all() as $error)<li>{{$error}}</li>@endforeach</ul></div>@endif
 @if($otpMode)<div class="sent">OTP sent to <strong>{{$otpMode==='email'?session('member_otp_email'):session('member_otp_mobile')}}</strong><div style="margin-top:4px;font-size:11px">Wrong {{$otpMode==='email'?'email':'number'}}? Use the change option above.</div></div><form method="post" action="{{$otpMode==='email'?route('member.verify-otp'):route('member.verify-mobile-otp')}}">@csrf @if($otpMode==='email')<input type="hidden" name="email" value="{{session('member_otp_email')}}">@else<input type="hidden" name="user_id" value="{{session('member_otp_user_id')}}">@endif<label>{{$otpDigits}}-digit OTP</label><input class="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="{{$otpDigits}}" pattern="[0-9]{{$otpDigits===6?'{6}':'{4}'}}" required autofocus><button>Verify and sign in</button></form><div class="links"><a href="{{route('member.index',['reset'=>1])}}">All sign-in options</a><a href="{{url('/')}}">Back to website</a></div>
 <form method="post" action="{{route('member.resend-otp')}}">@csrf @if($otpMode==='email')<input type="hidden" name="email" value="{{session('member_otp_email')}}">@else<input type="hidden" name="mobile" value="{{session('member_otp_mobile_value')}}">@endif<button class="resend">Resend OTP</button></form>
 @else<div class="tabs"><button class="tab active" type="button" data-tab="email">Email OTP</button><button class="tab" type="button" data-tab="mobile">Mobile OTP</button><button class="tab" type="button" data-tab="password">Password</button></div>
 <form class="method active" data-method="email" method="post" action="{{route('member.send-otp')}}">@csrf<label>Email address</label><input name="email" type="email" value="{{old('email')}}" autocomplete="email" required><button>Send email OTP</button></form>
-<form class="method" data-method="mobile" method="post" action="{{route('member.send-mobile-otp')}}">@csrf<label>Mobile number</label><input name="mobile" type="tel" value="{{old('mobile')}}" autocomplete="tel" placeholder="9330109091" required><button>Send SMS OTP</button></form>
+<form class="method" data-method="mobile" method="post" action="{{route('member.send-mobile-otp')}}">@csrf<label>Mobile number</label><input name="mobile" type="tel" value="{{old('mobile')}}" autocomplete="tel" placeholder="Enter 10-digit mobile number" required><button>Send SMS OTP</button></form>
 <form class="method" data-method="password" method="post" action="{{route('member.login-password')}}">@csrf<label>Email address</label><input name="email" type="email" autocomplete="email" required><label>Password</label><input name="password" type="password" autocomplete="current-password" required><button>Sign in securely</button></form>
 <div class="links"><a href="{{route('join.create')}}">Create an account</a><a href="{{url('/')}}">Back to website</a></div>@endif</div></section><aside class="aside"><div><h2>Your network and opportunities in one place.</h2><p>Connect with trusted businesses, exchange referrals, manage enquiries and participate in your local chapter.</p></div></aside></main><script>document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.method').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelector('[data-method="'+t.dataset.tab+'"]').classList.add('active')})</script><script>
 /* Refresh the CSRF token right before submitting, so a login page left open for hours,

@@ -26,7 +26,7 @@
 .members .member .avatar{flex:0 0 44px;width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:15px}
 .members .member h2{flex:1;min-width:0;color:#fff;font-size:17px}
 .m-sheet{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin-top:-18px;padding:16px;border-radius:18px 18px 0 0;background:#fff}
-.m-sheet .businesses{display:flex;align-items:center;gap:8px;flex:1 1 100%;min-width:0;color:var(--ink);font-size:14px;font-weight:600}
+.m-sheet .businesses{display:flex;align-items:center;gap:8px;flex:1 1 100%;min-width:0;color:var(--ink);font-size:16px;font-weight:600}
 .m-sheet .businesses span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .m-sheet .businesses svg{flex:0 0 18px;width:18px;height:18px;fill:var(--accent)}
 .m-sheet .phone{grid-column:auto;margin:0;min-height:38px;padding:0 14px;border-radius:999px;font-size:13px}
