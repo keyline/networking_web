@@ -93,6 +93,7 @@ class PublicBusinessController extends Controller
         return view('front.members', array_merge($this->siteData(), [
             'title' => 'Members · Networx',
             'businesses' => $businesses,
+            'completeness' => \App\Services\BusinessCompleteness::scores($businesses->getCollection()->pluck('cmpd_cmp_id')->all()),
             'categories' => BusinessCategoryMaster::where('status', 1)->orderBy('name')->get(),
             'search' => $search,
             'categoryId' => $categoryId,
