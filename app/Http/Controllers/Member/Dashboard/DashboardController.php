@@ -220,6 +220,7 @@ class DashboardController extends Controller
 
         $communityEnquiries = EnquiryMaster::query()
             ->where('enm_type', 2)->where('enm_status', 1)
+            ->where('enm_created_at', '>=', now()->subDays(30))
             ->latest('enm_created_at')->limit(5)->get();
         $communityEnquiryLabels = DB::table('enquiry_to_user as etu')
             ->join('user_master as sender', 'sender.um_id', '=', 'etu.etu_um_id')

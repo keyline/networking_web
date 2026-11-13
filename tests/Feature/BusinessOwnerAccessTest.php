@@ -186,12 +186,19 @@ class BusinessOwnerAccessTest extends TestCase
             ]);
         }
 
+        \App\Models\Enquiries\EnquiryMaster::create([
+            'enm_name' => 'Expired Contact', 'enm_subject' => 'Expired public request',
+            'enm_description' => 'This request is older than thirty days.', 'enm_type' => 2,
+            'enm_is_myself' => 1, 'enm_status' => 1, 'enm_created_at' => now()->subDays(31),
+        ]);
+
         $this->actingAs($viewer, 'member')->get(route('dashboard.index'))
             ->assertOk()
             ->assertSee('Own Contact <span class="myself">(myself)</span>', false)
             ->assertSee('Different Contact')->assertDontSee('Different Contact <span class="myself">', false)
             ->assertSee('Visitor Contact <span class="myself">(Guest)</span>', false)
             ->assertSee('Member Contact')
+            ->assertDontSee('Expired public request')
             ->assertDontSee('Member Contact <span class="myself">', false);
     }
 
