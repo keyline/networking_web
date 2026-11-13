@@ -223,10 +223,12 @@ class DashboardController extends Controller
             ->latest('enm_created_at')->limit(5)->get();
         $communityEnquiryLabels = DB::table('enquiry_to_user as etu')
             ->join('user_master as sender', 'sender.um_id', '=', 'etu.etu_um_id')
+            ->join('enquiry_master as enquiry', 'enquiry.enm_id', '=', 'etu.etu_enm_id')
             ->whereIn('etu.etu_enm_id', $communityEnquiries->pluck('enm_id'))
-            ->select('etu.etu_enm_id', 'sender.um_id', 'sender.um_utm_id')
+            ->select('etu.etu_enm_id', 'sender.um_id', 'sender.um_utm_id', 'enquiry.enm_name')
             ->get()->mapWithKeys(fn ($sender) => [
                 (int) $sender->etu_enm_id => (int) $sender->um_id === (int) $member->um_id
+                    && strcasecmp(trim((string) $sender->enm_name), $member->um_name) === 0
                     ? 'myself'
                     : ((int) $sender->um_utm_id === 1 ? 'Visitor' : null),
             ]);

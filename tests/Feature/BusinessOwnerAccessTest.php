@@ -159,6 +159,7 @@ class BusinessOwnerAccessTest extends TestCase
             'um_utm_id' => 2, 'um_user_name' => 'label-viewer',
             'um_email_id' => 'label-viewer@example.test', 'um_mobile_no' => '9876501180', 'um_status' => 2,
         ]);
+        UserDetails::create(['ud_um_id' => $viewer->um_id, 'ud_first_name' => 'Own', 'ud_last_name' => 'Contact']);
         $visitor = UserMaster::create([
             'um_utm_id' => 1, 'um_user_name' => 'label-visitor',
             'um_email_id' => 'label-visitor@example.test', 'um_mobile_no' => '9876501181', 'um_status' => 2,
@@ -174,7 +175,7 @@ class BusinessOwnerAccessTest extends TestCase
         ]);
         DB::table('user_companies_map')->insert(['ucm_cmp_id' => $company->cmp_id, 'ucm_um_id' => $viewer->um_id]);
 
-        foreach ([[$viewer, 'Own Contact'], [$visitor, 'Visitor Contact'], [$member, 'Member Contact']] as [$sender, $name]) {
+        foreach ([[$viewer, 'Own Contact'], [$viewer, 'Different Contact'], [$visitor, 'Visitor Contact'], [$member, 'Member Contact']] as [$sender, $name]) {
             $enquiry = \App\Models\Enquiries\EnquiryMaster::create([
                 'enm_name' => $name, 'enm_subject' => $name.' request', 'enm_description' => 'Label test.',
                 'enm_type' => 2, 'enm_is_myself' => 1, 'enm_status' => 1,
@@ -188,6 +189,7 @@ class BusinessOwnerAccessTest extends TestCase
         $this->actingAs($viewer, 'member')->get(route('dashboard.index'))
             ->assertOk()
             ->assertSee('Own Contact <span class="myself">(myself)</span>', false)
+            ->assertSee('Different Contact')->assertDontSee('Different Contact <span class="myself">', false)
             ->assertSee('Visitor Contact <span class="myself">(Visitor)</span>', false)
             ->assertSee('Member Contact')
             ->assertDontSee('Member Contact <span class="myself">', false);
