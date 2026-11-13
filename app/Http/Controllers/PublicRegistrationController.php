@@ -164,16 +164,12 @@ class PublicRegistrationController extends Controller
     public function guestSendOtp(Request $request)
     {
         $data = $request->validate(['identifier' => ['required', 'string', 'max:255']]);
-        $identifier = trim($data['identifier']);
-        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL) !== false;
-        $mobile = preg_replace('/\D+/', '', $identifier);
-        if (! $isEmail && ! preg_match('/^[6-9][0-9]{9}$/', $mobile)) {
-            throw ValidationException::withMessages(['identifier' => 'Enter a valid 10-digit mobile number or email address.']);
+        $mobile = preg_replace('/\D+/', '', trim($data['identifier']));
+        if (! preg_match('/^[6-9][0-9]{9}$/', $mobile)) {
+            throw ValidationException::withMessages(['identifier' => 'Enter a valid 10-digit Indian mobile number.']);
         }
 
-        $user = $isEmail
-            ? UserMaster::whereRaw('LOWER(um_email_id) = ?', [strtolower($identifier)])->first()
-            : UserMaster::whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(um_mobile_no, '+', ''), ' ', ''), '-', ''), '(', ''), ')', ''), 10) = ?", [$mobile])->first();
+        $user = UserMaster::whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(um_mobile_no, '+', ''), ' ', ''), '-', ''), '(', ''), ')', ''), 10) = ?", [$mobile])->first();
         if ($user) {
             if ((int) $user->um_status !== 2) {
                 throw ValidationException::withMessages(['identifier' => 'This account is not active yet. Please contact the administrator.']);
@@ -187,24 +183,18 @@ class PublicRegistrationController extends Controller
                 // Localhost uses the fixed OTP without contacting email or SMS providers.
             } elseif (app()->environment('testing')) {
                 $request->session()->put('testing_guest_login_otp', $user->fresh()->um_otp);
-            } elseif ($isEmail) {
-                $this->loginOtp->sendEmailOTP($user->um_id);
             } else {
                 $this->sms->send($user->um_mobile_no, (string) $user->fresh()->um_otp);
             }
             $request->session()->forget(['guest_registration_mobile', 'guest_registration_verified']);
             $request->session()->put([
                 'guest_login_user_id' => $user->um_id,
-                'guest_login_mode' => $isEmail ? 'email' : 'mobile',
-                'guest_login_destination' => $isEmail ? $user->um_email_id : $mobile,
+                'guest_login_mode' => 'mobile',
+                'guest_login_destination' => $mobile,
             ]);
             RateLimiter::hit($key, 60);
             return redirect()->route('guest.register')->with('success', 'Account found. We sent you a login OTP.');
         }
-        if ($isEmail) {
-            throw ValidationException::withMessages(['identifier' => 'No account was found for this email. Enter your mobile number to register as a guest.']);
-        }
-
         $key = 'guest-registration:send:'.$mobile.'|'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 3)) {
             throw ValidationException::withMessages(['mobile' => 'Too many attempts. Please try again later.']);

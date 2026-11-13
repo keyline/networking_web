@@ -280,6 +280,8 @@
         .apply-active{border-color:#cdeedc;background:linear-gradient(135deg,#effaf4,#fbfefc)}
         .apply-active .apply-icon{background:linear-gradient(135deg,#43c990,#16875a);box-shadow:0 8px 16px rgba(22,135,90,.3)}
         @media(max-width:560px){.apply-cta{flex-wrap:wrap}.apply-btn{width:100%}}
+        .business-interest{display:flex;justify-content:flex-end;margin:10px 0 4px}
+        .business-interest a{display:inline-flex;align-items:center;min-height:34px;padding:0 13px;border:1px solid #d6e0ee;border-radius:999px;background:#fff;color:#2a5fd0;font-size:12px;font-weight:700;text-decoration:none}
 
         .request-contact .myself{color:#6b7890;font-weight:600}
 
@@ -337,6 +339,9 @@
                 $mship = $member->membership;
                 $mStatus = $canManageBusinesses ? 'active' : ($mship?->membership_status === 'pending' ? 'pending' : 'none');
             @endphp
+            @if($isVisitor && $mStatus === 'none')
+            <div class="business-interest"><a href="{{ route('member.membership.create') }}">Want to register your business?</a></div>
+            @else
             <section class="apply-cta apply-{{ $mStatus }}">
                 <span class="apply-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 6V4a2 2 0 0 1 2-2 2 2 0 0 1 2 2v2h6a2 2 0 0 1 2 2v4H2V8a2 2 0 0 1 2-2Zm2-2v2V4ZM2 14h8v2h4v-2h8v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z"/></svg></span>
                 <div class="apply-text">
@@ -356,6 +361,7 @@
                     <a class="apply-btn" href="{{ route('member.membership.create') }}">Apply now →</a>
                 @endif
             </section>
+            @endif
         @endunless
 
         @if($isVisitor)

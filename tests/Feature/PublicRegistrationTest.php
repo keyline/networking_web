@@ -94,7 +94,7 @@ class PublicRegistrationTest extends TestCase
         $this->post(route('guest.register.complete'), [
             'salutation' => 'Ms.', 'first_name' => 'Guest', 'last_name' => 'Viewer', 'email' => 'guest-viewer@example.test',
             'country' => $country->id, 'state' => $state->id, 'consent' => '1',
-        ])->assertRedirect();
+        ])->assertRedirect(route('dashboard.index'));
 
         $guest = UserMaster::where('um_email_id', 'guest-viewer@example.test')->firstOrFail();
         $this->assertSame(1, (int) $guest->um_utm_id);
@@ -105,6 +105,10 @@ class PublicRegistrationTest extends TestCase
         $this->assertNull($guest->userDetail->ud_addr_2);
         $this->assertNull($guest->userDetail->ud_pincode);
         $this->assertAuthenticatedAs($guest, 'member');
+        $this->get(route('dashboard.index'))
+            ->assertOk()
+            ->assertSee('Want to register your business?')
+            ->assertSee(route('member.membership.create'));
     }
 
     public function test_guest_registration_uses_fixed_six_digit_otp_only_on_localhost(): void
@@ -151,7 +155,7 @@ class PublicRegistrationTest extends TestCase
 
         $this->get(route('guest.register'))
             ->assertOk()
-            ->assertSee('Mobile number or email')
+            ->assertSee('Indian mobile number')
             ->assertDontSee('Verify mobile');
     }
 
@@ -196,23 +200,14 @@ class PublicRegistrationTest extends TestCase
         $this->assertAuthenticatedAs($user, 'member');
     }
 
-    public function test_existing_email_receives_otp_and_logs_in_from_guest_registration(): void
+    public function test_guest_registration_rejects_email_and_non_indian_mobile_numbers(): void
     {
-        $user = UserMaster::create([
-            'um_utm_id' => 2,
-            'um_user_name' => 'EXISTING-MEMBER-EMAIL',
-            'um_email_id' => 'existing-email@example.test',
-            'um_mobile_no' => '9876543277',
-            'um_status' => 2,
-        ]);
-
         $this->post(route('guest.register.send-otp'), ['identifier' => 'EXISTING-EMAIL@example.test'])
-            ->assertRedirect(route('guest.register'))
-            ->assertSessionHas('guest_login_mode', 'email');
-        $otp = session('testing_guest_login_otp');
-        $this->post(route('guest.register.verify-otp'), ['otp' => $otp])->assertRedirect(route('dashboard.index'));
-
-        $this->assertAuthenticatedAs($user, 'member');
+            ->assertSessionHasErrors('identifier');
+        $this->post(route('guest.register.send-otp'), ['identifier' => '2125550198'])
+            ->assertSessionHasErrors('identifier');
+        $this->post(route('guest.register.send-otp'), ['identifier' => '+1 415 555 0198'])
+            ->assertSessionHasErrors('identifier');
     }
 
     public function test_join_form_labels_address_as_business_information_only(): void
