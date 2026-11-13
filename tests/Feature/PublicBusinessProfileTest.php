@@ -270,6 +270,7 @@ class PublicBusinessProfileTest extends TestCase
             'cmpd_cmp_id' => $company->cmp_id,
             'cmpd_name' => 'Directory Consulting Company',
             'cmpd_description' => 'Business advisory and planning.',
+            'cmpd_logo' => 'directory-consulting-logo.png',
             'cmpd_status' => 1,
             'cmpd_is_document_valid' => '1',
         ]);
@@ -280,12 +281,15 @@ class PublicBusinessProfileTest extends TestCase
             ['bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'view', 'bae_source' => 'WEB', 'bae_created_at' => now()],
             ['bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'whatsapp', 'bae_source' => 'WEB', 'bae_created_at' => now()],
         ]);
+        app(\App\Services\BusinessSearchIndex::class)->refresh([$company->cmp_id]);
 
         $response = $this->get(route('members.index', ['search' => 'Directory Consulting']));
         $response->assertOk()
             ->assertSee('Directory Consulting Company')
             ->assertSee($category->name)
             ->assertSee('Highly engaged')
+            ->assertSee('class="business-cover-bg"', false)
+            ->assertSee('class="business-cover-logo"', false)
             ->assertSee('data-business-id="'.$company->cmp_id.'"', false)
             ->assertSee(route('business.show', 'directory-consulting-company'), false)
             ->assertSee('target="_blank" rel="noopener noreferrer"', false)
