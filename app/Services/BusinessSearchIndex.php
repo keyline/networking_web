@@ -29,7 +29,7 @@ use Illuminate\Support\Str;
 class BusinessSearchIndex
 {
     public const TABLE = 'business_search_index';
-    private const BUILT_KEY = 'business_search_index:built_at';
+    private const BUILT_KEY = 'business_search_index:built_at:v2';
     private const LOCK_KEY = 'business_search_index:rebuilding';
     private const REBUILD_EVERY_MINUTES = 60;
     // Line markers inside `content`; punctuation + 1 letter, so FULLTEXT never indexes them.
@@ -83,6 +83,9 @@ class BusinessSearchIndex
             if ($stems !== $long && $stems !== []) {
                 $rows = $this->run($phrase, $stems, [], count($stems) === 1, $limit, $publicOnly);
             }
+        }
+        if ($rows->isEmpty()) {
+            $rows = $this->fuzzy($tokens, $limit, $publicOnly);
         }
 
         return $rows->mapWithKeys(fn ($row) => [(int) $row->cmp_id => [
@@ -172,9 +175,54 @@ class BusinessSearchIndex
             ->get();
     }
 
+    /** Typo fallback: narrow by a four-character prefix, then require a small edit distance. */
+    private function fuzzy(array $tokens, int $limit, bool $publicOnly): Collection
+    {
+        $tokens = array_values(array_filter($tokens, fn ($token) => mb_strlen($token) >= 4));
+        if ($tokens === []) {
+            return collect();
+        }
+
+        $haystack = "CONCAT_WS(' ', name, owners, categories, content)";
+        $query = DB::table(self::TABLE)->select(['cmp_id', 'slug', 'name', 'owners', 'categories', 'content', 'logo', 'is_sponsored']);
+        foreach ($tokens as $token) {
+            $query->whereRaw("{$haystack} LIKE ?", [$this->like(mb_substr($token, 0, 4))]);
+        }
+
+        return $query->when($publicOnly, fn ($query) => $query->where('is_public', 1))
+            ->limit(min(500, max($limit * 10, 50)))
+            ->get()
+            ->map(function ($row) use ($tokens) {
+                preg_match_all('/[\p{L}\p{N}]+/u', mb_strtolower(implode(' ', [$row->name, $row->owners, $row->categories, $row->content])), $matches);
+                $score = 0;
+                foreach ($tokens as $token) {
+                    $distance = collect($matches[0])->map(fn ($word) => levenshtein($token, $word))->min() ?? PHP_INT_MAX;
+                    if ($distance > max(1, (int) floor(strlen($token) / 3))) {
+                        return null;
+                    }
+                    $score += 10 - $distance;
+                }
+                $row->score = $score;
+                return $row;
+            })
+            ->filter()
+            ->sortByDesc('score')
+            ->take($limit)
+            ->values();
+    }
+
     private function matchReason(object $row, array $tokens): ?string
     {
-        $has = fn (?string $text) => $text !== null && $text !== '' && collect($tokens)->contains(fn ($t) => Str::contains(mb_strtolower($text), $t));
+        $has = fn (?string $text) => $text !== null && $text !== '' && collect($tokens)->contains(function ($token) use ($text) {
+            $text = mb_strtolower($text);
+            if (Str::contains($text, $token)) {
+                return true;
+            }
+            preg_match_all('/[\p{L}\p{N}]+/u', $text, $words);
+            return mb_strlen($token) >= 4 && collect($words[0])->contains(
+                fn ($word) => levenshtein($token, $word) <= max(1, (int) floor(strlen($token) / 3))
+            );
+        });
 
         if ($has($row->name)) {
             return null;
@@ -275,6 +323,8 @@ class BusinessSearchIndex
 
         $portfolios = DB::table('business_portfolios')->whereIn('company_id', $cmpIds)
             ->where('is_published', 1)->get(['company_id', 'published_snapshot'])->keyBy('company_id');
+        $items = DB::table('business_portfolio_items')->whereIn('company_id', $cmpIds)
+            ->where('is_active', 1)->orderBy('sort_order')->get(['company_id', 'title', 'description'])->groupBy('company_id');
 
         $rows = [];
         foreach ($cmpIds as $id) {
@@ -296,7 +346,8 @@ class BusinessSearchIndex
             if ($about && ! CompaniesDetail::isSetupDescription($about)) {
                 $lines[] = Str::limit($this->clean($about), 2000, '');
             }
-            foreach ($snapshot['items'] ?? [] as $item) {
+            $offerings = $items->get($id, collect())->map(fn ($item) => (array) $item)->all() ?: ($snapshot['items'] ?? []);
+            foreach ($offerings as $item) {
                 if (($item['is_active'] ?? true) && ! empty($item['title'])) {
                     $lines[] = self::ITEM.$this->clean($item['title']).(! empty($item['description']) ? ' — '.Str::limit($this->clean($item['description']), 300, '') : '');
                 }
@@ -341,9 +392,9 @@ class BusinessSearchIndex
             return false;
         }
         $builtAt = Cache::get(self::BUILT_KEY);
-        if (! $builtAt && ! DB::table(self::TABLE)->exists()) {
+        if (! $builtAt) {
             $this->rebuildAll();
-        } elseif (! $builtAt || $builtAt < now()->subMinutes(self::REBUILD_EVERY_MINUTES)->timestamp) {
+        } elseif ($builtAt < now()->subMinutes(self::REBUILD_EVERY_MINUTES)->timestamp) {
             if (Cache::add(self::LOCK_KEY, 1, 300)) {
                 app()->terminating(function () {
                     try {

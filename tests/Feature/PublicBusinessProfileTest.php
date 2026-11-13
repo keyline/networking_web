@@ -281,6 +281,11 @@ class PublicBusinessProfileTest extends TestCase
             ['bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'view', 'bae_source' => 'WEB', 'bae_created_at' => now()],
             ['bae_cmp_id' => $company->cmp_id, 'bae_event_type' => 'whatsapp', 'bae_source' => 'WEB', 'bae_created_at' => now()],
         ]);
+        \App\Models\BusinessPortfolioItem::create([
+            'company_id' => $company->cmp_id, 'type' => 'service',
+            'title' => 'Artisan restoration', 'description' => 'Specialist craft restoration service.',
+            'is_active' => true, 'sort_order' => 1,
+        ]);
         app(\App\Services\BusinessSearchIndex::class)->refresh([$company->cmp_id]);
 
         $response = $this->get(route('members.index', ['search' => 'Directory Consulting']));
@@ -295,6 +300,11 @@ class PublicBusinessProfileTest extends TestCase
             ->assertSee('target="_blank" rel="noopener noreferrer"', false)
             ->assertDontSee('hidden-owner')
             ->assertDontSee('directory-owner@example.test');
+
+        $this->get(route('members.index', ['search' => 'artisn']))
+            ->assertOk()
+            ->assertSee('Directory Consulting Company')
+            ->assertSee('Offers: Artisan restoration');
     }
 
     public function test_members_directory_lists_sponsored_businesses_first(): void

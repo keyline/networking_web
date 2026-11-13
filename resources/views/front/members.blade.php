@@ -40,10 +40,11 @@
 .business-card .tag{background:var(--soft);color:color-mix(in srgb,var(--accent) 80%,#10213e);font-size:12px}
 .business-card .view-link{justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--soft);color:color-mix(in srgb,var(--accent) 85%,#10213e);font-size:14px}
 .business-card .view-link:hover{background:var(--accent);color:#fff}
-.business-cover{isolation:isolate}
-.business-cover .business-cover-bg{position:absolute;z-index:0;inset:-14px;width:calc(100% + 28px);height:calc(100% + 28px);padding:0;border:0;border-radius:0;background:transparent;object-fit:cover;filter:blur(18px) saturate(.85);opacity:.48;transform:scale(1.08)}
-.business-cover .business-cover-logo{position:relative;z-index:2;width:100%;height:100%;padding:12px;border-radius:16px;background:rgba(255,255,255,.88);box-shadow:0 8px 20px rgba(0,0,0,.15);object-fit:contain;backdrop-filter:blur(3px)}
-.business-cover .sponsored-crown{z-index:4}.business-cover .engagement-badge{z-index:3}
+.business-cover{isolation:isolate;padding:0}
+.business-cover:after{content:"";position:absolute;z-index:1;inset:0;background:rgba(255,255,255,.22);pointer-events:none}
+.business-cover .business-cover-bg{position:absolute;z-index:0;inset:-10px;width:calc(100% + 20px);height:calc(100% + 20px);padding:0;border:0;border-radius:0;background:transparent;object-fit:cover;filter:blur(18px) saturate(.9);opacity:.58;transform:scale(1.08)}
+.business-cover .business-cover-logo{position:absolute;z-index:2;inset:16px 24px 36px;width:calc(100% - 48px);height:calc(100% - 52px);padding:9px;border-radius:14px;background:rgba(255,255,255,.82);box-shadow:0 6px 18px rgba(0,0,0,.12);object-fit:contain;backdrop-filter:blur(3px)}
+.business-cover .sponsored-crown{z-index:4}.business-cover .engagement-badge{z-index:3}.business-cover .initials{position:relative;z-index:2}
 @media(max-width:767.98px){.directory-hero{padding-top:24px;padding-bottom:76px}.hero-sub{font-size:13px}.filters{margin-top:-52px}.business-cover{height:160px}.business-copy{padding:18px 18px 16px}}
 
 /* business page completeness: thin grey line, green = completed % */
